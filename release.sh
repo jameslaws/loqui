@@ -70,17 +70,52 @@ ditto -c -k --keepParent "$APP" "$ZIP"
 notarize "$ZIP"
 xcrun stapler staple "$APP"
 
-echo "==> build + sign DMG from the stapled app"
-# Simple, reliable DMG: the app + an Applications symlink (drag to install).
-# NOTE: a custom-background "installer" DMG was attempted but macOS 26's Finder
-# wouldn't apply the icon-view layout (create-dmg AND dmgbuild both failed the
-# same way — a known OS-version issue). Parked; revisit on a non-26 Mac or with a
-# dedicated tool. The art is kept in design/dmg/ + dmg-settings.py for later.
+echo "==> build styled DMG (clean window, app left / Applications right) from the stapled app"
+# Layout is applied via hand-rolled Finder AppleScript on a read-write image, then
+# converted to compressed read-only. NO background image: on macOS 26 the Finder
+# background-picture command silently aborts the rest of the layout (create-dmg AND
+# dmgbuild both failed that way). Without it, the window/size/icon-position commands
+# apply cleanly. Order matters: view options + arrangement-off BEFORE positions,
+# with delays, or Finder auto-arranges.
 STAGE="$OUT/dmg"
 rm -rf "$STAGE" && mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
+cp -R "$APP" "$STAGE/loqui.app"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "loqui" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+DMG_RW="$OUT/loqui-rw.dmg"
+hdiutil detach "/Volumes/loqui" 2>/dev/null || true   # avoid a "loqui 1" remount
+hdiutil create -volname "loqui" -srcfolder "$STAGE" -fs HFS+ -format UDRW -ov "$DMG_RW" >/dev/null
+hdiutil attach "$DMG_RW" -noautoopen >/dev/null
+sleep 1
+osascript <<'OSA'
+tell application "Finder"
+  tell disk "loqui"
+    open
+    delay 1
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set pathbar visible of container window to false
+    set the bounds of container window to {300, 150, 900, 550}
+    delay 1
+    set vo to the icon view options of container window
+    set arrangement of vo to not arranged
+    set icon size of vo to 128
+    set text size of vo to 13
+    set label position of vo to bottom
+    delay 1
+    set position of item "loqui.app" of container window to {175, 195}
+    set position of item "Applications" of container window to {425, 195}
+    delay 1
+    update without registering applications
+    delay 2
+    close
+  end tell
+end tell
+OSA
+sync
+hdiutil detach "/Volumes/loqui" >/dev/null 2>&1 || hdiutil detach "/Volumes/loqui" -force >/dev/null 2>&1 || true
+rm -f "$DMG"
+hdiutil convert "$DMG_RW" -format UDZO -o "$DMG" >/dev/null
 xattr -cr "$DMG"
 codesign --force --timestamp --sign "$DEVID" "$DMG"
 
