@@ -70,21 +70,17 @@ ditto -c -k --keepParent "$APP" "$ZIP"
 notarize "$ZIP"
 xcrun stapler staple "$APP"
 
-echo "==> build styled drag-to-install DMG (create-dmg) from the stapled app"
-# Custom background with the app icon on the left, an arrow, and Applications on
-# the right — a real installer window, not a Finder list. Coordinates match the
-# 720x405 background art (design/dmg/loqui-dmg-bg.png).
-create-dmg \
-    --volname "loqui" \
-    --background "design/dmg/loqui-dmg-bg.png" \
-    --window-pos 200 120 \
-    --window-size 720 405 \
-    --icon-size 110 \
-    --icon "loqui.app" 200 205 \
-    --app-drop-link 520 205 \
-    --hide-extension "loqui.app" \
-    --no-internet-enable \
-    "$DMG" "$APP"
+echo "==> build + sign DMG from the stapled app"
+# Simple, reliable DMG: the app + an Applications symlink (drag to install).
+# NOTE: a custom-background "installer" DMG was attempted but macOS 26's Finder
+# wouldn't apply the icon-view layout (create-dmg AND dmgbuild both failed the
+# same way — a known OS-version issue). Parked; revisit on a non-26 Mac or with a
+# dedicated tool. The art is kept in design/dmg/ + dmg-settings.py for later.
+STAGE="$OUT/dmg"
+rm -rf "$STAGE" && mkdir -p "$STAGE"
+cp -R "$APP" "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "loqui" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
 xattr -cr "$DMG"
 codesign --force --timestamp --sign "$DEVID" "$DMG"
 
