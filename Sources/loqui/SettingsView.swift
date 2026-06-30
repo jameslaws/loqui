@@ -72,7 +72,8 @@ struct GeneralSettings: View {
                 if model.removeFillers {
                     fillerEditor
                 }
-                Toggle("Spoken commands — “new paragraph”, “new line”", isOn: $model.spokenFormatting)
+                // Spoken commands intentionally not exposed — the real
+                // programmable version is reserved for a future loqui Pro.
             }
 
             Section("History") {
