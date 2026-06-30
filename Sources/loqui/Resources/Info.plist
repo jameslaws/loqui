@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.jameslaws.loqui</string>
+    <key>CFBundleName</key>
+    <string>Loqui</string>
+    <key>CFBundleDisplayName</key>
+    <string>Loqui</string>
+    <key>CFBundleExecutable</key>
+    <string>loqui</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 James Laws. All rights reserved.</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSMinimumSystemVersion</key>
+    <string>15.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>LSBackgroundOnly</key>
+    <false/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Loqui listens to your microphone to transcribe your speech to text.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Loqui transcribes your speech on-device so you can dictate text anywhere.</string>
+    <key>SUFeedURL</key>
+    <string>https://jameslaws.com/loqui/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>TZpLRVOoDGQGMJAnYcLOM+b3ZrOpmMyha0thHfgaFpY=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+</dict>
+</plist>
