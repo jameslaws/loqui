@@ -107,7 +107,8 @@ final class VoiceKeyService {
     /// the consume/pass-through decision can't be deferred.
     fileprivate func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            voiceKeyLog("tap disabled by \(type == .tapDisabledByTimeout ? "timeout" : "user input") — re-enabling")
+            let live = MainActor.assumeIsolated { VoiceKeyCenter.shared.recordingActive }
+            voiceKeyLog("tap disabled by \(type == .tapDisabledByTimeout ? "timeout" : "user input") — re-enabling\(live ? " (MID-DICTATION — a key edge may have been lost)" : "")")
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             // A key-up can be lost while the tap is down — reset the gesture
             // machine so the next press isn't a no-op (the wedge fix).
@@ -182,7 +183,7 @@ final class VoiceKeyGestureMachine {
         case .idle:
             // A live capture turns the next press into an instant stop.
             if center.recordingActive {
-                center.stopRecording()
+                center.stopRecording(reason: "toggle press")
                 state = .swallowUp
                 return
             }
@@ -212,7 +213,7 @@ final class VoiceKeyGestureMachine {
         case .hold:
             // Held past the threshold → push-to-talk. Release stops + pastes.
             state = .idle
-            center.stopRecording()
+            center.stopRecording(reason: "push-to-talk release")
         case .swallowUp:
             state = .idle
         case .idle:
@@ -249,27 +250,69 @@ final class VoiceKeyCenter {
     private var watchdog: Task<Void, Never>?      // max-duration safety auto-stop
     private let hud = VoiceKeyHUD()
     private var levelSink: AnyCancellable?
+    private var recordingStartedAt: Date?         // for the logged dictation duration
+    private var warnedAboutAudio = false
+
+    /// The old watchdog capped a *session* at 5 minutes, which cut real
+    /// dictations off mid-sentence. What it was actually guarding against is a
+    /// lost key-up leaving the mic hot forever — and that shows up as silence,
+    /// not as duration. So stop on prolonged silence instead: it still catches
+    /// the stuck mic, but it can never interrupt someone who is still talking.
+    private static let silenceLimit: TimeInterval = 120
+    /// Pure backstop for the case where even silence detection fails (e.g. a
+    /// noisy room holding the gate open). Long enough to never be the thing
+    /// that ends a genuine dictation.
+    private static let sessionCeiling: TimeInterval = 1800
+
+    private func startWatchdog() -> Task<Void, Never> {
+        Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled, let self, self.recordingActive else { return }
+                let now = Date()
+
+                // Buffers stopping mid-session means the mic graph died. The
+                // config-change handler usually rebuilds it before we notice;
+                // if it didn't, this is the line that explains a short paste.
+                let starved = now.timeIntervalSince(self.transcriber.lastBufferAt)
+                if starved > 5, !self.warnedAboutAudio {
+                    self.warnedAboutAudio = true
+                    voiceKeyLog("WARNING: no audio for \(Int(starved))s — the mic dropped out; text after this point is lost")
+                }
+
+                if now.timeIntervalSince(self.transcriber.lastSpeechAt) > Self.silenceLimit {
+                    self.stop(reason: "\(Int(Self.silenceLimit))s of silence — assuming a lost key-up")
+                    return
+                }
+                if now.timeIntervalSince(self.recordingStartedAt ?? now) > Self.sessionCeiling {
+                    self.stop(reason: "\(Int(Self.sessionCeiling / 60))-minute absolute ceiling")
+                    return
+                }
+            }
+        }
+    }
+
+    private func stop(reason: String) {
+        voiceKeyLog("watchdog stop: \(reason)")
+        machine.reset()
+        stopRecording(reason: reason)
+    }
 
     func startRecording() {
         // Reject a start while a prior stop is still draining/tearing down —
         // otherwise the in-flight teardown would corrupt this new session.
         guard !recordingActive, !finishing else { return }
         recordingActive = true
+        recordingStartedAt = Date()
         TranscriberState.shared.recording = true
         hud.show()
         // Drive the HUD waveform off the live mic level.
         levelSink = transcriber.$level
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.hud.push(level: $0) }
-        // Safety net: auto-stop a runaway session (e.g. if a key-up was lost).
+        warnedAboutAudio = false
         watchdog?.cancel()
-        watchdog = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(300))
-            guard !Task.isCancelled, let self, self.recordingActive else { return }
-            voiceKeyLog("watchdog: max recording duration reached — auto-stopping")
-            self.machine.reset()
-            self.stopRecording()
-        }
+        watchdog = startWatchdog()
         Task { @MainActor in
             if !(await transcriber.begin()) {
                 recordingActive = false
@@ -284,9 +327,13 @@ final class VoiceKeyCenter {
     /// Stop, clean the transcript, put it on the clipboard, and paste it where
     /// the cursor already is. Loqui is never activated — the HUD is a
     /// non-activating panel, so the frontmost app keeps focus and gets the ⌘V.
-    func stopRecording() {
+    func stopRecording(reason: String = "key press") {
         guard recordingActive else { return }
         recordingActive = false
+        // Measure here, not after the drain — the transcription tail isn't
+        // speaking time and would drag the words-per-minute figure down.
+        let spoken = recordingStartedAt.map { Date().timeIntervalSince($0) }
+        recordingStartedAt = nil
         finishing = true            // block a restart until the drain/teardown finishes
         watchdog?.cancel(); watchdog = nil
         TranscriberState.shared.recording = false
@@ -297,11 +344,20 @@ final class VoiceKeyCenter {
             // end() finalizes the analyzer so the tail of the dictation lands
             // in the paste — usually well under a second.
             let raw = await transcriber.end().trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !raw.isEmpty else { hud.hide(); return }
+            guard !raw.isEmpty else {
+                voiceKeyLog("dictation ended (\(reason)) after \(Int(spoken ?? 0))s with no text")
+                hud.hide()
+                return
+            }
             // Instant on-device cleanup (dictionary, fillers, punctuation/caps)
             // — microseconds, so the paste still feels immediate.
             let text = TextCleanup.shared.process(raw)
-            DictationLog.shared.record(words: text.split(whereSeparator: { $0.isWhitespace }).count)
+            let words = text.split(whereSeparator: { $0.isWhitespace }).count
+            // Every session now records WHY it ended, alongside its words and
+            // duration. Without this a short paste is indistinguishable from a
+            // short thought, which is what made truncation so hard to pin down.
+            voiceKeyLog("dictation ended (\(reason)) — \(words) words in \(Int(spoken ?? 0))s")
+            DictationLog.shared.record(words: words, seconds: spoken)
             TranscriptionHistory.shared.record(text: text)   // local history (respects retention)
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()

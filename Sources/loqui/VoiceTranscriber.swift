@@ -24,6 +24,16 @@ final class VoiceTranscriber: ObservableObject {
     private var finalized = ""
     private var partial = ""
     private var running = false
+    private var startedAt: Date?
+
+    /// When a buffer last reached the main actor, and when one last carried
+    /// actual speech. The service's watchdog reads both: prolonged silence
+    /// means a lost key-up, while buffers stopping entirely means the audio
+    /// graph died under us and the rest of the session would be lost.
+    private(set) var lastBufferAt = Date.distantPast
+    private(set) var lastSpeechAt = Date.distantPast
+
+    private var configObserver: NSObjectProtocol?
 
     // MARK: SpeechAnalyzer path
 
@@ -33,6 +43,7 @@ final class VoiceTranscriber: ObservableObject {
     private var analyzer: Any?               // SpeechAnalyzer (macOS 26+)
     private var analyzerTranscriber: Any?    // SpeechTranscriber (macOS 26+)
     private var inputBuilder: Any?           // AsyncStream<AnalyzerInput>.Continuation (26+)
+    private var analyzerFormat: AVAudioFormat?
     private var resultsTask: Task<Void, Never>?
 
     // MARK: Legacy path
@@ -49,6 +60,9 @@ final class VoiceTranscriber: ObservableObject {
         transcript = ""
         finalized = ""
         partial = ""
+        startedAt = Date()
+        lastBufferAt = Date()
+        lastSpeechAt = Date()
         if #available(macOS 26, *), await beginAnalyzer() { return true }
         voiceKeyLog("SpeechAnalyzer unavailable — falling back to legacy recognizer")
         return await beginLegacy()
@@ -57,8 +71,8 @@ final class VoiceTranscriber: ObservableObject {
     /// Stop and return everything heard. The analyzer runs a beat behind the
     /// voice — returning immediately dropped the last seconds of speech. So:
     /// stop the mic, ask the analyzer to finalize THROUGH the end of input,
-    /// drain the results stream, then hand back the complete text (bounded
-    /// at 3s so a wedged analyzer can't hold the send hostage).
+    /// drain the results stream, then hand back the complete text (bounded so
+    /// a wedged analyzer can't hold the send hostage).
     func end() async -> String {
         running = false
         engine?.stop()
@@ -68,14 +82,29 @@ final class VoiceTranscriber: ObservableObject {
             (inputBuilder as? AsyncStream<AnalyzerInput>.Continuation)?.finish()
             inputBuilder = nil
             let drain = resultsTask
-            await withTaskGroup(of: Void.self) { group in
+            // The drain budget has to scale with the session: a long dictation
+            // leaves a proportionally bigger backlog to flush, so the old flat
+            // 3s ceiling silently truncated the tail of exactly the sessions
+            // that mattered most. Finalizing normally takes well under a
+            // second, so a roomier bound costs nothing in the common case.
+            let elapsed = startedAt.map { Date().timeIntervalSince($0) } ?? 0
+            let budget = min(20, max(5, elapsed / 20))
+            let drained = await withTaskGroup(of: Bool.self) { group in
                 group.addTask {
                     try? await analyzer.finalizeAndFinishThroughEndOfInput()
                     await drain?.value   // trailing finals land in the loop
+                    return true
                 }
-                group.addTask { try? await Task.sleep(for: .seconds(3)) }
-                await group.next()
+                group.addTask {
+                    try? await Task.sleep(for: .seconds(budget))
+                    return false
+                }
+                let first = await group.next() ?? false
                 group.cancelAll()
+                return first
+            }
+            if !drained {
+                voiceKeyLog("WARNING: drain exceeded \(Int(budget))s after \(Int(elapsed))s of audio — tail may be truncated")
             }
         }
         bank(partial)
@@ -94,6 +123,11 @@ final class VoiceTranscriber: ObservableObject {
 
     private func tearDown() {
         running = false
+        if let configObserver {
+            NotificationCenter.default.removeObserver(configObserver)
+            self.configObserver = nil
+        }
+        analyzerFormat = nil
         engine?.stop()
         engine?.inputNode.removeTap(onBus: 0)
         engine = nil
@@ -142,12 +176,14 @@ final class VoiceTranscriber: ObservableObject {
         let rms = n > 0 ? Double(sqrt(sum / Float(n))) : 0
         Task { @MainActor [weak self] in
             guard let self else { return }
+            self.lastBufferAt = Date()
             // AUTO-GAIN: normalize against the loudest thing heard recently,
             // so it tracks YOUR voice at YOUR mic level.
             self.peak = max(rms, self.peak * 0.995)
             var raw = self.peak > 0.004 ? min(1.0, rms / self.peak) : 0
             // NOISE GATE: room rumble and breath don't move the HUD waveform.
             raw = raw < 0.22 ? 0 : (raw - 0.22) / 0.78
+            if raw > 0 { self.lastSpeechAt = Date() }
             // shaped attack + slow release — syllables, not flicker
             if raw > self.smoothedLevel {
                 self.smoothedLevel += (raw - self.smoothedLevel) * 0.65
@@ -185,22 +221,10 @@ final class VoiceTranscriber: ObservableObject {
             let (sequence, builder) = AsyncStream<AnalyzerInput>.makeStream()
             try await analyzer.start(inputSequence: sequence)
 
-            let engine = AVAudioEngine()
-            let input = engine.inputNode
-            let tapFormat = input.outputFormat(forBus: 0)
-            guard let converter = AVAudioConverter(from: tapFormat, to: format) else {
-                return false
-            }
-            input.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) { [weak self] buffer, _ in
-                self?.meter(buffer)
-                if let converted = Self.convert(buffer, with: converter, to: format) {
-                    builder.yield(AnalyzerInput(buffer: converted))
-                }
-            }
-            engine.prepare()
-            try engine.start()
+            self.analyzerFormat = format
+            try startAnalyzerEngine(format: format, builder: builder)
+            observeConfigChange()
 
-            self.engine = engine
             self.analyzer = analyzer
             self.analyzerTranscriber = transcriber
             self.inputBuilder = builder
@@ -229,6 +253,61 @@ final class VoiceTranscriber: ObservableObject {
         } catch {
             voiceKeyLog("SpeechAnalyzer setup failed: \(error.localizedDescription)")
             return false
+        }
+    }
+
+    /// Build the mic graph and pump converted buffers into the analyzer. Split
+    /// out of `beginAnalyzer` so it can be re-run mid-dictation when the audio
+    /// device changes underneath us.
+    @available(macOS 26, *)
+    private func startAnalyzerEngine(
+        format: AVAudioFormat, builder: AsyncStream<AnalyzerInput>.Continuation
+    ) throws {
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let tapFormat = input.outputFormat(forBus: 0)
+        guard let converter = AVAudioConverter(from: tapFormat, to: format) else {
+            throw TranscriberError.noConverter
+        }
+        input.installTap(onBus: 0, bufferSize: 1024, format: tapFormat) { [weak self] buffer, _ in
+            self?.meter(buffer)
+            if let converted = Self.convert(buffer, with: converter, to: format) {
+                builder.yield(AnalyzerInput(buffer: converted))
+            }
+        }
+        engine.prepare()
+        try engine.start()
+        self.engine = engine
+    }
+
+    /// AVAudioEngine STOPS itself whenever the audio hardware is reconfigured —
+    /// AirPods connecting, a dock or monitor mic appearing, another app seizing
+    /// the input, a sample-rate change. Nothing throws and nothing logs: the tap
+    /// simply stops delivering, so the session looks live while capturing
+    /// silence, and you paste only what was said before the change. Rebuilding
+    /// the graph on the same analyzer keeps the dictation going.
+    private func observeConfigChange() {
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.rebuildInputGraph() }
+        }
+    }
+
+    private func rebuildInputGraph() {
+        guard running, !usingLegacy, #available(macOS 26, *),
+              let format = analyzerFormat,
+              let builder = inputBuilder as? AsyncStream<AnalyzerInput>.Continuation
+        else { return }
+        voiceKeyLog("audio configuration changed mid-dictation — rebuilding the input tap")
+        engine?.stop()
+        engine?.inputNode.removeTap(onBus: 0)
+        engine = nil
+        do {
+            try startAnalyzerEngine(format: format, builder: builder)
+            voiceKeyLog("input tap rebuilt — dictation continues")
+        } catch {
+            voiceKeyLog("input tap rebuild FAILED: \(error.localizedDescription) — audio is dead for the rest of this dictation")
         }
     }
 
@@ -336,6 +415,10 @@ final class VoiceTranscriber: ObservableObject {
             startLegacySegment()
         }
     }
+}
+
+enum TranscriberError: Error {
+    case noConverter
 }
 
 /// Lock-guarded handle to the current legacy recognition request — the audio
