@@ -16,6 +16,17 @@ struct LabeledWords: Identifiable {
     let words: Int
 }
 
+struct HourWords: Identifiable {
+    var id: Int { hour }
+    let hour: Int
+    let words: Int
+}
+
+/// Sustained typing speed for an average adult. The baseline "time saved"
+/// is measured against — deliberately conservative, since a fast typist
+/// would beat it and the figure should never feel inflated.
+private let typingWPM = 40.0
+
 /// Computes every figure on the dashboard from the dictation log. Reloads on
 /// open AND whenever a new dictation is recorded, so an open window updates live.
 @MainActor
@@ -32,9 +43,19 @@ final class StatsModel: ObservableObject {
     @Published var last30Days: [DatedWords] = []
     @Published var byMonth: [DatedWords] = []
     @Published var byWeekday: [LabeledWords] = []
-    @Published var bestDayWords = 0
-    @Published var bestDayDate: Date?
-    @Published var peakTime = "—"
+    @Published var byHour: [HourWords] = []
+    @Published var biggestDayWords = 0
+    @Published var biggestDayDate: Date?
+    @Published var peakHours = "—"
+    @Published var currentStreak = 0
+    @Published var longestStreak = 0
+    @Published var activeDays = 0
+    @Published var spanDays = 0
+    @Published var longestDictation = 0
+    @Published var avgPerActiveDay = 0
+    @Published var timeSaved: TimeInterval = 0
+    @Published var speakingPace = 0
+    @Published var paceMeasured = false
 
     private var observer: NSObjectProtocol?
 
@@ -107,21 +128,98 @@ final class StatsModel: ObservableObject {
         let names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         byWeekday = (1...7).map { LabeledWords(label: names[$0 - 1], words: wd[$0] ?? 0) }
 
-        if let best = byDay.max(by: { $0.value < $1.value }) {
-            bestDayWords = best.value
-            bestDayDate = best.key
-        } else { bestDayWords = 0; bestDayDate = nil }
+        if let biggest = byDay.max(by: { $0.value < $1.value }) {
+            biggestDayWords = biggest.value
+            biggestDayDate = biggest.key
+        } else { biggestDayWords = 0; biggestDayDate = nil }
 
-        var buckets: [String: Int] = ["Morning": 0, "Afternoon": 0, "Evening": 0, "Night": 0]
-        for e in entries {
-            switch cal.component(.hour, from: e.at) {
-            case 5..<12: buckets["Morning", default: 0] += e.words
-            case 12..<17: buckets["Afternoon", default: 0] += e.words
-            case 17..<22: buckets["Evening", default: 0] += e.words
-            default: buckets["Night", default: 0] += e.words
+        // Hour-of-day distribution, and the busiest 3-hour window in it. The
+        // window wraps past midnight so a late-night habit reads as
+        // "10 PM–1 AM" rather than being split across the end of the array.
+        var hourly = [Int](repeating: 0, count: 24)
+        for e in entries { hourly[cal.component(.hour, from: e.at)] += e.words }
+        byHour = (0..<24).map { HourWords(hour: $0, words: hourly[$0]) }
+
+        var peakStart = 0, peakSum = -1
+        for start in 0..<24 {
+            let sum = (0..<3).reduce(0) { $0 + hourly[($1 + start) % 24] }
+            if sum > peakSum { peakSum = sum; peakStart = start }
+        }
+        peakHours = peakSum > 0 ? Self.hourRange(peakStart, peakStart + 3) : "—"
+
+        // MARK: streaks & consistency
+
+        let activeSet = Set(byDay.keys)
+        let sortedDays = activeSet.sorted()
+
+        // A streak shouldn't look broken just because you haven't dictated yet
+        // today, so an untouched today falls back to counting from yesterday.
+        var streak = 0
+        if !activeSet.isEmpty {
+            var probe = activeSet.contains(today0)
+                ? today0
+                : (cal.date(byAdding: .day, value: -1, to: today0) ?? today0)
+            while activeSet.contains(probe) {
+                streak += 1
+                guard let prev = cal.date(byAdding: .day, value: -1, to: probe) else { break }
+                probe = prev
             }
         }
-        peakTime = entries.isEmpty ? "—" : (buckets.max(by: { $0.value < $1.value })?.key ?? "—")
+        currentStreak = streak
+
+        var best = 0, run = 0
+        var previous: Date?
+        for day in sortedDays {
+            if let p = previous, let next = cal.date(byAdding: .day, value: 1, to: p),
+               cal.isDate(next, inSameDayAs: day) {
+                run += 1
+            } else {
+                run = 1
+            }
+            best = max(best, run)
+            previous = day
+        }
+        longestStreak = best
+
+        // Consistency over the last 60 days — or over your whole history if
+        // you've been using loqui for less than that, so a new user doesn't
+        // see "3 of 60" and read it as a failure.
+        let daysSinceFirst = sortedDays.first.map {
+            (cal.dateComponents([.day], from: $0, to: today0).day ?? 0) + 1
+        } ?? 0
+        spanDays = min(60, max(daysSinceFirst, 1))
+        let windowStart = cal.date(byAdding: .day, value: -(spanDays - 1), to: today0) ?? today0
+        activeDays = activeSet.filter { $0 >= windowStart }.count
+
+        avgPerActiveDay = activeSet.isEmpty ? 0 : allTimeWords / activeSet.count
+        longestDictation = entries.map(\.words).max() ?? 0
+
+        // MARK: pace & time saved
+
+        let timed = entries.compactMap { e in e.seconds.map { (words: e.words, secs: $0) } }
+        let timedWords = timed.reduce(0) { $0 + $1.words }
+        let timedSecs = timed.reduce(0.0) { $0 + $1.secs }
+        paceMeasured = timedSecs > 0
+        speakingPace = paceMeasured ? Int(round(Double(timedWords) / (timedSecs / 60))) : 0
+
+        // Entries logged before duration tracking existed get filled in at your
+        // measured pace (or a typical speaking rate, until there's enough
+        // measured data to have one), which is why the figure is shown as "≈".
+        let assumedPace = paceMeasured ? Double(speakingPace) : 150.0
+        let spokenSecs = entries.reduce(0.0) { $0 + ($1.seconds ?? Double($1.words) / assumedPace * 60) }
+        timeSaved = max(0, Double(allTimeWords) / typingWPM * 60 - spokenSecs)
+    }
+
+    /// "7–10 AM", "9 AM–12 PM", "10 PM–1 AM" — the meridiem collapses to one
+    /// when both ends share it.
+    static func hourRange(_ from: Int, _ to: Int) -> String {
+        func parts(_ h: Int) -> (String, String) {
+            let m = ((h % 24) + 24) % 24
+            let hour12 = m % 12 == 0 ? 12 : m % 12
+            return ("\(hour12)", m < 12 ? "AM" : "PM")
+        }
+        let (a, aMer) = parts(from), (b, bMer) = parts(to)
+        return aMer == bMer ? "\(a)–\(b) \(aMer)" : "\(a) \(aMer)–\(b) \(bMer)"
     }
 }
 
@@ -130,6 +228,7 @@ struct StatsView: View {
     @State private var selDaily: Date?
     @State private var selMonthly: Date?
     @State private var selWeekday: String?
+    @State private var selHour: Int?
 
     var body: some View {
         Group {
@@ -143,6 +242,7 @@ struct StatsView: View {
                         dailyChart
                         monthlyChart
                         weekdayChart
+                        hourChart
                         insights
                     }
                     .padding(24)
@@ -203,6 +303,41 @@ struct StatsView: View {
         }
     }
 
+    private var hourChart: some View {
+        chartCard("By hour of day", height: 130) {
+            Chart {
+                ForEach(model.byHour) { h in
+                    BarMark(x: .value("Hour", h.hour), y: .value("Words", h.words))
+                        .foregroundStyle(statsMagenta.opacity(0.85))
+                }
+                if let sel = selHour, let h = model.byHour.first(where: { $0.hour == sel }) {
+                    RuleMark(x: .value("Hour", h.hour))
+                        .foregroundStyle(Color.secondary.opacity(0.25))
+                        .annotation(position: .top, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            tooltip(StatsModel.hourRange(h.hour, h.hour + 1), h.words)
+                        }
+                }
+            }
+            .chartXScale(domain: -0.5...23.5)
+            .chartXAxis {
+                AxisMarks(values: [0, 3, 6, 9, 12, 15, 18, 21]) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let h = value.as(Int.self) { Text(Self.axisHour(h)) }
+                    }
+                }
+            }
+            .chartXSelection(value: $selHour)
+        }
+    }
+
+    /// Compact axis tick — "12a", "3a", "12p" — so all eight fit without crowding.
+    private static func axisHour(_ h: Int) -> String {
+        let hour12 = h % 12 == 0 ? 12 : h % 12
+        return "\(hour12)\(h < 12 ? "a" : "p")"
+    }
+
     private func marker(at date: Date, unit: Calendar.Component, label: String, words: Int) -> some ChartContent {
         RuleMark(x: .value("x", date, unit: unit))
             .foregroundStyle(Color.secondary.opacity(0.25))
@@ -249,7 +384,10 @@ struct StatsView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Dictation").font(.system(size: 26, weight: .bold, design: .serif))
-            Text("\(model.allTimeWords.formatted()) words all-time · \(model.totalDictations.formatted()) dictations")
+            // Totals live here rather than in the grid below — they're the
+            // frame for everything else, and repeating them as tiles wastes
+            // slots on numbers already on screen.
+            Text("\(model.allTimeWords.formatted()) words all-time · \(model.totalDictations.formatted()) dictations · \(model.avgPerDictation.formatted()) words each")
                 .font(.callout).foregroundStyle(.secondary)
         }
     }
@@ -293,20 +431,53 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Patterns").font(.headline)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                insight("Best day", model.bestDayDate != nil ? "\(model.bestDayWords.formatted()) words" : "—")
-                insight("Most active", model.peakTime)
-                insight("Avg per dictation", "\(model.avgPerDictation) words")
-                insight("Total dictations", model.totalDictations.formatted())
+                insight("Time saved", timeSavedValue,
+                        model.paceMeasured ? "vs typing at \(Int(typingWPM)) wpm"
+                                           : "estimated vs typing at \(Int(typingWPM)) wpm")
+                insight("Speaking pace",
+                        model.paceMeasured ? "\(model.speakingPace.formatted()) wpm" : "—",
+                        model.paceMeasured ? "\(paceMultiple)× faster than typing"
+                                           : "measured from new dictations")
+                insight("Current streak", streakValue(model.currentStreak),
+                        model.longestStreak > 0 ? "best: \(streakValue(model.longestStreak))" : nil)
+                insight("Days active", "\(model.activeDays) of \(model.spanDays)",
+                        model.spanDays >= 60 ? "in the last 60 days" : "days since you started")
+                insight("Peak hours", model.peakHours, "when you dictate most")
+                insight("Highest volume day",
+                        model.biggestDayDate != nil ? "\(model.biggestDayWords.formatted()) words" : "—",
+                        model.biggestDayDate.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) })
+                insight("Longest dictation", "\(model.longestDictation.formatted()) words", "in a single go")
+                insight("Per active day", "\(model.avgPerActiveDay.formatted()) words",
+                        "on days you dictate")
             }
         }
     }
 
-    private func insight(_ title: String, _ value: String) -> some View {
+    private var timeSavedValue: String {
+        let mins = Int(model.timeSaved / 60)
+        if mins < 60 { return "≈\(mins) min" }
+        return "≈\(mins / 60)h \(mins % 60)m"
+    }
+
+    private func streakValue(_ days: Int) -> String {
+        "\(days) \(days == 1 ? "day" : "days")"
+    }
+
+    private var paceMultiple: String {
+        (Double(model.speakingPace) / typingWPM).formatted(.number.precision(.fractionLength(1)))
+    }
+
+    private func insight(_ title: String, _ value: String, _ detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title.uppercased()).font(.caption2).tracking(1).foregroundStyle(.secondary)
             Text(value).font(.system(size: 17, weight: .semibold, design: .rounded))
+            if let detail {
+                Text(detail).font(.caption2).foregroundStyle(.secondary)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // Fill the row height so tiles with and without a detail line still
+        // present as one even grid.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }

@@ -8,11 +8,15 @@ extension Notification.Name {
 struct DictationEntry: Codable {
     let at: Date
     let words: Int
+    /// How long the mic was live, in seconds. Optional because entries written
+    /// before duration logging existed don't have it — those decode fine and
+    /// simply sit out of the pace/time-saved figures.
+    var seconds: Double?
 }
 
 /// Append-only local record of how much you dictate — one tiny line per
-/// dictation (timestamp + word count, never the text itself). Powers the
-/// Dictation Stats window. Lives at
+/// dictation (timestamp + word count + duration, never the text itself). Powers
+/// the Dictation Stats window. Lives at
 /// `~/Library/Application Support/Loqui/dictation-log.jsonl`.
 final class DictationLog {
     static let shared = DictationLog()
@@ -25,11 +29,16 @@ final class DictationLog {
         return base.appendingPathComponent("dictation-log.jsonl")
     }
 
-    func record(words: Int) {
+    func record(words: Int, seconds: Double? = nil) {
         guard words > 0 else { return }
         let enc = JSONEncoder()
         enc.dateEncodingStrategy = .iso8601
-        guard let data = try? enc.encode(DictationEntry(at: Date(), words: words)),
+        // Sub-second and runaway durations are noise (a mis-fire, a stuck mic)
+        // and would wreck the words-per-minute average, so drop them. The upper
+        // bound tracks the recording ceiling in VoiceKeyCenter — a genuine
+        // long-form dictation must keep its duration.
+        let dur = seconds.flatMap { (1...1800).contains(Int($0)) ? $0 : nil }
+        guard let data = try? enc.encode(DictationEntry(at: Date(), words: words, seconds: dur)),
               let json = String(data: data, encoding: .utf8)
         else { return }
         let line = json + "\n"
