@@ -295,7 +295,14 @@ struct StatsView: View {
                 if let sel = selWeekday, let w = model.byWeekday.first(where: { $0.label == sel }) {
                     RuleMark(x: .value("Day", w.label))
                         .foregroundStyle(Color.secondary.opacity(0.25))
-                        .annotation(position: .top, spacing: 4) { tooltip(fullWeekday(w.label), w.words) }
+                        // Without `y: .disabled` the chart grows its y-domain to
+                        // fit the tooltip, so hovering rescaled the axis and
+                        // visibly shrank every bar. Let it overflow instead —
+                        // this matches the other three charts.
+                        .annotation(position: .top, spacing: 4,
+                                    overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                            tooltip(fullWeekday(w.label), w.words)
+                        }
                 }
             }
             .chartXScale(domain: model.byWeekday.map(\.label))
