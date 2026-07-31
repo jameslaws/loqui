@@ -34,11 +34,17 @@ notarize() {  # $1 = path to .zip or .dmg
 }
 
 echo "==> universal release build (arm64 + x86_64)"
+PRODUCTS=".build/apple/Products/Release"
+
+# Info.plist is embedded into the binary via -sectcreate (see Package.swift), but
+# SwiftPM doesn't track it as a linker input — bump the version or the feed URL
+# and a plain rebuild silently ships the previous plist. Drop the product so the
+# link step re-runs. Costs a relink, not a recompile.
+rm -f "$PRODUCTS/loqui"
+
 # -file-prefix-map scrubs the absolute project path out of embedded #file strings.
 swift build -c release --arch arm64 --arch x86_64 \
     -Xswiftc -file-prefix-map -Xswiftc "$(pwd)=."
-
-PRODUCTS=".build/apple/Products/Release"
 BIN="$PRODUCTS/loqui"
 FW="$PRODUCTS/Sparkle.framework"
 echo "==> assemble $APP"

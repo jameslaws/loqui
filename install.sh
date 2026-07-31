@@ -37,9 +37,15 @@ fi
 
 # ------------------------------------------------------------------- build ---
 say "building loqui (release) — first run downloads Sparkle and takes a few minutes"
-swift build -c release
 
+# Info.plist is embedded into the binary via -sectcreate (see Package.swift), but
+# SwiftPM doesn't know it's a linker input, so editing the plist alone never
+# triggers a relink and the binary keeps embedding a stale copy. Dropping the
+# product forces a relink; it costs a couple of seconds, not a recompile.
 BIN_DIR=$(swift build -c release --show-bin-path)
+rm -f "$BIN_DIR/loqui"
+
+swift build -c release
 [ -x "$BIN_DIR/loqui" ] || die "build finished but no binary at $BIN_DIR/loqui"
 [ -d "$BIN_DIR/Sparkle.framework" ] || die "Sparkle.framework missing from $BIN_DIR"
 
