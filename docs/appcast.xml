@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>loqui</title>
+        <item>
+            <title>0.1</title>
+            <pubDate>Fri, 31 Jul 2026 16:58:49 -0400</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/jameslaws/loqui/releases/download/v0.1/loqui-0.1.dmg" length="3302974" type="application/octet-stream" sparkle:edSignature="VNn9lUG0QlhYxwD2trjnm4f8elxOza+SDXi8qBvdYscvn59XKOeedHyIV3Vd6yQNSm46oEu2QxGj7E4YoWrsDQ=="/>
+        </item>
+    </channel>
+</rss>
