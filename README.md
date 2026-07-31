@@ -73,10 +73,10 @@ The privacy claim is specific, and you can check it against the source:
 - **Transcription is on-device.** Loqui uses Apple's local speech frameworks. No
   audio and no text is ever uploaded — there is no server to upload it to.
 - **The only network request Loqui ever makes** is Sparkle's update check against
-  this repository's release feed
-  (`https://github.com/jameslaws/loqui/releases/latest/download/appcast.xml`).
-  Nothing else in this codebase opens a connection — grep for `URLSession` and
-  you'll find zero hits.
+  the appcast at `https://jameslaws.github.io/loqui/appcast.xml`, which is served
+  by GitHub Pages from [`docs/`](docs) in this repository — so you can read the
+  exact feed your copy is checking. Nothing else in this codebase opens a
+  connection; grep for `URLSession` and you'll find zero hits.
 - **No analytics, no telemetry, no crash reporting, no account.** Sparkle's
   optional system profiling is off.
 - **Your dictated text is stored locally, in plain text**, at

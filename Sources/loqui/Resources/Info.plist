@@ -37,7 +37,7 @@
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Loqui transcribes your speech on-device so you can dictate text anywhere.</string>
     <key>SUFeedURL</key>
-    <string>https://github.com/jameslaws/loqui/releases/latest/download/appcast.xml</string>
+    <string>https://jameslaws.github.io/loqui/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>TZpLRVOoDGQGMJAnYcLOM+b3ZrOpmMyha0thHfgaFpY=</string>
     <key>SUEnableAutomaticChecks</key>

@@ -139,32 +139,46 @@ echo ""
 echo "   Gatekeeper:"
 spctl -a -t open --context context:primary-signature -vvv "$DMG" 2>&1 | head -3 || true
 
-# Stage the DMG + generate the Sparkle appcast. generate_appcast reads each DMG's
-# version, EdDSA-signs it with the key in the keychain, and writes appcast.xml
-# with download URLs under the prefix.
+# Generate the Sparkle appcast. generate_appcast reads each DMG's version,
+# EdDSA-signs it with the key in the keychain, and writes appcast.xml with
+# download URLs built from the prefix.
 #
-# Distribution is GitHub Releases. Both files are attached to the release tagged
-# v$VERSION, which makes the DMG resolve under the prefix below, and makes the
-# appcast itself resolve at the stable ".../releases/latest/download/appcast.xml"
-# that Info.plist's SUFeedURL points at.
+# It applies ONE prefix to every DMG in the directory it scans, but GitHub
+# Release asset URLs are per-tag — so scanning a directory that accumulated
+# older DMGs would stamp them all with this release's tag and produce dead
+# links. Staging a clean directory holding only this build keeps every URL
+# correct. A single-item appcast is valid and sufficient: Sparkle offers the
+# newest applicable item, so a user on any older version still updates.
 echo "==> generate Sparkle appcast"
-UPDATES="build/updates"
-mkdir -p "$UPDATES"
-cp "$DMG" "$UPDATES/loqui-$VERSION.dmg"
+STAGE_FEED="$OUT/appcast"
+mkdir -p "$STAGE_FEED"
+cp "$DMG" "$STAGE_FEED/loqui-$VERSION.dmg"
 .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
     --download-url-prefix "https://github.com/$GH_REPO/releases/download/v$VERSION/" \
-    "$UPDATES"
+    "$STAGE_FEED"
+
+# The feed is served by GitHub Pages from docs/ on the default branch, which is
+# a stable URL that does not change per release. Serving it as a release asset
+# instead would tie it to "latest", which silently skips prereleases and drafts
+# and would break update checks for everyone the first time you tag one.
+mkdir -p docs
+cp "$STAGE_FEED/appcast.xml" docs/appcast.xml
+mkdir -p build
+cp "$DMG" "build/loqui-$VERSION.dmg"
 
 rm -rf "$OUT"
 echo ""
 echo "✅ Done."
-echo "   App DMG:  build/updates/loqui-$VERSION.dmg"
-echo "   Appcast:  build/updates/appcast.xml"
+echo "   App DMG:  build/loqui-$VERSION.dmg"
+echo "   Appcast:  docs/appcast.xml  (commit this — it is the live feed)"
 echo ""
-echo "   → Publish with:"
-echo "     gh release create v$VERSION -R $GH_REPO \\"
-echo "         build/updates/loqui-$VERSION.dmg build/updates/appcast.xml \\"
-echo "         --title 'Loqui $VERSION' --notes '...'"
+echo "   → Publish, in this order:"
 echo ""
-echo "   Both files must be attached, and appcast.xml must be on the LATEST"
-echo "   release — that is the URL installed copies check for updates."
+echo "     1. gh release create v$VERSION -R $GH_REPO \\"
+echo "            build/loqui-$VERSION.dmg \\"
+echo "            --title 'Loqui $VERSION' --notes '...'"
+echo ""
+echo "     2. git add docs/appcast.xml && git commit -m 'Release $VERSION' && git push"
+echo ""
+echo "   Order matters: the appcast points at the release asset, so publish the"
+echo "   release first or the feed briefly advertises a download that 404s."
