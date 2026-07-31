@@ -52,7 +52,10 @@
   }
   .skip:focus { left: 12px; top: 12px; }
 
-  .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  /* padding-inline here and padding-block on `section` deliberately: most
+     sections carry both classes, and a `padding` shorthand on either one would
+     win on specificity and silently zero the other axis. */
+  .wrap { max-width: 920px; margin: 0 auto; padding-inline: 24px; }
   .measure { max-width: 62ch; }
 
   /* ---------------------------------------------------------------- hero -- */
@@ -81,11 +84,11 @@
   .hero .meta a { color: #fff; }
 
   /* ------------------------------------------------------------ sections -- */
-  section { padding: 68px 0; }
+  section { padding-block: 76px; }
   section + section { border-top: 1px solid var(--rule); }
   .eyebrow {
     font-size: 12px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
-    color: var(--magenta-text); margin: 0 0 12px;
+    color: var(--magenta-text); margin: 0 0 14px;
   }
   h2 {
     font-family: "New York", "Iowan Old Style", Georgia, serif;
