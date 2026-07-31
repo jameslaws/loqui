@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in Loqui doesn't work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please don't paste anything you dictated that you
+        wouldn't want public — a description of the problem is enough.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Press the shortcut in ...
+        2. Say ...
+        3. Instead of pasting, ...
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.5"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Loqui version
+      description: Menu bar icon → About
+      placeholder: "0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Downloaded the signed DMG
+        - Built from source with ./install.sh
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Hardware
+      options:
+        - Apple Silicon
+        - Intel
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines (optional)
+      description: |
+        From `~/Library/Logs/LoquiVoiceKey.log`. These contain event names and
+        word counts only — never what you said. Review before pasting.
+      render: text

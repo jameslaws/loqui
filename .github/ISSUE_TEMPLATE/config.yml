@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/jameslaws/loqui/security/advisories/new
+    about: Please report security issues privately, never as a public issue.
+  - name: Feature idea or question
+    url: https://github.com/jameslaws/loqui/discussions
+    about: Loqui is deliberately minimal — let's talk it through before you build it.

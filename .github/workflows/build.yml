@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # macOS 26 is required: SpeechAnalyzer only exists in the macOS 26 SDK, so an
+    # older image can't compile the file even though the app runs back to 15.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell script syntax
+        run: |
+          for f in install.sh uninstall.sh make-app.sh assemble-app.sh release.sh; do
+            bash -n "$f" && echo "ok  $f"
+          done
+
+      - name: Build (release)
+        run: swift build -c release
+
+      # Assembles and ad-hoc signs exactly the way install.sh does, so a broken
+      # source-install path fails here rather than on a contributor's machine.
+      # Stops short of installing to /Applications or launching anything.
+      - name: Verify the source-install bundle assembles and signs
+        run: |
+          set -euo pipefail
+          BIN_DIR=$(swift build -c release --show-bin-path)
+          test -x "$BIN_DIR/loqui"
+          test -d "$BIN_DIR/Sparkle.framework"
+
+          APP="$RUNNER_TEMP/loqui.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
+          cp "$BIN_DIR/loqui" "$APP/Contents/MacOS/loqui"
+          cp Sources/loqui/Resources/Info.plist "$APP/Contents/Info.plist"
+          cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+          ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+
+          /usr/libexec/PlistBuddy -c "Set :SUEnableAutomaticChecks false" "$APP/Contents/Info.plist"
+
+          xattr -cr "$APP"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict "$APP"
+          echo "ad-hoc signed bundle verifies"

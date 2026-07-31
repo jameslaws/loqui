@@ -11,10 +11,15 @@ cd "$(dirname "$0")"
 PRODUCTS_DIR="${1:?usage: assemble-app.sh <dir containing the built loqui binary>}"
 APP="/Applications/loqui.app"
 
-IDENTITY=$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development/ {print $2; exit}')
+# An Apple Development identity keeps TCC grants stable across rebuilds, but it
+# needs a paid developer account. Fall back to ad-hoc signing so anyone can build
+# and run this — the cost is that macOS re-prompts for Accessibility/Microphone
+# after each rebuild, because an ad-hoc signature changes with the binary.
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+    | awk -F'"' '/Apple Development/ {print $2; exit}' || true)
 if [ -z "$IDENTITY" ]; then
-    echo "no Apple Development signing identity found" >&2
-    exit 1
+    IDENTITY="-"
+    echo "no Apple Development identity — ad-hoc signing instead"
 fi
 
 # A still-running copy would shadow the relaunch.

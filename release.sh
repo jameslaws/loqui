@@ -3,12 +3,17 @@
 #
 # One-time setup: create an app-specific password at appleid.apple.com, then:
 #   xcrun notarytool store-credentials loqui-notary \
-#     --apple-id <your-apple-id> --team-id 2R6UK9F228 --password <app-specific-pw>
+#     --apple-id <your-apple-id> --team-id <your-team-id> --password <app-specific-pw>
+#
+# Maintainer-only: publishing a signed build needs a paid Apple Developer
+# account. To just build and run Loqui yourself, use ./install.sh instead.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-DEVID="Developer ID Application: James Laws (2R6UK9F228)"
-NOTARY_PROFILE="loqui-notary"
+# Overridable so a fork can sign and publish under its own identity/repo.
+DEVID="${LOQUI_SIGN_IDENTITY:-Developer ID Application: James Laws (2R6UK9F228)}"
+NOTARY_PROFILE="${LOQUI_NOTARY_PROFILE:-loqui-notary}"
+GH_REPO="${LOQUI_GH_REPO:-jameslaws/loqui}"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Sources/loqui/Resources/Info.plist)
 # Assemble OUTSIDE the iCloud-synced project dir — iCloud keeps re-tagging files
 # with com.apple.FinderInfo, which codesign refuses to sign.
@@ -128,16 +133,20 @@ echo ""
 echo "   Gatekeeper:"
 spctl -a -t open --context context:primary-signature -vvv "$DMG" 2>&1 | head -3 || true
 
-# Stage the DMG + generate the Sparkle appcast. generate_appcast reads each
-# DMG's version, EdDSA-signs it with the key in the keychain, and writes
-# appcast.xml with download URLs under the prefix. Upload BOTH files (plus the
-# DMG) to https://jameslaws.com/loqui/.
+# Stage the DMG + generate the Sparkle appcast. generate_appcast reads each DMG's
+# version, EdDSA-signs it with the key in the keychain, and writes appcast.xml
+# with download URLs under the prefix.
+#
+# Distribution is GitHub Releases. Both files are attached to the release tagged
+# v$VERSION, which makes the DMG resolve under the prefix below, and makes the
+# appcast itself resolve at the stable ".../releases/latest/download/appcast.xml"
+# that Info.plist's SUFeedURL points at.
 echo "==> generate Sparkle appcast"
 UPDATES="build/updates"
 mkdir -p "$UPDATES"
 cp "$DMG" "$UPDATES/loqui-$VERSION.dmg"
 .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
-    --download-url-prefix "https://jameslaws.com/loqui/" \
+    --download-url-prefix "https://github.com/$GH_REPO/releases/download/v$VERSION/" \
     "$UPDATES"
 
 rm -rf "$OUT"
@@ -145,4 +154,11 @@ echo ""
 echo "✅ Done."
 echo "   App DMG:  build/updates/loqui-$VERSION.dmg"
 echo "   Appcast:  build/updates/appcast.xml"
-echo "   → Upload everything in build/updates/ to https://jameslaws.com/loqui/"
+echo ""
+echo "   → Publish with:"
+echo "     gh release create v$VERSION -R $GH_REPO \\"
+echo "         build/updates/loqui-$VERSION.dmg build/updates/appcast.xml \\"
+echo "         --title 'Loqui $VERSION' --notes '...'"
+echo ""
+echo "   Both files must be attached, and appcast.xml must be on the LATEST"
+echo "   release — that is the URL installed copies check for updates."

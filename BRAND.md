@@ -1,7 +1,7 @@
 # loqui — Brand
 
-> A personal-line tool by James Laws. Sold off jameslaws.com. Quiet, fast,
-> literary. It turns what you say into clean written words.
+> A personal-line tool by James Laws. Quiet, fast, literary. It turns what you
+> say into clean written words.
 
 ## Name
 **loqui** — Latin *loqui*, "to speak." Pronounced *lo-KWEE*. Wordmark always

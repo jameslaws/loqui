@@ -17,3 +17,6 @@ build/
 .DS_Store
 **/.DS_Store
 .dmgtools-venv/
+
+# Lavish review artifacts (scratch, not source)
+.lavish/
