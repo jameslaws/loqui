@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loqui, on-device dictation for macOS</title>
-<meta name="description" content="Working with AI means writing constantly. Loqui lets you say it instead. Press a key, speak, and clean text appears wherever your cursor is, transcribed entirely on your Mac.">
+<title>Loqui, voice dictation for macOS</title>
+<meta name="description" content="Press a key, speak, and clean text appears wherever your cursor is. On-device voice dictation for macOS. Free, open source, no account, no subscription.">
 <link rel="icon" href="assets/loqui-icon-180.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/loqui-icon-180.png">
-<meta property="og:title" content="Loqui, on-device dictation for macOS">
-<meta property="og:description" content="Working with AI means writing constantly. Loqui lets you say it instead, transcribed entirely on your Mac.">
+<meta property="og:title" content="Loqui, voice dictation for macOS">
+<meta property="og:description" content="Press a key, speak, and clean text appears wherever your cursor is. On-device, free and open source.">
 <meta property="og:image" content="https://jameslaws.github.io/loqui/assets/loqui-icon-512.png">
 <meta property="og:url" content="https://jameslaws.github.io/loqui/">
 <meta name="twitter:card" content="summary_large_image">
 <style>
   /* Loqui, per BRAND.md: magenta as accent and icon ground, hierarchy built from
      type rather than colour blocking. SF Pro for text, New York for display.
-     Two brand values are darkened here to clear WCAG AA on white. */
+     Muted and link colours are darkened from the brand palette to clear AA. */
   :root {
     --magenta: #E91E63;
     --magenta-deep: #C2185B;
@@ -27,15 +27,12 @@
     --surface-alt: #F7F6F4;
     --rule: #E3DFDA;
     --shot-rule: #DFDAD4;
-    --bar-track: #E8E4DF;
-    --bar-neutral: #BFB8B0;
+    --ok: #1B7A4B;
   }
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
   body {
-    margin: 0;
-    background: var(--surface);
-    color: var(--ink);
+    margin: 0; background: var(--surface); color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
     font-size: 17px; line-height: 1.65; letter-spacing: -0.003em;
     -webkit-font-smoothing: antialiased;
@@ -52,144 +49,164 @@
   }
   .skip:focus { left: 12px; top: 12px; }
 
-  /* padding-inline here and padding-block on `section` deliberately: most
-     sections carry both classes, and a `padding` shorthand on either one would
-     win on specificity and silently zero the other axis. */
-  .wrap { max-width: 920px; margin: 0 auto; padding-inline: 24px; }
+  /* padding-inline here, padding-block on `section`: sections carry both, and a
+     `padding` shorthand on either would win on specificity and zero the other axis. */
+  .wrap { max-width: 1000px; margin: 0 auto; padding-inline: 24px; }
   .measure { max-width: 62ch; }
+  section { padding-block: 84px; }
+  .alt { background: var(--surface-alt); }
+
+  /* Display type needs its own line-height. Without this it inherits the body's
+     1.65, which is right for prose and far too loose for a large serif heading. */
+  h2 {
+    font-family: "New York", "Iowan Old Style", Georgia, serif;
+    font-size: clamp(28px, 4.2vw, 38px); line-height: 1.14;
+    margin: 0 0 16px; font-weight: 600;
+    letter-spacing: -0.018em; text-wrap: balance;
+  }
+  h3, h4 { line-height: 1.3; }
+  .eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
+    color: var(--magenta-text); margin: 0 0 14px;
+  }
+  .section-intro { color: var(--muted); font-size: 18.5px; margin: 0 0 46px; max-width: 60ch; }
 
   /* ---------------------------------------------------------------- hero -- */
   .hero {
     background: linear-gradient(163deg, var(--magenta) 0%, var(--magenta-deep) 100%);
-    color: #fff; padding: 70px 24px 62px; text-align: center;
+    color: #fff; padding: 76px 24px 70px; text-align: center;
   }
-  .hero-inner { max-width: 720px; margin: 0 auto; }
+  .hero-inner { max-width: 760px; margin: 0 auto; }
   .app-icon {
-    width: 124px; height: 124px; margin: 0 auto 26px;
-    border-radius: 27px; box-shadow: 0 10px 34px rgba(0,0,0,0.26);
+    width: 118px; height: 118px; margin: 0 auto 28px;
+    border-radius: 26px; box-shadow: 0 12px 36px rgba(0,0,0,0.28);
   }
   .hero h1 {
     font-family: "New York", "Iowan Old Style", Georgia, serif;
-    font-size: clamp(38px, 6.6vw, 56px); line-height: 1.08; margin: 0 0 18px;
-    font-weight: 600; letter-spacing: -0.022em; text-wrap: balance;
+    font-size: clamp(40px, 7vw, 60px); line-height: 1.06; margin: 0 0 18px;
+    font-weight: 600; letter-spacing: -0.024em; text-wrap: balance;
   }
-  .hero p.tagline { font-size: 20px; font-weight: 600; margin: 0 auto 32px; max-width: 30ch; }
+  .hero .tagline { font-size: 20.5px; font-weight: 600; margin: 0 auto 34px; max-width: 34ch; }
+  .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center; }
   .btn {
     display: inline-block; background: var(--cream); color: var(--magenta-deep);
     text-decoration: none; font-weight: 650; font-size: 17px;
     padding: 15px 34px; border-radius: 10px; min-height: 48px;
   }
   .btn:hover { background: #fff; color: var(--magenta-deep); }
-  .hero .meta { margin-top: 16px; font-size: 15px; font-weight: 500; }
+  .btn-ghost {
+    background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.65);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.14); color: #fff; }
+  .hero .meta { margin-top: 20px; font-size: 15px; font-weight: 500; }
   .hero .meta a { color: #fff; }
 
-  /* ------------------------------------------------------------ sections -- */
-  section { padding-block: 76px; }
-  section + section { border-top: 1px solid var(--rule); }
-  .eyebrow {
-    font-size: 12px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
-    color: var(--magenta-text); margin: 0 0 14px;
+  /* --------------------------------------------------------- value strip -- */
+  .props { border-bottom: 1px solid var(--rule); }
+  .props-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 34px;
   }
-  h2 {
-    font-family: "New York", "Iowan Old Style", Georgia, serif;
-    font-size: clamp(27px, 4vw, 35px); margin: 0 0 16px; font-weight: 600;
-    letter-spacing: -0.018em; text-wrap: balance;
-  }
-  .lede { font-size: 19px; margin: 0 0 20px; }
-  .section-intro { color: var(--muted); font-size: 18px; margin: 0 0 40px; max-width: 58ch; }
+  .prop h3 { font-size: 17px; margin: 0 0 6px; font-weight: 650; }
+  .prop h3 .tick { color: var(--magenta-text); margin-right: 8px; }
+  .prop p { margin: 0; color: var(--muted); font-size: 15.5px; }
 
-  /* -------------------------------------------------------------- impact -- */
-  .compare { margin: 40px 0 12px; display: grid; gap: 20px; max-width: 620px; }
-  .cmp-row { display: grid; grid-template-columns: minmax(0,1fr); gap: 7px; }
-  .cmp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
-  .cmp-label { font-weight: 650; font-size: 16px; }
-  .cmp-label small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
-  .cmp-val {
-    font-family: "New York", Georgia, serif; font-size: 25px; font-weight: 600;
-    white-space: nowrap; letter-spacing: -0.02em;
+  /* -------------------------------------------------------------- steps --- */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 34px; }
+  .step .n {
+    font-family: "New York", Georgia, serif; font-size: 15px; font-weight: 600;
+    color: #fff; background: var(--magenta); width: 30px; height: 30px;
+    border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px;
   }
-  /* Both bars are filled so the comparison reads as two magnitudes. An outlined
-     "typing" bar looked like zero rather than like the bigger of the two. */
-  .track { background: var(--bar-track); border-radius: 5px; height: 15px; overflow: hidden; }
-  .fill { height: 100%; border-radius: 5px; }
-  .fill.typed { width: 100%; background: var(--bar-neutral); }
-  .fill.spoken { width: 27.6%; background: linear-gradient(90deg, var(--magenta), var(--magenta-deep)); }
+  .step h3 { font-size: 18px; margin: 0 0 7px; font-weight: 650; }
+  .step p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  kbd {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em;
+    background: var(--surface); border: 1px solid var(--rule); border-bottom-width: 2px;
+    border-radius: 6px; padding: 3px 9px; color: var(--ink); white-space: nowrap;
+  }
+  .alt kbd { background: #fff; }
 
-  .payoff {
-    margin: 36px 0 0; padding: 26px 30px;
-    border-left: 3px solid var(--magenta); background: var(--surface-alt);
-    border-radius: 0 10px 10px 0;
+  /* ------------------------------------------------------- feature rows --- */
+  .frow {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; align-items: center;
   }
-  .payoff p { margin: 0; font-size: 19px; }
-  .payoff strong { font-weight: 650; }
+  @media (min-width: 860px) {
+    .frow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; }
+    .frow.flip .fcopy { order: 2; }
+  }
+  .fcopy h2 { font-size: clamp(26px, 3.4vw, 33px); }
+  .fcopy > p { color: var(--muted); font-size: 17px; }
+  .flist { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 13px; }
+  .flist li { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 11px; font-size: 16px; }
+  .flist .tick { color: var(--magenta-text); font-weight: 700; }
+  .flist b { font-weight: 650; }
+  .flist span.d { color: var(--muted); }
 
-  .kpis {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 28px; margin: 44px 0 0; padding-top: 34px; border-top: 1px solid var(--rule);
-  }
-  .kpi dt {
-    font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em;
-    color: var(--muted); font-weight: 700; margin-bottom: 6px;
-  }
-  .kpi dd {
-    margin: 0; font-family: "New York", Georgia, serif;
-    font-size: 29px; font-weight: 600; letter-spacing: -0.02em;
-  }
-  .kpi dd small { display: block; font-family: inherit; font-size: 13.5px;
-    font-weight: 400; color: var(--muted); letter-spacing: 0; margin-top: 2px; }
-
-  /* -------------------------------------------------------- screenshots --- */
-  figure { margin: 44px 0 0; }
+  /* screenshot frame */
   .shot {
     background: #fff; border: 1px solid var(--shot-rule); border-radius: 12px;
-    padding: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.09);
-    width: fit-content; max-width: 100%;
+    padding: 11px; box-shadow: 0 10px 34px rgba(0,0,0,0.10);
   }
   .shot img { border-radius: 5px; }
-  figcaption { margin-top: 14px; font-size: 14.5px; color: var(--muted); max-width: 60ch; }
+  .shot + .shot { margin-top: 20px; }
+  figure { margin: 0; }
+  figcaption { margin-top: 13px; font-size: 14px; color: var(--muted); }
 
-  /* ----------------------------------------------------------- how it works */
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 32px; }
-  kbd {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13.5px;
-    background: var(--surface-alt); border: 1px solid var(--rule); border-bottom-width: 2px;
-    border-radius: 6px; padding: 4px 11px; color: var(--ink);
+  /* before / after demo */
+  .demo { display: grid; gap: 14px; }
+  .demo-card {
+    border: 1px solid var(--rule); border-radius: 11px; padding: 17px 19px; background: #fff;
   }
-  .step .kbd-row { margin: 0 0 13px; }
-  .step h3 { font-size: 17.5px; margin: 0 0 6px; font-weight: 650; }
-  .step p { margin: 0; color: var(--muted); font-size: 15.5px; }
-
-  /* ------------------------------------------------------------ features -- */
-  .fgroup { margin-bottom: 46px; }
-  .fgroup:last-child { margin-bottom: 0; }
-  .fgroup > h3 {
-    font-family: "New York", Georgia, serif; font-size: 21px; font-weight: 600;
-    margin: 0 0 6px; letter-spacing: -0.014em;
+  .demo-card .lbl {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 9px;
   }
-  .fgroup > p.gintro { margin: 0 0 24px; color: var(--muted); font-size: 15.5px; max-width: 58ch; }
-  .flist { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 26px 36px; }
-  .feature h4 { font-size: 16.5px; margin: 0 0 6px; font-weight: 650; letter-spacing: -0.006em; }
-  .feature p { margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.58; }
+  .demo-card p.txt { margin: 0; font-size: 16px; line-height: 1.6; }
+  .demo-card.after { border-color: var(--magenta); }
+  .demo-card.after .lbl { color: var(--magenta-text); }
+  .strike { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .demo-arrow { text-align: center; color: var(--magenta-text); font-size: 20px; line-height: 1; }
 
-  /* ------------------------------------------------------------- privacy -- */
-  .privacy-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
-  .privacy-list li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; }
-  .privacy-list .mark { color: var(--magenta-text); font-weight: 700; font-size: 17px; }
-  .privacy-list b { font-weight: 650; }
-  .privacy-list span.d { color: var(--muted); }
+  /* retention pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 9px; margin: 22px 0 0; padding: 0; list-style: none; }
+  .pills li {
+    border: 1px solid var(--rule); border-radius: 20px; padding: 6px 15px;
+    font-size: 14.5px; background: #fff; font-weight: 500;
+  }
+  .pills li.on { border-color: var(--magenta); color: var(--magenta-text); font-weight: 650; }
+
+  /* -------------------------------------------------------------- specs --- */
+  .specs { width: 100%; border-collapse: collapse; font-size: 16px; }
+  .specs th, .specs td { text-align: left; padding: 15px 4px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .specs th { width: 34%; font-weight: 650; }
+  .specs td { color: var(--muted); }
+  .specs tr:last-child th, .specs tr:last-child td { border-bottom: 0; }
+
+  /* ---------------------------------------------------------- final cta --- */
+  .final {
+    background: linear-gradient(163deg, var(--magenta) 0%, var(--magenta-deep) 100%);
+    color: #fff; text-align: center;
+  }
+  .final h2 { color: #fff; }
+  .final p { font-size: 19px; font-weight: 500; margin: 0 auto 32px; max-width: 44ch; }
+  .final .fineprint { font-size: 15px; font-weight: 400; margin-top: 22px; margin-bottom: 0; }
+  .final .fineprint a { color: #fff; }
 
   code {
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.87em;
     background: var(--surface-alt); padding: 2px 6px; border-radius: 4px;
   }
+  .alt code { background: #fff; }
   pre {
     background: var(--surface-alt); border: 1px solid var(--rule); border-radius: 10px;
-    padding: 18px 20px; overflow-x: auto; font-size: 14.5px;
+    padding: 18px 20px; overflow-x: auto; font-size: 14.5px; margin: 20px 0;
   }
+  .alt pre { background: #fff; }
   pre code { background: none; padding: 0; font-size: inherit; }
 
   footer {
-    border-top: 1px solid var(--rule); padding: 34px 24px 46px;
+    border-top: 1px solid var(--rule); padding: 36px 24px 48px;
     text-align: center; font-size: 14.5px; color: var(--muted);
   }
   footer p { margin: 0 0 8px; }
@@ -200,13 +217,15 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ink: #EFECE8; --muted: #ABA49C; --surface: #131211; --surface-alt: #1D1B1A;
-      --rule: #322F2D; --magenta-text: #FF8FB4; --bar-track: #2C2927;
-      --bar-neutral: #4E4844;
+      --ink: #EFECE8; --muted: #ABA49C; --surface: #131211; --surface-alt: #1C1A19;
+      --rule: #322F2D; --magenta-text: #FF8FB4; --ok: #6FD39B;
     }
     .btn, .btn:hover { background: var(--cream); color: #A8134E; }
-    kbd { background: #262322; }
-    .shot { box-shadow: 0 8px 30px rgba(0,0,0,0.42); }
+    .btn-ghost, .btn-ghost:hover { background: transparent; color: #fff; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.14); }
+    kbd, .alt kbd { background: #262322; }
+    .demo-card, .pills li, .alt pre, .alt code { background: #1A1817; }
+    .shot { background: #fff; box-shadow: 0 10px 34px rgba(0,0,0,0.45); }
     .skip { background: #fff; color: #131211; }
   }
 </style>
@@ -217,267 +236,335 @@
 
 <header class="hero">
   <div class="hero-inner">
-    <img class="app-icon" src="assets/loqui-icon-512.png" width="124" height="124"
+    <img class="app-icon" src="assets/loqui-icon-512.png" width="118" height="118"
          alt="The Loqui app icon, a cream opening quotation mark on a magenta rounded square.">
-    <h1>Stop typing what you could say</h1>
-    <p class="tagline">Press a key, speak, and clean text appears wherever your cursor is.</p>
-    <a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
-    <p class="meta">
-      Free and open source. macOS 15 and later.<br>
-      <a href="https://github.com/jameslaws/loqui">View the source on GitHub</a>
-    </p>
+    <h1>Talk. It types.</h1>
+    <p class="tagline">Press a key, speak, and clean text lands wherever your cursor is.
+      Anywhere on your Mac, in any app.</p>
+    <div class="cta-row">
+      <a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+      <a class="btn btn-ghost" href="https://github.com/jameslaws/loqui">View the source</a>
+    </div>
+    <p class="meta">Available now. Free and open source, no account, no subscription.<br>
+      macOS 15 and later. Apple Silicon and Intel.</p>
   </div>
 </header>
 
 <main id="main">
 
-  <!-- ============================================================ impact -- -->
-  <section class="wrap">
-    <p class="eyebrow">Why this matters now</p>
-    <h2>Working with AI is mostly writing</h2>
-    <div class="measure">
-      <p class="lede">Prompts, context, specs, corrections, the long explanation of what you
-        actually meant. Every agent, every chat, every code review comment is you producing
-        text, all day.</p>
-      <p style="color:var(--muted)">Nobody budgets for that. It is the quiet tax on working
-        this way, and it is paid in the slowest input method you own. Here is what one month
-        of it measures, taken from a real log rather than a projection.</p>
-    </div>
-
-    <div class="compare">
-      <div class="cmp-row">
-        <div class="cmp-head">
-          <span class="cmp-label">Typing it
-            <small>at 40 words per minute, an average pace</small></span>
-          <span class="cmp-val">104 hours</span>
-        </div>
-        <div class="track" aria-hidden="true"><div class="fill typed"></div></div>
+  <!-- ========================================================= value strip -->
+  <section class="props wrap" style="padding-block: 48px">
+    <div class="props-grid">
+      <div class="prop">
+        <h3><span class="tick" aria-hidden="true">&#10003;</span>Runs on your Mac</h3>
+        <p>Uses the speech engine built into macOS. Your voice is never uploaded, because
+          there is no server to upload it to.</p>
       </div>
-      <div class="cmp-row">
-        <div class="cmp-head">
-          <span class="cmp-label">Saying it
-            <small>at 145 words per minute, the pace measured in that log</small></span>
-          <span class="cmp-val">29 hours</span>
-        </div>
-        <div class="track" aria-hidden="true"><div class="fill spoken"></div></div>
+      <div class="prop">
+        <h3><span class="tick" aria-hidden="true">&#10003;</span>No waiting</h3>
+        <p>No upload, no queue, no spinner. You stop talking and the text is already there.</p>
+      </div>
+      <div class="prop">
+        <h3><span class="tick" aria-hidden="true">&#10003;</span>Free, with no meter</h3>
+        <p>Dictate as much as you like, forever. Nothing to subscribe to and nothing counting
+          your minutes.</p>
       </div>
     </div>
-
-    <div class="payoff measure">
-      <p><strong>That is 75 hours back in 36 days.</strong> Nearly two full working weeks,
-        recovered from a month of ordinary work, by saying things instead of typing them.</p>
-    </div>
-
-    <dl class="kpis">
-      <div class="kpi"><dt>Words dictated</dt><dd>248,654<small>in 36 days</small></dd></div>
-      <div class="kpi"><dt>Dictations</dt><dd>2,687<small>about 75 a day</small></dd></div>
-      <div class="kpi"><dt>Speaking pace</dt><dd>145 wpm<small>3.6 times typing speed</small></dd></div>
-      <div class="kpi"><dt>Longest in one go</dt><dd>951 words<small>without stopping</small></dd></div>
-    </dl>
-
-    <figure>
-      <div class="shot">
-        <img src="assets/stats-dictation.png" width="617" height="397" loading="lazy"
-             alt="The Loqui statistics window. A heading reads 240,885 words all time, 2,560 dictations, 94 words each. Three cards show 7,101 words today, 22,306 this week and 200,038 this month. Below them a magenta bar chart plots daily word counts across the last 30 days, most days falling between 4,000 and 12,000 words.">
-      </div>
-      <figcaption>Loqui counts what you dictate so the saving is a number you can check
-        rather than a claim on a website. It counts words, never content.</figcaption>
-    </figure>
   </section>
 
-  <!-- ======================================================== the change -- -->
+  <!-- ========================================================== how it works -->
   <section class="wrap">
-    <p class="eyebrow">The part that matters more</p>
-    <h2>Cheap input changes what you tell the machine</h2>
-    <div class="measure">
-      <p class="lede">Speed is the obvious benefit. It is not the interesting one.</p>
-      <p>When typing is the bottleneck, you compress. You give the agent the summary you could
-        be bothered to type, not the full picture, and then you spend three more rounds
-        correcting an answer built on the half you left out.</p>
-      <p>When talking is instant, free and unmetered, that instinct disappears. You explain the
-        whole situation, the constraint you have not mentioned yet, the thing you tried on
-        Tuesday that failed. The agent gets what it needed the first time. Better context in,
-        better work out, and no meter running to make you think twice.</p>
-    </div>
-
-    <figure>
-      <div class="shot">
-        <img src="assets/stats-patterns.png" width="604" height="364" loading="lazy"
-             alt="The Patterns panel in Loqui. Time saved reads approximately 72 hours 17 minutes compared with typing at 40 words per minute. Speaking pace reads 143 words per minute, 3.6 times faster than typing. Other cards show a 34 day streak, 34 of 34 days active, peak hours of 9 AM to 12 PM, a highest volume day of 14,842 words, a longest single dictation of 951 words, and 7,084 words per active day.">
-      </div>
-      <figcaption>Patterns after 34 days of daily use. Peak dictation hours land squarely in
-        the working day, which is the point. This is not a tool for writing the occasional
-        note.</figcaption>
-    </figure>
-  </section>
-
-  <!-- ========================================================= how it works -->
-  <section class="wrap">
-    <p class="eyebrow">Using it</p>
-    <h2>One key, two ways to hold it</h2>
-    <p class="section-intro">There is no window to open and no button to find. Loqui lives in
-      the menu bar and waits for the shortcut you choose.</p>
+    <p class="eyebrow">How it works</p>
+    <h2>Three seconds to learn</h2>
+    <p class="section-intro">Loqui lives in the menu bar. There is no window to open, no
+      button to find, and nothing to set up beyond granting two permissions on first run.</p>
     <div class="steps">
       <div class="step">
-        <p class="kbd-row"><kbd>Hold</kbd></p>
-        <h3>Push to talk</h3>
-        <p>Hold the key, say the thing, let go. The text is pasted the moment you release,
-          like a walkie talkie.</p>
+        <p class="n" aria-hidden="true">1</p>
+        <h3>Put your cursor somewhere</h3>
+        <p>An email, a terminal, a chat box, a code editor. Anywhere you would normally
+          start typing.</p>
       </div>
       <div class="step">
-        <p class="kbd-row"><kbd>Tap</kbd></p>
-        <h3>Or go hands free</h3>
-        <p>Tap once and keep talking for as long as you need. Tap again when you are done
-          and it lands.</p>
+        <p class="n" aria-hidden="true">2</p>
+        <h3>Press <kbd>&#8984;R</kbd> and talk</h3>
+        <p>That is the default and you can change it to anything. Tap once to start, or hold
+          the key down for push to talk.</p>
       </div>
       <div class="step">
-        <p class="kbd-row"><kbd>Done</kbd></p>
-        <h3>It appears where you are</h3>
-        <p>Straight into whatever has your cursor. Terminal, browser, editor, chat box.
-          It is a keystroke, not an integration.</p>
+        <p class="n" aria-hidden="true">3</p>
+        <h3>Your words appear</h3>
+        <p>Tidied up and pasted at the cursor. No window to copy from, no step in between.</p>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================ features -- -->
+  <!-- ============================================================ feature 1 -->
+  <section class="wrap alt">
+    <div class="frow">
+      <div class="fcopy">
+        <p class="eyebrow">Dictate anywhere</p>
+        <h2>One key, every app</h2>
+        <p>Loqui types into whatever is in front of you, so it works in software that has
+          never heard of it. It is a keystroke, not an integration.</p>
+        <ul class="flist">
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Tap or hold.</b> <span class="d">Tap to start and stop for long
+            thoughts, or hold the key like a walkie talkie for quick ones.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Your shortcut, your choice.</b> <span class="d">Any key with
+            &#8984;, &#8963; or &#8997;, or a bare function key from F1 to F15.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>It will not hijack your other shortcuts.</b> <span class="d">Modifiers
+            are matched exactly, so setting &#8984;R leaves &#8984;&#8679;R alone.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Never loses your words.</b> <span class="d">Pastes at the cursor, and
+            falls back to the clipboard if there is nowhere to paste.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Talk for as long as you need.</b> <span class="d">No thirty second
+            limit. Dictate a whole specification in one go if you want to.</span></span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="demo-card" style="background:transparent;border-style:dashed">
+          <p class="lbl">Works in</p>
+          <p class="txt" style="color:var(--muted)">Mail, Messages, Slack, Notes, Terminal,
+            Xcode, VS Code, ChatGPT, Claude, Safari, Word, Figma, your CRM, that internal tool
+            nobody maintains. If you can type in it, you can talk to it.</p>
+        </div>
+        <div class="demo-card" style="margin-top:14px">
+          <p class="lbl">Shortcut examples</p>
+          <p class="txt"><kbd>&#8984;R</kbd> <span style="color:var(--muted)">default</span>
+            &nbsp; <kbd>F5</kbd> &nbsp; <kbd>&#8963;&#8997;Space</kbd> &nbsp;
+            <kbd>F13</kbd> &nbsp; <kbd>&#8984;&#8963;D</kbd></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ feature 2 -->
   <section class="wrap">
-    <p class="eyebrow">What you get</p>
-    <h2>Small on purpose, sharp where it counts</h2>
-    <p class="section-intro">Nine things, grouped by the part of the job they do. Each one is
-      here because it removes a step you would otherwise do yourself.</p>
-
-    <div class="fgroup">
-      <h3>Getting the words in</h3>
-      <p class="gintro">The capture has to be effortless or you go back to typing.</p>
-      <div class="flist">
-        <div class="feature">
-          <h4>Two modes, one key</h4>
-          <p>Hold for a quick thought, tap for a long one. Same shortcut, and you can set it
-            to whatever your hands already reach for.</p>
-        </div>
-        <div class="feature">
-          <h4>Talk as long as you need</h4>
-          <p>No arbitrary cut off at thirty seconds. The longest single dictation in that log
-            ran to 951 words, which is roughly a full page of specification, spoken once.</p>
-        </div>
-        <div class="feature">
-          <h4>Everywhere, not somewhere</h4>
-          <p>It types into the frontmost app, so it works in your terminal, your agent, your
-            editor and your email without any of them knowing it exists.</p>
-        </div>
+    <div class="frow flip">
+      <div class="fcopy">
+        <p class="eyebrow">Clean output</p>
+        <h2>Text you can send, not a transcript you have to fix</h2>
+        <p>Raw dictation is full of the noise of speech. Loqui tidies it the instant you stop
+          talking, using plain rules rather than a model, so it costs nothing and adds no
+          delay.</p>
+        <ul class="flist">
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Filler words removed.</b> <span class="d">Um, uh, er, hmm and their
+            variants. Only the unambiguous ones by default, so real words survive.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Sentences capitalised.</b> <span class="d">Including the standalone
+            "i" that every recogniser gets wrong.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Spacing and punctuation tidied.</b> <span class="d">Double spaces
+            collapsed, stray commas cleared, no space left before a full stop.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Optional spoken formatting.</b> <span class="d">Say "new paragraph"
+            or "new line" and get one. Off by default, because sometimes you mean the
+            words.</span></span></li>
+        </ul>
       </div>
-    </div>
-
-    <div class="fgroup">
-      <h3>What comes out</h3>
-      <p class="gintro">The difference between a transcript and something you can actually send.</p>
-      <div class="flist">
-        <div class="feature">
-          <h4>Tidied as you speak</h4>
-          <p>Filler words removed, capitals and full stops restored. What lands is text you
-            can send, not a wall of lowercase you have to repair first.</p>
-        </div>
-        <div class="feature">
-          <h4>Your vocabulary, learned</h4>
-          <p>Client names, product names, the acronyms your industry insists on. Add them to
-            the dictionary once and Loqui stops mangling them.</p>
-        </div>
-        <div class="feature">
-          <h4>Never drops your words</h4>
-          <p>It pastes at the cursor. If there is nowhere to paste, it goes to the clipboard
-            instead of disappearing, so a mis-aimed dictation is never lost.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="fgroup">
-      <h3>Living with it</h3>
-      <p class="gintro">It runs all day, so it had better be quiet and honest.</p>
-      <div class="flist">
-        <div class="feature">
-          <h4>One glyph, no window</h4>
-          <p>A microphone in the menu bar that pulses while it listens. No dock icon, nothing
-            to close, nothing in your way.</p>
-        </div>
-        <div class="feature">
-          <h4>History on your terms</h4>
-          <p>Everything you dictate, searchable, with a Recent menu for grabbing it again.
-            Keep it forever, keep a week, or switch it off entirely.</p>
-        </div>
-        <div class="feature">
-          <h4>Proof, not vibes</h4>
-          <p>The stats window tracks words, pace and hours saved, so you can decide for
-            yourself whether it is worth the keystroke.</p>
+      <div>
+        <div class="demo">
+          <div class="demo-card">
+            <p class="lbl">What you said</p>
+            <p class="txt"><span class="strike">um,</span> so <span class="strike">i</span>
+              think we should <span class="strike">uh</span> move the deploy to Friday and
+              <span class="strike">er</span> tell the team before standup</p>
+          </div>
+          <p class="demo-arrow" aria-hidden="true">&#8595;</p>
+          <div class="demo-card after">
+            <p class="lbl">What gets pasted</p>
+            <p class="txt">So I think we should move the deploy to Friday and tell the team
+              before standup</p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================= privacy -- -->
+  <!-- ============================================================ feature 3 -->
+  <section class="wrap alt">
+    <div class="frow">
+      <div class="fcopy">
+        <p class="eyebrow">Your vocabulary</p>
+        <h2>It learns the words you actually use</h2>
+        <p>Every recogniser mangles product names, client names and industry jargon. Add the
+          mistake and the correction once, and Loqui fixes it every time from then on.</p>
+        <ul class="flist">
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Anything Apple mishears, mapped to what you meant.</b>
+            <span class="d">Matched as whole words, in any case.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Starts empty.</b> <span class="d">A fresh install carries nobody
+            else's terms, and nothing leaves your machine.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Edits apply immediately.</b> <span class="d">Add a term and the very
+            next dictation uses it. No restart.</span></span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="demo-card">
+          <p class="lbl">Your dictionary</p>
+          <table class="specs" style="font-size:15.5px">
+            <tr><th style="width:44%">"low key"</th><td>Loqui</td></tr>
+            <tr><th>"swift you eye"</th><td>SwiftUI</td></tr>
+            <tr><th>"post gress"</th><td>Postgres</td></tr>
+            <tr><th>"cuber netties"</th><td>Kubernetes</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ feature 4 -->
+  <section class="wrap">
+    <div class="frow flip">
+      <div class="fcopy">
+        <p class="eyebrow">Dictation stats</p>
+        <h2>See exactly what it is saving you</h2>
+        <p>Loqui counts every dictation, so the benefit is a number you can check rather than
+          a claim on a website. It counts words and durations, never what you said.</p>
+        <ul class="flist">
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Time saved.</b> <span class="d">Your speaking pace measured against
+            typing, converted into hours you did not spend.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Today, this week, this month.</b> <span class="d">Each compared with
+            the period before it.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Charts by day, month, weekday and hour.</b> <span class="d">Including
+            the hours you dictate most.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Streaks, records and averages.</b> <span class="d">Longest single
+            dictation, highest volume day, words per active day.</span></span></li>
+        </ul>
+      </div>
+      <div>
+        <figure>
+          <div class="shot">
+            <img src="assets/stats-dictation.png" width="617" height="397" loading="lazy"
+                 alt="The Loqui statistics window. A heading reads 240,885 words all time, 2,560 dictations, 94 words each. Three cards show 7,101 words today, 22,306 this week and 200,038 this month. Below them a magenta bar chart plots daily word counts across the last 30 days, most days falling between 4,000 and 12,000 words.">
+          </div>
+          <div class="shot">
+            <img src="assets/stats-patterns.png" width="604" height="364" loading="lazy"
+                 alt="The Patterns panel in Loqui. Time saved reads approximately 72 hours 17 minutes compared with typing at 40 words per minute. Speaking pace reads 143 words per minute, 3.6 times faster than typing. Other cards show a 34 day streak, 34 of 34 days active, peak hours of 9 AM to 12 PM, a highest volume day of 14,842 words, a longest single dictation of 951 words, and 7,084 words per active day.">
+          </div>
+          <figcaption>Real figures from about a month of daily use. Speaking measured at 143
+            words per minute against a 40 word per minute typing baseline, which came to
+            roughly 72 hours saved.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ feature 5 -->
+  <section class="wrap alt">
+    <div class="frow">
+      <div class="fcopy">
+        <p class="eyebrow">History</p>
+        <h2>Everything you said, for as long as you want it</h2>
+        <p>Dictations are saved locally so you can find that thing you said an hour ago. How
+          long they stick around is entirely your call, including not at all.</p>
+        <ul class="flist">
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Search the lot.</b> <span class="d">Full text search across everything
+            you have dictated, with one click to copy it again.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Recent, straight from the menu bar.</b> <span class="d">The last few
+            dictations, one click from anywhere.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Delete anything, or all of it.</b> <span class="d">Individually or in
+            one go, and it is gone from disk, not just hidden.</span></span></li>
+        </ul>
+        <ul class="pills">
+          <li>Off, do not store</li>
+          <li>7 days</li>
+          <li>30 days</li>
+          <li>90 days</li>
+          <li class="on">Forever</li>
+        </ul>
+      </div>
+      <div>
+        <div class="demo-card">
+          <p class="lbl">Retention, in Settings</p>
+          <p class="txt" style="color:var(--muted)">Choose how long Loqui keeps what you
+            dictate. Set it to <b style="color:var(--ink)">Off</b> and it never writes your
+            transcriptions to disk at all, while the stats keep working, because those only
+            ever counted words.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== privacy -->
   <section class="wrap">
     <p class="eyebrow">Privacy</p>
     <h2>Your voice never leaves your Mac</h2>
-    <p class="section-intro">Worth being specific about, because every claim here can be
-      checked against the source rather than taken on trust.</p>
-    <ul class="privacy-list measure">
-      <li><span class="mark" aria-hidden="true">&#10003;</span>
-        <span><b>Transcription happens on device.</b>
-        <span class="d">Loqui uses the speech engine already built into macOS. No audio is
-        uploaded, because there is no server to upload it to.</span></span></li>
-      <li><span class="mark" aria-hidden="true">&#10003;</span>
-        <span><b>One network request exists.</b>
-        <span class="d">Checking this page for a newer version. That is the only connection
-        in the codebase, and you can grep for it yourself.</span></span></li>
-      <li><span class="mark" aria-hidden="true">&#10003;</span>
-        <span><b>No analytics, telemetry or crash reporting.</b>
-        <span class="d">Not anonymised, not aggregated, not opt out. There is none.</span></span></li>
-      <li><span class="mark" aria-hidden="true">&#10003;</span>
-        <span><b>Your history stays on your disk.</b>
-        <span class="d">In your own Application Support folder, with retention you control,
-        including off. Deleting it in the app deletes it from disk.</span></span></li>
-      <li><span class="mark" aria-hidden="true">&#10003;</span>
-        <span><b>Logs never contain your words.</b>
-        <span class="d">Diagnostics record events and word counts, never what you said.</span></span></li>
+    <p class="section-intro">Not a policy you have to trust. An architecture you can check,
+      because the whole thing is open source.</p>
+    <ul class="flist measure">
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>Transcription runs on device.</b> <span class="d">Apple's speech engine,
+        locally. No audio is uploaded, because there is nowhere to upload it to.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>Exactly one network request exists.</b> <span class="d">Checking this site
+        for a new version. That is the only connection in the codebase.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>No analytics, telemetry or crash reporting.</b> <span class="d">Not
+        anonymised, not aggregated, not opt out. There is none.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>No account, ever.</b> <span class="d">Nothing to sign up for, nothing to
+        log into, no email address collected.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>Logs never contain what you said.</b> <span class="d">Diagnostics record
+        events and word counts only.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>Signed and notarised by Apple.</b> <span class="d">Updates are signed
+        again on top of that, so a tampered build will not install.</span></span></li>
     </ul>
   </section>
 
-  <!-- ========================================================= why it exists -->
-  <section class="wrap">
-    <p class="eyebrow">The idea</p>
-    <h2>Why it exists</h2>
-    <div class="measure">
-      <p>macOS already ships a speech engine that runs on the machine. A global shortcut is
-        not hard. Pasting at the cursor is a solved problem. None of that adds up to a monthly
-        subscription, an account to create, or a good reason to send your voice to a server so
-        it can come back as text.</p>
-      <p>Loqui is what is left once you take all of that away. It is faster because nothing
-        leaves the machine. It costs nothing to run because there is no service behind it. And
-        because there is no meter, there is no reason to ration how much you say, which turns
-        out to matter more than the speed.</p>
-      <p>It is open source so you can read every line, check the privacy claims for yourself,
-        and build it in one command if you would rather not trust a download.</p>
-      <p><a href="https://github.com/jameslaws/loqui">Read the source</a>, or
-        <a href="https://github.com/jameslaws/loqui/blob/main/SECURITY.md">report a security
-        issue privately</a>.</p>
+  <!-- ================================================================ specs -->
+  <section class="wrap alt">
+    <p class="eyebrow">The details</p>
+    <h2>Specifications</h2>
+    <div style="max-width:760px">
+      <table class="specs">
+        <tbody>
+          <tr><th scope="row">Requires</th><td>macOS 15 or later. Best accuracy on macOS 26 and up, which uses Apple's newer speech engine; earlier versions fall back to the previous recogniser.</td></tr>
+          <tr><th scope="row">Hardware</th><td>Universal binary. Apple Silicon and Intel.</td></tr>
+          <tr><th scope="row">Permissions</th><td>Accessibility, to notice your shortcut anywhere and paste at the cursor. Microphone, to hear you. Nothing else.</td></tr>
+          <tr><th scope="row">Default shortcut</th><td><kbd>&#8984;R</kbd>, changeable to any key with &#8984;, &#8963; or &#8997;, or any function key.</td></tr>
+          <tr><th scope="row">Where it lives</th><td>The menu bar. No dock icon, no window unless you open one.</td></tr>
+          <tr><th scope="row">Updates</th><td>Automatic, via Sparkle. Signed and checked before anything installs.</td></tr>
+          <tr><th scope="row">Licence</th><td>GNU General Public License v3.0. Free, and free to fork.</td></tr>
+          <tr><th scope="row">Price</th><td>Nothing. No trial, no tier, no upgrade prompt.</td></tr>
+        </tbody>
+      </table>
     </div>
-  </section>
 
-  <!-- ============================================================== install -- -->
-  <section class="wrap">
-    <p class="eyebrow">Get it</p>
-    <h2>Install it</h2>
-    <div class="measure">
-      <p class="section-intro" style="margin-bottom:26px">Signed and notarised by Apple, so it
-        opens without the right click routine.</p>
-      <p><a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download the latest release</a></p>
-      <p style="margin-top:32px">Or build it yourself. No Apple developer account needed,
-        just Xcode.</p>
+    <h2 style="margin-top:58px;font-size:24px">Prefer to build it yourself?</h2>
+    <p style="color:var(--muted);max-width:60ch;margin-top:0">No Apple developer account
+      required. You need Xcode, and one command does the rest.</p>
 <pre><code>git clone https://github.com/jameslaws/loqui.git
 cd loqui
 ./install.sh</code></pre>
-      <p>macOS asks for two permissions on first use. Accessibility lets Loqui notice your
-        shortcut anywhere and paste at the cursor. Microphone lets it hear you. Both are
-        required, and neither sends anything anywhere.</p>
+  </section>
+
+  <!-- ============================================================ final cta -->
+  <section class="final">
+    <div class="wrap">
+      <h2>Stop typing what you could say</h2>
+      <p>It takes about a minute to install and roughly three seconds to learn.</p>
+      <div class="cta-row">
+        <a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+      </div>
+      <p class="fineprint">Free and open source under GPL-3.0.
+        <a href="https://github.com/jameslaws/loqui">Read the source</a>.</p>
     </div>
   </section>
 
