@@ -88,9 +88,18 @@
     font-size: clamp(34px, 5.4vw, 46px); font-weight: 600; letter-spacing: 0.015em;
     line-height: 1; margin: 0 0 8px; color: var(--cream);
   }
-  .pronounce {
-    font-size: 12.5px; font-weight: 500; letter-spacing: 0.14em;
-    text-transform: uppercase; margin: 0 0 26px; opacity: 0.8;
+  /* Etymology chip. The translucent dark ground is doing accessibility work as
+     well as decoration: plain white on the magenta is about 4.3:1, which misses
+     AA for text this size. Darkening the backdrop takes it to roughly 5.7:1, so
+     the note is fully legible without touching the brand colour. */
+  .etymology {
+    display: inline-block; margin: 0 0 28px;
+    background: rgba(0,0,0,0.18); border-radius: 20px; padding: 7px 17px;
+    font-size: 14.5px; font-weight: 500; color: #fff;
+  }
+  .etymology i {
+    font-family: "New York", "Iowan Old Style", Georgia, serif;
+    font-size: 16px; font-style: italic;
   }
   .hero h1 {
     font-family: "New York", "Iowan Old Style", Georgia, serif;
@@ -250,7 +259,8 @@
     <img class="app-icon" src="assets/loqui-icon-512.png" width="112" height="112"
          alt="The Loqui app icon, a cream opening quotation mark on a magenta rounded square.">
     <p class="wordmark">loqui</p>
-    <p class="pronounce">Pronounced lo-kwee</p>
+    <p class="etymology"><i lang="la">loqui</i> &middot; Latin, &ldquo;to speak&rdquo;
+      &middot; said <i>lo-kwee</i></p>
     <h1>Talk. It types.</h1>
     <p class="tagline">Press a key, speak, and clean text lands wherever your cursor is.
       Anywhere on your Mac, in any app.</p>
