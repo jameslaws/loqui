@@ -390,19 +390,24 @@
   <section class="wrap alt">
     <div class="frow">
       <div class="fcopy">
-        <p class="eyebrow">Your vocabulary</p>
-        <h2>It learns the words you actually use</h2>
-        <p>Every recogniser mangles product names, client names and industry jargon. Add the
-          mistake and the correction once, and Loqui fixes it every time from then on.</p>
+        <p class="eyebrow">Custom dictionary</p>
+        <h2>Correct a word once. It never gets it wrong again.</h2>
+        <p>Every recogniser mangles product names, client names and industry jargon. When you
+          spot one coming out wrong, add it to your dictionary along with the spelling you
+          actually wanted. Loqui applies the fix to every dictation from then on.</p>
         <ul class="flist">
           <li><span class="tick" aria-hidden="true">&#10003;</span>
-            <span><b>Anything Apple mishears, mapped to what you meant.</b>
-            <span class="d">Matched as whole words, in any case.</span></span></li>
+            <span><b>You decide what gets fixed.</b> <span class="d">Nothing is guessed on
+            your behalf. You add the entries, so the corrections are only ever the ones you
+            asked for.</span></span></li>
+          <li><span class="tick" aria-hidden="true">&#10003;</span>
+            <span><b>Matched as whole words, in any case.</b> <span class="d">So a term
+            inside a longer word is left alone.</span></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span>
             <span><b>Starts empty.</b> <span class="d">A fresh install carries nobody
             else's terms, and nothing leaves your machine.</span></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span>
-            <span><b>Edits apply immediately.</b> <span class="d">Add a term and the very
+            <span><b>Fixes apply immediately.</b> <span class="d">Add a term and the very
             next dictation uses it. No restart.</span></span></li>
         </ul>
       </div>
@@ -410,10 +415,18 @@
         <div class="demo-card">
           <p class="lbl">Your dictionary</p>
           <table class="specs" style="font-size:15.5px">
-            <tr><th style="width:44%">"low key"</th><td>Loqui</td></tr>
-            <tr><th>"swift you eye"</th><td>SwiftUI</td></tr>
-            <tr><th>"post gress"</th><td>Postgres</td></tr>
-            <tr><th>"cuber netties"</th><td>Kubernetes</td></tr>
+            <thead>
+              <tr>
+                <th scope="col" style="width:46%;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);padding-bottom:8px">What it heard</th>
+                <th scope="col" style="font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:var(--magenta-text);padding-bottom:8px">What you wanted</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">"low key"</th><td>Loqui</td></tr>
+              <tr><th scope="row">"swift you eye"</th><td>SwiftUI</td></tr>
+              <tr><th scope="row">"post gress"</th><td>Postgres</td></tr>
+              <tr><th scope="row">"cuber netties"</th><td>Kubernetes</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -548,8 +561,8 @@
     </div>
 
     <h2 style="margin-top:58px;font-size:24px">Prefer to build it yourself?</h2>
-    <p style="color:var(--muted);max-width:60ch;margin-top:0">No Apple developer account
-      required. You need Xcode, and one command does the rest.</p>
+    <p style="color:var(--muted);max-width:60ch;margin-top:0">With Xcode installed, one
+      command clones it, builds it and puts it in your Applications folder.</p>
 <pre><code>git clone https://github.com/jameslaws/loqui.git
 cd loqui
 ./install.sh</code></pre>
