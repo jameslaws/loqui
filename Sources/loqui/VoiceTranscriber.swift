@@ -34,6 +34,8 @@ final class VoiceTranscriber: ObservableObject {
     private(set) var lastSpeechAt = Date.distantPast
 
     private var configObserver: NSObjectProtocol?
+    /// End of the last finalized segment, so the next one can measure the gap.
+    private var lastSegmentEnd: CMTime?
 
     // MARK: SpeechAnalyzer path
 
@@ -160,6 +162,67 @@ final class VoiceTranscriber: ObservableObject {
         finalized = finalized.isEmpty ? trimmed : finalized + " " + trimmed
     }
 
+    /// Bank a finalized segment, using the gap since the previous one to decide
+    /// whether a period between them was a real full stop or just a pause the
+    /// recognizer read as one.
+    ///
+    /// This only sees breaks that fall BETWEEN finalized segments. A period the
+    /// model emits inside a single segment has no gap to measure, and is left
+    /// to the text-only rule in TextCleanup.
+    @available(macOS 26, *)
+    private func bankTimed(_ text: String, span: (start: CMTime, end: CMTime)?) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        defer { lastSegmentEnd = span?.end ?? lastSegmentEnd }
+        guard !trimmed.isEmpty else { return }
+        guard !finalized.isEmpty, finalized.hasSuffix(".") else {
+            bank(trimmed)
+            return
+        }
+
+        let cfg = CleanupConfigFile.load()
+        let firstWord = trimmed.prefix(while: { !$0.isWhitespace })
+            .lowercased().trimmingCharacters(in: .punctuationCharacters)
+        let measured: Double? = {
+            guard let s = span?.start, let e = lastSegmentEnd else { return nil }
+            let d = (s - e).seconds
+            return d.isFinite ? d : nil
+        }()
+
+        let eligible = cfg.healSentenceSplits
+            && cfg.timedHealWords.contains(firstWord)
+            && (measured.map { $0 <= cfg.maxPauseSeconds } ?? false)
+
+        if let measured {
+            CleanupAudit.boundary(gap: measured, word: firstWord, healed: eligible)
+        }
+
+        if eligible {
+            finalized.removeLast()      // the period the pause caused
+            finalized += " " + lowercasingFirst(trimmed)
+        } else {
+            bank(trimmed)
+        }
+    }
+
+    private func lowercasingFirst(_ s: String) -> String {
+        guard let f = s.first else { return s }
+        return f.lowercased() + s.dropFirst()
+    }
+
+    /// Overall audio span of a result, taken from its first and last timed runs.
+    @available(macOS 26, *)
+    private static func span(of text: AttributedString) -> (start: CMTime, end: CMTime)? {
+        var first: CMTimeRange?
+        var last: CMTimeRange?
+        for run in text.runs {
+            guard let r = run.audioTimeRange else { continue }
+            if first == nil { first = r }
+            last = r
+        }
+        guard let f = first, let l = last else { return nil }
+        return (f.start, l.end)
+    }
+
     private func publish() {
         transcript = partial.isEmpty
             ? finalized
@@ -206,7 +269,10 @@ final class VoiceTranscriber: ObservableObject {
             locale: locale,
             transcriptionOptions: [],
             reportingOptions: [.volatileResults],
-            attributeOptions: []
+            // Timings are what let us tell a hesitation from a full stop. On
+            // text alone "…done. And then…" is indistinguishable from a
+            // sentence that genuinely starts with "And".
+            attributeOptions: [.audioTimeRange]
         )
         do {
             // First ever run may need the dictation model — install is a
@@ -238,7 +304,7 @@ final class VoiceTranscriber: ObservableObject {
                         guard let self else { return }
                         let text = String(result.text.characters)
                         if result.isFinal {
-                            self.bank(text)
+                            self.bankTimed(text, span: Self.span(of: result.text))
                             self.partial = ""
                         } else {
                             self.partial = text

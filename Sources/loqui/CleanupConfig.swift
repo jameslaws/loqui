@@ -12,7 +12,19 @@ struct CleanupConfig: Codable, Equatable {
     var healSentenceSplits: Bool
     /// Words that almost never begin a real sentence, so a period in front of
     /// one is far more likely a pause artifact than an intended full stop.
+    /// Judged on text alone, so this list has to stay high-precision.
     var continuationWords: [String]
+    /// Words that are BOTH common sentence openers and common mid-sentence
+    /// pause points — "and" above all. Text can't tell those apart, so these
+    /// are only healed when the measured pause is short enough to rule out a
+    /// deliberate full stop.
+    var timedHealWords: [String]
+    /// The gap, in seconds, under which a sentence break is treated as a
+    /// hesitation rather than an intended stop.
+    var maxPauseSeconds: Double
+    /// Record raw-vs-cleaned diffs to ~/Library/Logs/LoquiCleanup.log so the
+    /// rules can be audited against real dictations. Local, like everything else.
+    var auditLog: Bool
 
     // Shipped defaults are generic — the spelling dictionary starts empty so a
     // fresh install carries no personal data. The user builds their own via the
@@ -27,12 +39,18 @@ struct CleanupConfig: Codable, Equatable {
         // Off by default: "new paragraph" / "new line" can be literal content.
         spokenFormatting: false,
         healSentenceSplits: true,
-        // Deliberately tight. Merging a sentence that WAS intentional produces
-        // a run-on, which is its own kind of mess — so this ships with only the
-        // words that essentially never open a sentence. "but", "so" and "then"
-        // are left out precisely because they're common, legitimate openers;
-        // add them here if the split-sentence problem outweighs the run-ons.
-        continuationWords: ["and", "or", "nor", "which", "whose", "whom", "than", "because"]
+        // Deliberately tight, and "and" is deliberately NOT here. Replaying
+        // these rules over 319 real transcripts, "and" alone accounted for 236
+        // of 263 edits, and most of them were merging sentences that genuinely
+        // started with "And" — trading split sentences for run-ons. Same reason
+        // "but", "so" and "then" are absent: they're legitimate openers.
+        continuationWords: ["or", "nor", "which", "whose", "whom", "than", "because"],
+        // These get healed only with timing evidence behind them.
+        timedHealWords: ["and", "but", "so"],
+        // A starting guess, not a measured value. Every boundary is logged with
+        // its actual gap, so this can be set from your own speech instead.
+        maxPauseSeconds: 0.5,
+        auditLog: true
     )
 }
 
@@ -44,6 +62,7 @@ extension CleanupConfig {
     private enum CodingKeys: String, CodingKey {
         case dictionary, removeFillers, fillers, spokenFormatting
         case healSentenceSplits, continuationWords
+        case timedHealWords, maxPauseSeconds, auditLog
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +74,9 @@ extension CleanupConfig {
         spokenFormatting = try c.decodeIfPresent(Bool.self, forKey: .spokenFormatting) ?? d.spokenFormatting
         healSentenceSplits = try c.decodeIfPresent(Bool.self, forKey: .healSentenceSplits) ?? d.healSentenceSplits
         continuationWords = try c.decodeIfPresent([String].self, forKey: .continuationWords) ?? d.continuationWords
+        timedHealWords = try c.decodeIfPresent([String].self, forKey: .timedHealWords) ?? d.timedHealWords
+        maxPauseSeconds = try c.decodeIfPresent(Double.self, forKey: .maxPauseSeconds) ?? d.maxPauseSeconds
+        auditLog = try c.decodeIfPresent(Bool.self, forKey: .auditLog) ?? d.auditLog
     }
 }
 

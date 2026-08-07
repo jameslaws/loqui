@@ -352,6 +352,7 @@ final class VoiceKeyCenter {
             // Instant on-device cleanup (dictionary, fillers, punctuation/caps)
             // — microseconds, so the paste still feels immediate.
             let text = TextCleanup.shared.process(raw)
+            CleanupAudit.diff(raw: raw, cleaned: text)
             let words = text.split(whereSeparator: { $0.isWhitespace }).count
             // Every session now records WHY it ended, alongside its words and
             // duration. Without this a short paste is indistinguishable from a
