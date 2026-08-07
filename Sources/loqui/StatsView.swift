@@ -27,11 +27,12 @@ struct HourWords: Identifiable {
 /// would beat it and the figure should never feel inflated.
 private let typingWPM = 40.0
 
-/// Window the Patterns section is scoped to. Calendar periods rather than
-/// rolling windows, so this speaks the same language as the Today / This week /
-/// This month cards at the top of the dashboard.
-enum StatsPeriod: String, CaseIterable, Identifiable {
-    case allTime, year, month, week, today
+/// Size of the window the Patterns section is scoped to. Paired with an offset
+/// (0 = the current one, -1 = the one before it) this addresses a *specific*
+/// period — "July 2026" — rather than a vague "this month", which was ambiguous
+/// about which month it meant and offered no way to look back at all.
+enum StatsGrain: String, CaseIterable, Identifiable {
+    case allTime, year, month, week, day
 
     var id: String { rawValue }
 
@@ -41,29 +42,17 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
         case .year: "Year"
         case .month: "Month"
         case .week: "Week"
-        case .today: "Today"
+        case .day: "Day"
         }
     }
 
-    /// First instant included, or nil for all time.
-    func start(_ cal: Calendar, _ now: Date) -> Date? {
+    var component: Calendar.Component? {
         switch self {
         case .allTime: nil
-        case .year: cal.dateInterval(of: .year, for: now)?.start
-        case .month: cal.dateInterval(of: .month, for: now)?.start
-        case .week: cal.dateInterval(of: .weekOfYear, for: now)?.start
-        case .today: cal.startOfDay(for: now)
-        }
-    }
-
-    /// How the "days active" denominator reads for this period.
-    var spanDescription: String {
-        switch self {
-        case .allTime: "days since you started"
-        case .year: "days into this year"
-        case .month: "days into this month"
-        case .week: "days into this week"
-        case .today: "today"
+        case .year: .year
+        case .month: .month
+        case .week: .weekOfYear
+        case .day: .day
         }
     }
 }
@@ -101,11 +90,28 @@ final class StatsModel: ObservableObject {
     /// would otherwise be a wall of zeroes with no explanation.
     @Published var periodEmpty = false
 
+    /// Names the selected window exactly — "July 2026", "Aug 2 – 8", "Yesterday"
+    /// — so the figures are never ambiguous about which period they describe.
+    @Published var periodLabel = "All time"
+
     /// Scopes the Patterns section (its two charts and all eight tiles).
     /// Everything above it — the totals, the three cards, the daily and monthly
     /// charts — is inherently time-scoped already and stays put.
-    @Published var period: StatsPeriod = .allTime {
-        didSet { if oldValue != period { reload() } }
+    @Published private(set) var grain: StatsGrain = .allTime
+    /// 0 is the current period, -1 the one before it, and so on. Never
+    /// positive: there is nothing to show in the future.
+    @Published private(set) var offset = 0
+
+    func select(_ newGrain: StatsGrain) {
+        guard newGrain != grain else { return }
+        grain = newGrain
+        offset = 0          // a new granularity always lands on the present
+        reload()
+    }
+
+    func step(_ delta: Int) {
+        offset = min(0, offset + delta)
+        reload()
     }
 
     private var observer: NSObjectProtocol?
@@ -176,8 +182,14 @@ final class StatsModel: ObservableObject {
 
         // ---- Everything below is scoped to the selected period. ----
 
-        let periodStart = period.start(cal, now)
-        let scoped = periodStart.map { s in entries.filter { $0.at >= s } } ?? entries
+        // A concrete window, not an open-ended "since" — stepping back to July
+        // has to exclude August as well as June.
+        let window: DateInterval? = grain.component.flatMap { comp in
+            cal.date(byAdding: comp, value: offset, to: now)
+                .flatMap { cal.dateInterval(of: comp, for: $0) }
+        }
+        periodLabel = Self.label(for: grain, window: window, cal: cal, now: now)
+        let scoped = window.map { w in entries.filter { w.contains($0.at) } } ?? entries
         periodEmpty = scoped.isEmpty
 
         var scopedByDay: [Date: Int] = [:]
@@ -242,14 +254,15 @@ final class StatsModel: ObservableObject {
         }
         longestStreak = best
 
-        // Consistency: days you actually dictated, over the days available to
-        // dictate in. For a calendar period that's the elapsed part of it — a
-        // month is "22 of 25" on the 25th, not "22 of 31", so the ratio never
-        // looks like a shortfall just because the month isn't over.
-        let firstEver = entries.map { cal.startOfDay(for: $0.at) }.min()
-        let spanStart = max(periodStart.map { cal.startOfDay(for: $0) } ?? .distantPast,
-                            firstEver ?? today0)
-        spanDays = max((cal.dateComponents([.day], from: spanStart, to: today0).day ?? 0) + 1, 1)
+        // Consistency: days you actually dictated, over the days that were
+        // available to dictate in. Clamped at both ends — never before your
+        // first ever dictation, and never past today, so the current month
+        // reads "5 of 7" on the 7th rather than "5 of 31".
+        let firstEver = entries.map { cal.startOfDay(for: $0.at) }.min() ?? today0
+        let winStart = max(window.map { cal.startOfDay(for: $0.start) } ?? firstEver, firstEver)
+        let winEnd = min(window.map { cal.startOfDay(for: $0.end.addingTimeInterval(-1)) } ?? today0,
+                         today0)
+        spanDays = max((cal.dateComponents([.day], from: winStart, to: winEnd).day ?? 0) + 1, 1)
         activeDays = activeSet.count
 
         avgPerActiveDay = activeSet.isEmpty ? 0 : scopedWords / activeSet.count
@@ -269,6 +282,34 @@ final class StatsModel: ObservableObject {
         let assumedPace = paceMeasured ? Double(speakingPace) : 150.0
         let spokenSecs = scoped.reduce(0.0) { $0 + ($1.seconds ?? Double($1.words) / assumedPace * 60) }
         timeSaved = max(0, Double(scopedWords) / typingWPM * 60 - spokenSecs)
+    }
+
+    /// Names the window in the way a person would: "July 2026", "Aug 2 – 8",
+    /// "Jul 28 – Aug 3", "Yesterday". Weeks collapse the month when both ends
+    /// share it.
+    static func label(for grain: StatsGrain, window: DateInterval?,
+                      cal: Calendar, now: Date) -> String {
+        guard let window else { return "All time" }
+        let start = window.start
+        let last = window.end.addingTimeInterval(-1)
+        switch grain {
+        case .allTime:
+            return "All time"
+        case .year:
+            return start.formatted(.dateTime.year())
+        case .month:
+            return start.formatted(.dateTime.month(.wide).year())
+        case .week:
+            let from = start.formatted(.dateTime.month(.abbreviated).day())
+            let to = cal.isDate(start, equalTo: last, toGranularity: .month)
+                ? last.formatted(.dateTime.day())
+                : last.formatted(.dateTime.month(.abbreviated).day())
+            return "\(from) – \(to)"
+        case .day:
+            if cal.isDateInToday(start) { return "Today" }
+            if cal.isDateInYesterday(start) { return "Yesterday" }
+            return start.formatted(.dateTime.month(.abbreviated).day().year())
+        }
     }
 
     /// "7–10 AM", "9 AM–12 PM", "10 PM–1 AM" — the meridiem collapses to one
@@ -499,17 +540,45 @@ struct StatsView: View {
     }
 
     private var patternsHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Patterns").font(.headline)
-            Spacer(minLength: 12)
-            Picker("", selection: $model.period) {
-                ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
+        VStack(spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Patterns").font(.headline)
+                Spacer(minLength: 12)
+                Picker("", selection: Binding(get: { model.grain },
+                                              set: { model.select($0) })) {
+                    ForEach(StatsGrain.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
+            // Which period, spelled out — the whole point of the stepper is
+            // that you never have to infer it.
+            if model.grain != .allTime {
+                HStack(spacing: 10) {
+                    stepButton("chevron.left", -1, enabled: true)
+                    Text(model.periodLabel)
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                        .frame(minWidth: 170)
+                    // Nothing to show in the future.
+                    stepButton("chevron.right", 1, enabled: model.offset < 0)
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
         .padding(.top, 4)
+    }
+
+    private func stepButton(_ symbol: String, _ delta: Int, enabled: Bool) -> some View {
+        Button { model.step(delta) } label: {
+            Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
+                .frame(width: 24, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.3)
     }
 
     @ViewBuilder
@@ -517,7 +586,9 @@ struct StatsView: View {
         // A grid of eight zeroes reads as broken rather than as empty, so say
         // so plainly instead of rendering it.
         if model.periodEmpty {
-            Text("No dictations \(model.period == .today ? "yet today" : "in this period").")
+            Text(model.periodLabel == "Today"
+                 ? "No dictations yet today."
+                 : "No dictations in \(model.periodLabel).")
                 .font(.callout).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 24)
@@ -539,14 +610,13 @@ struct StatsView: View {
             // streak is anchored to today. Under a filter the tile retitles to
             // the longest run inside that window instead, so every tile still
             // describes the period you picked.
-            if model.period == .allTime {
+            if model.grain == .allTime {
                 insight("Current streak", streakValue(model.currentStreak),
                         model.longestStreak > 0 ? "best: \(streakValue(model.longestStreak))" : nil)
             } else {
                 insight("Longest streak", streakValue(model.longestStreak), "consecutive days")
             }
-            insight("Days active", "\(model.activeDays) of \(model.spanDays)",
-                    model.period.spanDescription)
+            insight("Days active", "\(model.activeDays) of \(model.spanDays)", spanDescription)
             insight("Peak hours", model.peakHours, "when you dictate most")
             insight("Highest volume day",
                     model.biggestDayDate != nil ? "\(model.biggestDayWords.formatted()) words" : "—",
@@ -555,6 +625,13 @@ struct StatsView: View {
             insight("Per active day", "\(model.avgPerActiveDay.formatted()) words",
                     "on days you dictate")
         }
+    }
+
+    /// Explains the "days active" denominator. A period still in progress is
+    /// measured against the days elapsed so far, not its full length.
+    private var spanDescription: String {
+        if model.grain == .allTime { return "days since you started" }
+        return model.offset == 0 ? "days so far" : "days in the period"
     }
 
     private var timeSavedValue: String {
