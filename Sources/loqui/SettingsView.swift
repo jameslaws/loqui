@@ -35,9 +35,15 @@ final class SettingsModel: ObservableObject {
         let cleanFillers = fillers
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
             .filter { !$0.isEmpty }
-        CleanupConfigFile.save(CleanupConfig(
-            dictionary: dict, removeFillers: removeFillers,
-            fillers: cleanFillers, spokenFormatting: spokenFormatting))
+        // Start from what's on disk and overwrite only the fields this window
+        // owns — settings edited directly in cleanup.json (the sentence-split
+        // rules) would otherwise be reset every time anything here changed.
+        var cfg = CleanupConfigFile.load()
+        cfg.dictionary = dict
+        cfg.removeFillers = removeFillers
+        cfg.fillers = cleanFillers
+        cfg.spokenFormatting = spokenFormatting
+        CleanupConfigFile.save(cfg)
     }
 
     func addRow() { rows.insert(Row(heard: "", replacement: ""), at: 0) }

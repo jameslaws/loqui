@@ -8,6 +8,11 @@ struct CleanupConfig: Codable, Equatable {
     var removeFillers: Bool
     var fillers: [String]
     var spokenFormatting: Bool
+    /// Stitch back sentences the recognizer split at a mid-sentence pause.
+    var healSentenceSplits: Bool
+    /// Words that almost never begin a real sentence, so a period in front of
+    /// one is far more likely a pause artifact than an intended full stop.
+    var continuationWords: [String]
 
     // Shipped defaults are generic — the spelling dictionary starts empty so a
     // fresh install carries no personal data. The user builds their own via the
@@ -20,8 +25,37 @@ struct CleanupConfig: Codable, Equatable {
         // "I mean" are real words too, so they're left out unless added.
         fillers: ["um", "umm", "uh", "uhh", "uhm", "er", "erm", "hmm", "mhm"],
         // Off by default: "new paragraph" / "new line" can be literal content.
-        spokenFormatting: false
+        spokenFormatting: false,
+        healSentenceSplits: true,
+        // Deliberately tight. Merging a sentence that WAS intentional produces
+        // a run-on, which is its own kind of mess — so this ships with only the
+        // words that essentially never open a sentence. "but", "so" and "then"
+        // are left out precisely because they're common, legitimate openers;
+        // add them here if the split-sentence problem outweighs the run-ons.
+        continuationWords: ["and", "or", "nor", "which", "whose", "whom", "than", "because"]
     )
+}
+
+/// Decoded field by field with per-key fallbacks, so a `cleanup.json` written
+/// by an older build — which has none of the newer keys — still loads with the
+/// user's dictionary intact. Strict decoding would fail the whole file and
+/// silently reset it to defaults, quietly throwing away their terms.
+extension CleanupConfig {
+    private enum CodingKeys: String, CodingKey {
+        case dictionary, removeFillers, fillers, spokenFormatting
+        case healSentenceSplits, continuationWords
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = CleanupConfig.defaults
+        dictionary = try c.decodeIfPresent([String: String].self, forKey: .dictionary) ?? d.dictionary
+        removeFillers = try c.decodeIfPresent(Bool.self, forKey: .removeFillers) ?? d.removeFillers
+        fillers = try c.decodeIfPresent([String].self, forKey: .fillers) ?? d.fillers
+        spokenFormatting = try c.decodeIfPresent(Bool.self, forKey: .spokenFormatting) ?? d.spokenFormatting
+        healSentenceSplits = try c.decodeIfPresent(Bool.self, forKey: .healSentenceSplits) ?? d.healSentenceSplits
+        continuationWords = try c.decodeIfPresent([String].self, forKey: .continuationWords) ?? d.continuationWords
+    }
 }
 
 /// Disk persistence. Used directly by `TextCleanup` (re-read on every cleanup

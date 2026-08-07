@@ -38,6 +38,9 @@ final class TextCleanup {
         }
         text = tidy(text)
         text = regexReplace(text, "\\bi\\b", "I")   // standalone i (and i'm, i'll…) → I
+        if cfg.healSentenceSplits {
+            text = healSentenceSplits(text, cfg.continuationWords)
+        }
         text = capitalizeSentences(text)
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -81,6 +84,39 @@ final class TextCleanup {
         t = regexReplace(t, "(?m)^[ \\t,]+", "")
         return t
     }
+
+    /// Pause mid-sentence and the recognizer closes the sentence and opens a
+    /// new one — "…finish the report. And then we…" — because a pause is the
+    /// main cue it has for a full stop. Speaking faster to avoid it is the
+    /// wrong fix.
+    ///
+    /// The tell is a period in front of a word that essentially never opens a
+    /// sentence. Runs before `capitalizeSentences`, so once the period is gone
+    /// the word is simply left lowercase. Only ever deletes a period it is
+    /// confident about; it never inserts one, and never reorders anything.
+    private func healSentenceSplits(_ text: String, _ words: [String]) -> String {
+        let cleaned = words.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !cleaned.isEmpty else { return text }
+        let alt = cleaned.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        // A newline is a deliberate break ("new paragraph"), so only a period
+        // followed by spaces on the same line qualifies.
+        guard let re = regex("\\.[ \\t]+(\(alt))\\b") else { return text }
+        let ns = text as NSString
+        let out = NSMutableString(string: text)
+        for m in re.matches(in: text, range: NSRange(location: 0, length: ns.length)).reversed() {
+            let word = ns.substring(with: m.range(at: 1)).lowercased()
+            // A relative clause needs the comma the period was standing in for;
+            // dropping it outright ("Greyson which reminds me") trades one
+            // grammar error for another.
+            let joiner = Self.commaBeforeJoin.contains(word) ? ", " : " "
+            out.replaceCharacters(in: m.range, with: joiner + word)
+        }
+        return out as String
+    }
+
+    /// Continuation words that open a non-restrictive clause, so the join takes
+    /// a comma rather than a bare space.
+    private static let commaBeforeJoin: Set<String> = ["which", "whose", "whom"]
 
     /// Capitalize the first letter of the text and the start of each sentence
     /// (after . ! ? or a paragraph break).

@@ -220,6 +220,7 @@ final class VoiceTranscriber: ObservableObject {
             let analyzer = SpeechAnalyzer(modules: [transcriber])
             let (sequence, builder) = AsyncStream<AnalyzerInput>.makeStream()
             try await analyzer.start(inputSequence: sequence)
+            await applyContextualStrings(to: analyzer)
 
             self.analyzerFormat = format
             try startAnalyzerEngine(format: format, builder: builder)
@@ -255,6 +256,47 @@ final class VoiceTranscriber: ObservableObject {
             return false
         }
     }
+
+    /// Bias recognition toward the words you've already told loqui you use.
+    ///
+    /// The spelling dictionary currently only repairs the output after the
+    /// fact, which can't recover what the model never considered — "Ciircles"
+    /// heard as "circles" is a find-and-replace, but "SendWP" heard as three
+    /// separate words isn't recoverable at all. Handing the same terms over as
+    /// context lets the model get them right in the first place.
+    ///
+    /// This sits before the mic starts so the very first words are covered.
+    /// It should be a local hand-off of a few strings; the timing guard is
+    /// there because anything on the start path that ISN'T instant would eat
+    /// the beginning of a dictation, and I'd rather find out from the log than
+    /// from a truncated sentence.
+    @available(macOS 26, *)
+    private func applyContextualStrings(to analyzer: SpeechAnalyzer) async {
+        let terms = Array(Set(CleanupConfigFile.load().dictionary.values))
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .sorted()
+            .prefix(Self.contextualStringLimit)
+        guard !terms.isEmpty else { return }
+        let started = Date()
+        let context = AnalysisContext()
+        context.contextualStrings = [.general: Array(terms)]
+        do {
+            try await analyzer.setContext(context)
+        } catch {
+            // Non-fatal: without it you just fall back to the after-the-fact
+            // dictionary, which is exactly today's behaviour.
+            voiceKeyLog("contextual strings rejected: \(error.localizedDescription)")
+            return
+        }
+        let cost = Date().timeIntervalSince(started)
+        if cost > 0.1 {
+            voiceKeyLog("WARNING: contextual strings took \(Int(cost * 1000))ms on the start path")
+        }
+    }
+
+    /// Generous for a personal vocabulary, but bounded — an unbounded list
+    /// handed to the recognizer is a latency risk on the start path.
+    private static let contextualStringLimit = 200
 
     /// Build the mic graph and pump converted buffers into the analyzer. Split
     /// out of `beginAnalyzer` so it can be re-run mid-dictation when the audio
