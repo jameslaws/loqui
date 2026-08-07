@@ -22,6 +22,10 @@
   on Apple Silicon.
 - **Stability in the event tap and audio pipeline** — the two places where bugs are
   most likely and most annoying.
+- **A better period picker in the stats window.** Stepping through months with the
+  arrows is fine, but reaching a specific *day* that way is tedious. The idea: click
+  the period label to open a calendar shaded by word volume, so you can spot a heavy
+  day and jump straight to it rather than needing to know the date first.
 
 ## Not planned
 
