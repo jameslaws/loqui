@@ -27,6 +27,47 @@ struct HourWords: Identifiable {
 /// would beat it and the figure should never feel inflated.
 private let typingWPM = 40.0
 
+/// Window the Patterns section is scoped to. Calendar periods rather than
+/// rolling windows, so this speaks the same language as the Today / This week /
+/// This month cards at the top of the dashboard.
+enum StatsPeriod: String, CaseIterable, Identifiable {
+    case allTime, year, month, week, today
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .allTime: "All time"
+        case .year: "Year"
+        case .month: "Month"
+        case .week: "Week"
+        case .today: "Today"
+        }
+    }
+
+    /// First instant included, or nil for all time.
+    func start(_ cal: Calendar, _ now: Date) -> Date? {
+        switch self {
+        case .allTime: nil
+        case .year: cal.dateInterval(of: .year, for: now)?.start
+        case .month: cal.dateInterval(of: .month, for: now)?.start
+        case .week: cal.dateInterval(of: .weekOfYear, for: now)?.start
+        case .today: cal.startOfDay(for: now)
+        }
+    }
+
+    /// How the "days active" denominator reads for this period.
+    var spanDescription: String {
+        switch self {
+        case .allTime: "days since you started"
+        case .year: "days into this year"
+        case .month: "days into this month"
+        case .week: "days into this week"
+        case .today: "today"
+        }
+    }
+}
+
 /// Computes every figure on the dashboard from the dictation log. Reloads on
 /// open AND whenever a new dictation is recorded, so an open window updates live.
 @MainActor
@@ -56,6 +97,16 @@ final class StatsModel: ObservableObject {
     @Published var timeSaved: TimeInterval = 0
     @Published var speakingPace = 0
     @Published var paceMeasured = false
+    /// True when the selected period contains no dictations at all — the tiles
+    /// would otherwise be a wall of zeroes with no explanation.
+    @Published var periodEmpty = false
+
+    /// Scopes the Patterns section (its two charts and all eight tiles).
+    /// Everything above it — the totals, the three cards, the daily and monthly
+    /// charts — is inherently time-scoped already and stays put.
+    @Published var period: StatsPeriod = .allTime {
+        didSet { if oldValue != period { reload() } }
+    }
 
     private var observer: NSObjectProtocol?
 
@@ -123,12 +174,22 @@ final class StatsModel: ObservableObject {
             cal.date(byAdding: .month, value: -i, to: thisMonth).map { DatedWords(date: $0, words: byMonthDict[$0] ?? 0) }
         }
 
+        // ---- Everything below is scoped to the selected period. ----
+
+        let periodStart = period.start(cal, now)
+        let scoped = periodStart.map { s in entries.filter { $0.at >= s } } ?? entries
+        periodEmpty = scoped.isEmpty
+
+        var scopedByDay: [Date: Int] = [:]
+        for e in scoped { scopedByDay[cal.startOfDay(for: e.at), default: 0] += e.words }
+        let scopedWords = scoped.reduce(0) { $0 + $1.words }
+
         var wd: [Int: Int] = [:]
-        for e in entries { wd[cal.component(.weekday, from: e.at), default: 0] += e.words }
+        for e in scoped { wd[cal.component(.weekday, from: e.at), default: 0] += e.words }
         let names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         byWeekday = (1...7).map { LabeledWords(label: names[$0 - 1], words: wd[$0] ?? 0) }
 
-        if let biggest = byDay.max(by: { $0.value < $1.value }) {
+        if let biggest = scopedByDay.max(by: { $0.value < $1.value }) {
             biggestDayWords = biggest.value
             biggestDayDate = biggest.key
         } else { biggestDayWords = 0; biggestDayDate = nil }
@@ -137,7 +198,7 @@ final class StatsModel: ObservableObject {
         // window wraps past midnight so a late-night habit reads as
         // "10 PM–1 AM" rather than being split across the end of the array.
         var hourly = [Int](repeating: 0, count: 24)
-        for e in entries { hourly[cal.component(.hour, from: e.at)] += e.words }
+        for e in scoped { hourly[cal.component(.hour, from: e.at)] += e.words }
         byHour = (0..<24).map { HourWords(hour: $0, words: hourly[$0]) }
 
         var peakStart = 0, peakSum = -1
@@ -149,7 +210,7 @@ final class StatsModel: ObservableObject {
 
         // MARK: streaks & consistency
 
-        let activeSet = Set(byDay.keys)
+        let activeSet = Set(scopedByDay.keys)
         let sortedDays = activeSet.sorted()
 
         // A streak shouldn't look broken just because you haven't dictated yet
@@ -181,22 +242,22 @@ final class StatsModel: ObservableObject {
         }
         longestStreak = best
 
-        // Consistency over the last 60 days — or over your whole history if
-        // you've been using loqui for less than that, so a new user doesn't
-        // see "3 of 60" and read it as a failure.
-        let daysSinceFirst = sortedDays.first.map {
-            (cal.dateComponents([.day], from: $0, to: today0).day ?? 0) + 1
-        } ?? 0
-        spanDays = min(60, max(daysSinceFirst, 1))
-        let windowStart = cal.date(byAdding: .day, value: -(spanDays - 1), to: today0) ?? today0
-        activeDays = activeSet.filter { $0 >= windowStart }.count
+        // Consistency: days you actually dictated, over the days available to
+        // dictate in. For a calendar period that's the elapsed part of it — a
+        // month is "22 of 25" on the 25th, not "22 of 31", so the ratio never
+        // looks like a shortfall just because the month isn't over.
+        let firstEver = entries.map { cal.startOfDay(for: $0.at) }.min()
+        let spanStart = max(periodStart.map { cal.startOfDay(for: $0) } ?? .distantPast,
+                            firstEver ?? today0)
+        spanDays = max((cal.dateComponents([.day], from: spanStart, to: today0).day ?? 0) + 1, 1)
+        activeDays = activeSet.count
 
-        avgPerActiveDay = activeSet.isEmpty ? 0 : allTimeWords / activeSet.count
-        longestDictation = entries.map(\.words).max() ?? 0
+        avgPerActiveDay = activeSet.isEmpty ? 0 : scopedWords / activeSet.count
+        longestDictation = scoped.map(\.words).max() ?? 0
 
         // MARK: pace & time saved
 
-        let timed = entries.compactMap { e in e.seconds.map { (words: e.words, secs: $0) } }
+        let timed = scoped.compactMap { e in e.seconds.map { (words: e.words, secs: $0) } }
         let timedWords = timed.reduce(0) { $0 + $1.words }
         let timedSecs = timed.reduce(0.0) { $0 + $1.secs }
         paceMeasured = timedSecs > 0
@@ -206,8 +267,8 @@ final class StatsModel: ObservableObject {
         // measured pace (or a typical speaking rate, until there's enough
         // measured data to have one), which is why the figure is shown as "≈".
         let assumedPace = paceMeasured ? Double(speakingPace) : 150.0
-        let spokenSecs = entries.reduce(0.0) { $0 + ($1.seconds ?? Double($1.words) / assumedPace * 60) }
-        timeSaved = max(0, Double(allTimeWords) / typingWPM * 60 - spokenSecs)
+        let spokenSecs = scoped.reduce(0.0) { $0 + ($1.seconds ?? Double($1.words) / assumedPace * 60) }
+        timeSaved = max(0, Double(scopedWords) / typingWPM * 60 - spokenSecs)
     }
 
     /// "7–10 AM", "9 AM–12 PM", "10 PM–1 AM" — the meridiem collapses to one
@@ -241,6 +302,9 @@ struct StatsView: View {
                         cardsRow
                         dailyChart
                         monthlyChart
+                        // The picker heads this group because it governs
+                        // everything below it — both charts and all the tiles.
+                        patternsHeader
                         weekdayChart
                         hourChart
                         insights
@@ -434,29 +498,62 @@ struct StatsView: View {
         }
     }
 
-    private var insights: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private var patternsHeader: some View {
+        HStack(alignment: .firstTextBaseline) {
             Text("Patterns").font(.headline)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                insight("Time saved", timeSavedValue,
-                        model.paceMeasured ? "vs typing at \(Int(typingWPM)) wpm"
-                                           : "estimated vs typing at \(Int(typingWPM)) wpm")
-                insight("Speaking pace",
-                        model.paceMeasured ? "\(model.speakingPace.formatted()) wpm" : "—",
-                        model.paceMeasured ? "\(paceMultiple)× faster than typing"
-                                           : "measured from new dictations")
+            Spacer(minLength: 12)
+            Picker("", selection: $model.period) {
+                ForEach(StatsPeriod.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var insights: some View {
+        // A grid of eight zeroes reads as broken rather than as empty, so say
+        // so plainly instead of rendering it.
+        if model.periodEmpty {
+            Text("No dictations \(model.period == .today ? "yet today" : "in this period").")
+                .font(.callout).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 24)
+        } else {
+            tiles
+        }
+    }
+
+    private var tiles: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            insight("Time saved", timeSavedValue,
+                    model.paceMeasured ? "vs typing at \(Int(typingWPM)) wpm"
+                                       : "estimated vs typing at \(Int(typingWPM)) wpm")
+            insight("Speaking pace",
+                    model.paceMeasured ? "\(model.speakingPace.formatted()) wpm" : "—",
+                    model.paceMeasured ? "\(paceMultiple)× faster than typing"
+                                       : "measured from new dictations")
+            // "Your current streak, during March" isn't a coherent idea — a
+            // streak is anchored to today. Under a filter the tile retitles to
+            // the longest run inside that window instead, so every tile still
+            // describes the period you picked.
+            if model.period == .allTime {
                 insight("Current streak", streakValue(model.currentStreak),
                         model.longestStreak > 0 ? "best: \(streakValue(model.longestStreak))" : nil)
-                insight("Days active", "\(model.activeDays) of \(model.spanDays)",
-                        model.spanDays >= 60 ? "in the last 60 days" : "days since you started")
-                insight("Peak hours", model.peakHours, "when you dictate most")
-                insight("Highest volume day",
-                        model.biggestDayDate != nil ? "\(model.biggestDayWords.formatted()) words" : "—",
-                        model.biggestDayDate.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) })
-                insight("Longest dictation", "\(model.longestDictation.formatted()) words", "in a single go")
-                insight("Per active day", "\(model.avgPerActiveDay.formatted()) words",
-                        "on days you dictate")
+            } else {
+                insight("Longest streak", streakValue(model.longestStreak), "consecutive days")
             }
+            insight("Days active", "\(model.activeDays) of \(model.spanDays)",
+                    model.period.spanDescription)
+            insight("Peak hours", model.peakHours, "when you dictate most")
+            insight("Highest volume day",
+                    model.biggestDayDate != nil ? "\(model.biggestDayWords.formatted()) words" : "—",
+                    model.biggestDayDate.map { $0.formatted(.dateTime.month(.abbreviated).day().year()) })
+            insight("Longest dictation", "\(model.longestDictation.formatted()) words", "in a single go")
+            insight("Per active day", "\(model.avgPerActiveDay.formatted()) words",
+                    "on days you dictate")
         }
     }
 
