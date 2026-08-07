@@ -94,6 +94,17 @@ final class StatsModel: ObservableObject {
     /// — so the figures are never ambiguous about which period they describe.
     @Published var periodLabel = "All time"
 
+    // Lifetime totals per day and per month, plus their peaks. These back the
+    // shading in the period picker, where volume is what lets you *find* the
+    // day you want instead of having to already know its date.
+    @Published var dayVolume: [Date: Int] = [:]
+    @Published var monthVolume: [Date: Int] = [:]
+    @Published var maxDayVolume = 0
+    @Published var maxMonthVolume = 0
+    @Published var firstDay: Date?
+    /// The concrete window in effect, so the picker can show what's selected.
+    @Published var selectedWindow: DateInterval?
+
     /// Scopes the Patterns section (its two charts and all eight tiles).
     /// Everything above it — the totals, the three cards, the daily and monthly
     /// charts — is inherently time-scoped already and stays put.
@@ -111,6 +122,18 @@ final class StatsModel: ObservableObject {
 
     func step(_ delta: Int) {
         offset = min(0, offset + delta)
+        reload()
+    }
+
+    /// Jump straight to the period containing `date`, rather than stepping to
+    /// it — the whole point of the picker.
+    func jump(to date: Date) {
+        let cal = Calendar.current
+        guard let comp = grain.component,
+              let here = cal.dateInterval(of: comp, for: Date())?.start,
+              let there = cal.dateInterval(of: comp, for: date)?.start
+        else { return }
+        offset = min(0, cal.dateComponents([comp], from: here, to: there).value(for: comp) ?? 0)
         reload()
     }
 
@@ -180,6 +203,12 @@ final class StatsModel: ObservableObject {
             cal.date(byAdding: .month, value: -i, to: thisMonth).map { DatedWords(date: $0, words: byMonthDict[$0] ?? 0) }
         }
 
+        dayVolume = byDay
+        monthVolume = byMonthDict
+        maxDayVolume = byDay.values.max() ?? 0
+        maxMonthVolume = byMonthDict.values.max() ?? 0
+        firstDay = byDay.keys.min()
+
         // ---- Everything below is scoped to the selected period. ----
 
         // A concrete window, not an open-ended "since" — stepping back to July
@@ -189,6 +218,7 @@ final class StatsModel: ObservableObject {
                 .flatMap { cal.dateInterval(of: comp, for: $0) }
         }
         periodLabel = Self.label(for: grain, window: window, cal: cal, now: now)
+        selectedWindow = window
         let scoped = window.map { w in entries.filter { w.contains($0.at) } } ?? entries
         periodEmpty = scoped.isEmpty
 
@@ -331,6 +361,7 @@ struct StatsView: View {
     @State private var selMonthly: Date?
     @State private var selWeekday: String?
     @State private var selHour: Int?
+    @State private var showPicker = false
 
     var body: some View {
         Group {
@@ -557,10 +588,24 @@ struct StatsView: View {
             if model.grain != .allTime {
                 HStack(spacing: 10) {
                     stepButton("chevron.left", -1, enabled: true)
-                    Text(model.periodLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .monospacedDigit()
+                    // Stepping is fine for the period next door; the popover is
+                    // for the one twelve steps away.
+                    Button { showPicker = true } label: {
+                        HStack(spacing: 5) {
+                            Text(model.periodLabel)
+                                .font(.subheadline.weight(.semibold))
+                                .monospacedDigit()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
                         .frame(minWidth: 170)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showPicker, arrowEdge: .bottom) {
+                        PeriodPicker(model: model, isPresented: $showPicker)
+                    }
                     // Nothing to show in the future.
                     stepButton("chevron.right", 1, enabled: model.offset < 0)
                 }
