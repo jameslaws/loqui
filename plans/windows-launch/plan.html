@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="none">
+<meta name="plan-touches" content="Download page: docs/index.html, docs/windows/**, docs/assets/**; Words: README.md, SECURITY.md, ROADMAP.md, CONTRIBUTING.md; Release: .github/workflows/windows-promote.yml">
+<meta name="plan-size" content="5">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="6">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="3, 4, 5">
+<meta name="plan-lands" content="download page: production, https://jameslaws.github.io/loqui/">
+<meta name="plan-one-way" content="First public Windows release">
+<meta name="plan-checkpoint" content="Windows on the download page, and the first public Windows version">
+<title>Windows launch, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 6: launch</h1>
+  <p class="lede">Anyone on Windows can find Loqui on the download page, read how it works on Windows in the README, and install the first public Windows version.</p>
+  <div class="approve"><p><b>What approving this does.</b> A builder adds Windows to the download page, README, security policy and roadmap, and readies the first public Windows version. It goes public only when you approve it at Ready to ship. It accepts my recommendations below unless you change one.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<ul>
+  <li><b>The download page offers the right download.</b> A visitor on Windows sees "Download for Windows" first and a link for the Mac underneath; a Mac visitor sees what they see today. Without scripts, both buttons show. The "Runs on your Mac" card becomes "Runs on your computer".</li>
+  <li><b>The Windows button always gets the newest approved version.</b> Each time you approve a version, the link moves to it by itself.</li>
+  <li><b>The README covers Windows.</b> How to install, the microphone switch, what's stored where (your history stays in your own Windows profile, as plain text, with the same retention choices), the security model (the keyboard watcher only acts on your shortcut, loqui runs without administrator rights, signed in your name), uninstalling, and building it yourself.</li>
+  <li><b>The privacy promise is unchanged</b> and now names both update lists, so anyone can read the exact file their copy checks.</li>
+  <li><b>Security policy and roadmap.</b> SECURITY.md covers Windows (the keyboard watcher, the update chain, the clipboard), and ROADMAP.md lists Windows as shipped.</li>
+  <li><b>The first public Windows version.</b> After its time on the test channel, you approve it and it goes to everyone.</li>
+</ul>
+<p>Who it's for: <b>public</b>.</p>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the live download page today. "After" is the same page with the changes made in it, as a Windows visitor sees it. Click any picture to see it big.</p>
+<h3>The download page</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · MacBook</figcaption><img src="shots/before-download-page-mac.png" alt="The live download page: magenta header with the icon, Talk. It types., Download for macOS and View the source, and macOS 15 and later"></figure>
+  <figure class="mac"><figcaption><b>After</b> · MacBook, Windows visitor</figcaption><img src="shots/after-download-page-mac.png" alt="The same page for a Windows visitor: the tagline mentions Mac or Windows PC, the main button says Download for Windows, the line below says Windows 11 on Intel, AMD and Arm with a link for macOS, and the first card says Runs on your computer"></figure>
+  <figure class="phone"><figcaption><b>Before</b> · iPhone</figcaption><img src="shots/before-download-page-phone.png" alt="The live download page on a phone: icon, wordmark, headline and the macOS download button"></figure>
+  <figure class="phone"><figcaption><b>After</b> · iPhone</figcaption><img src="shots/after-download-page-phone.png" alt="The changed page on a phone, with the Windows wording and button stacked the same way"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<ul>
+  <li><b>Empty:</b> on a phone or tablet, the page shows both buttons with the line "loqui runs on Mac and Windows computers."</li>
+  <li><b>Loading:</b> a plain static page; nothing to wait for.</li>
+  <li><b>Error:</b> if the visitor's computer can't be told, both buttons show.</li>
+  <li><b>No permission:</b> none; the page is public.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk none"><p><b>Not risky.</b> Why: no data, sending, money or keys change here. It is one way, though: once the first Windows version is public, people will have it installed. That's why it goes out only after your approval at Ready to ship, and step 5's Roll back is ready before it does.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-page">
+  <h3>1. One download page or two</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> one page that puts the visitor's own computer first.</li>
+    <li>A separate Windows page linked from the current one.</li>
+  </ol>
+  <p class="why">Why: one product, one page; the privacy and feature sections apply to both.</p>
+</div>
+<div class="decision" id="d-number">
+  <h3>2. The first Windows version number</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> 0.1.0, counted separately from the Mac.</li>
+    <li>1.0.0.</li>
+    <li>Match the Mac's numbers, releasing both together.</li>
+  </ol>
+  <p class="why">Why: the Mac started at 0.1; the two apps ship on their own schedules, so tying numbers together would force empty releases.</p>
+</div>
+<div class="decision" id="d-when">
+  <h3>3. When it goes public</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> after at least a week of daily use on your Windows test machine on the test channel with nothing broken.</li>
+    <li>As soon as this step is built and checked.</li>
+  </ol>
+  <p class="why">Why: it's the first time anyone else installs it, and a week of real use catches what the checks can't.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Announcing it anywhere (newsletter, jameslaws.com, social posts).</li>
+  <li>The Microsoft Store and winget.</li>
+  <li>Any change to the Mac app or its release.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>The page</b> (staging: a private preview of the changed page on the Mini, opened on your MacBook, your phone and the Windows test machine): the Mac and phone show today's wording with Windows added; Windows shows "Download for Windows" first. <span class="ids">LAUNCH-01 to LAUNCH-04, A11Y-03</span></li>
+  <li><b>The words</b> (GitHub, the pull request): README, SECURITY.md, ROADMAP.md and CONTRIBUTING.md read right for Windows. <span class="ids">LAUNCH-05, LAUNCH-06</span></li>
+  <li><b>Go public</b> (Ready to ship): approve the tested version in Promote. On the Windows test machine, open the live page, click Download for Windows, install and dictate. On the MacBook, the Mac download still gets the Mac app. <span class="ids">LAUNCH-07 to LAUNCH-09</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> LAUNCH-01 to LAUNCH-09, A11Y-03.</li>
+    <li><b>Existing code to reuse:</b> <code>docs/index.html</code> (its tokens, AA notes and structure; keep its look), <code>plans/windows-launch/shoot.mjs</code> (the exact wording changes shown above), README sections Install, Permissions, Privacy, Security model, Uninstall, Requirements, Development.</li>
+    <li><b>Choosing the button:</b> a few lines of script reading the platform; both buttons in the HTML, so with no script both show. Windows screenshots for the page come from step 3 and 4's Windows check pictures.</li>
+    <li><b>The Windows link:</b> the button points at <code>docs/windows/download.html</code>, a tiny page that forwards to the current stable installer; <code>windows-promote.yml</code> rewrites it with <code>stable.json</code> on every promote. GitHub's "latest release" stays the Mac's, so the README's Mac link keeps working.</li>
+    <li><b>Shared interfaces and owners:</b> <code>docs/windows/download.html</code> is added here and owned by the Promote workflow from then on. Step 5's feeds are read, not changed.</li>
+    <li><b>Data and outside services:</b> GitHub Pages and Releases only.</li>
+    <li><b>Can't be undone:</b> the first public Windows release. Roll back (step 5) is tested first.</li>
+    <li><b>Staging and rollback:</b> the changed page is served as a private workspace preview on the Mini (<code>ws</code>, just James) before merge, because Pages publishes <code>docs/</code> only on merge. Going back on the page is a revert; going back on the app is step 5's Roll back. Record the launch in PROJECT.md and the platform registry's Loqui row.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
