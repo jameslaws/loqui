@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="money, secrets">
+<meta name="plan-touches" content="Windows app: windows/**; Release workflows: .github/workflows/windows-*.yml; Update feeds: docs/windows/**; Records: PROJECT.md">
+<meta name="plan-size" content="8">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="5">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="2">
+<meta name="plan-lands" content="test channel: GitHub pre-releases, https://github.com/jameslaws/loqui/releases">
+<meta name="plan-checkpoint" content="a signed test version installs cleanly and updates itself">
+<title>Signed installer, updates and a test channel for Windows, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 5: signed installer, updates and a test channel</h1>
+  <p class="lede">Loqui for Windows installs without "unknown publisher" warnings, keeps itself up to date, gets every change to a test PC first, and can go back to the last good version.</p>
+  <div class="approve"><p><b>What approving this does.</b> You agree to a Microsoft signing account at $9.99 a month in your name, which you set up yourself (about 20 minutes, then Microsoft checks your ID). A builder then makes the installer, signed updates, the test channel, and the promote and roll-back buttons. It accepts my recommendations below unless you change one.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<ul>
+  <li><b>Signed in your name.</b> The installer and the app carry your verified name through Microsoft's signing service, so Windows shows "James Laws" as the publisher instead of an unknown one, and new Windows 11 PCs with Smart App Control don't block it. For the first few weeks Windows may still show a "Windows protected your PC" notice while it learns the app is trusted; signing is what lets that happen.</li>
+  <li><b>A real installer.</b> For your account only, so no administrator is needed. It includes the speech model (about 500 MB to download once). It appears in Start and in Windows' Installed apps. Uninstalling asks whether to also delete your history and settings, as the Mac's uninstall does.</li>
+  <li><b>Updates by themselves.</b> loqui checks once a day and from Check for updates. A new version shows what's new and installs in one click. Updates are small (about 12 MB) because the speech model stays. Like the Mac's, every update is signed with a key only Loqui's releases have, and loqui refuses any update that isn't.</li>
+  <li><b>A test channel (our staging).</b> Every change merged into the project becomes a signed test version within about half an hour. A PC with "Get test versions" switched on gets it. Everyone else only gets versions you approve.</li>
+  <li><b>Approve and go back.</b> Your Ready to ship approval publishes the exact test version you tried, unchanged, to everyone. If a version turns out bad, Roll back sends every PC back to the last good one automatically.</li>
+  <li><b>Built by GitHub, not on a computer here.</b> Releases are built and signed on GitHub's Windows computers. The signing keys never sit on the Mini or your MacBook.</li>
+  <li><b>The Mac is untouched.</b> Windows versions are numbered and listed separately, and don't take over the Mac's "Download the latest release" link (step 6 updates the links).</li>
+</ul>
+<p>Who it's for: <b>public</b>, through the test channel only until step 6.</p>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"After" is the Windows look drawn in a separate page and photographed. The Mac's update prompt is Sparkle's own window and isn't pictured. Desktop app, so there is no phone size. Click any picture to see it big.</p>
+<h3>Installing</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-installer.png" alt="The loqui setup window: Installing loqui, just for you, no administrator needed, a progress bar copying the speech model, publisher James Laws signed by Microsoft Artifact Signing, and the install folder"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-installer-dark.png" alt="The same setup window in dark mode"></figure>
+</div>
+<h3>An update is ready</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-update.png" alt="The loqui update window: a new version is ready, 0.2.0 available, you have 0.1.0, about 12 MB, what's new in three bullets, Later and Install and restart loqui"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-update-dark.png" alt="The same update window in dark mode"></figure>
+</div>
+<h3>Settings: updates and test versions</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-settings-updates.png" alt="Settings General with an Updates card: loqui 0.1.0, up to date, checked today, Check for updates button, and a Get test versions switch turned off, with a note that the update check is the only thing loqui sends over the internet"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<ul>
+  <li><b>Empty:</b> no update: "loqui is up to date" after Check for updates.</li>
+  <li><b>Loading:</b> the update window shows download progress, then restarts loqui.</li>
+  <li><b>Error:</b> offline, or GitHub unreachable: the daily check fails quietly and dictation is unaffected; Check for updates says "Couldn't reach the update server. Try again later." An update with a bad signature is refused with "This update couldn't be verified, so it wasn't installed."</li>
+  <li><b>No permission:</b> none; installing and updating need no administrator.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk"><p><b>Risky: money, secrets.</b> Money: a new $9.99 a month Microsoft signing account in your name. Secrets: the signing identity and a new update key; whoever held the update key could push an update every copy would accept. What keeps it safe: GitHub signs through a short-lived login with no stored password, the update key lives only as a locked GitHub secret with your backup in 1Password, publishing to everyone needs your approval, and the plan gets one Codex safety review before it ships.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-signing">
+  <h3>1. How Windows releases are signed</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Microsoft's Artifact Signing service, $9.99 a month. You create an Azure account, verify your identity as an individual (photo ID), and an agent connects GitHub to it.</li>
+    <li>A yearly certificate from a company like DigiCert or Sectigo, $150 to $300 a year, which now has to live on a hardware key and is hard to use from GitHub.</li>
+    <li>Don't sign. Every download shows "unknown publisher", and Smart App Control blocks it outright on new PCs.</li>
+    <li>Only the Microsoft Store, which signs for free but handles updates its own way.</li>
+  </ol>
+  <p class="why">Why: it's the cheapest way to get your name on the app that works from GitHub with no hardware key. Microsoft lists sign-up for individuals in the US and Canada; if it's closed when you apply, the yearly certificate is the fallback.</p>
+</div>
+<div class="decision" id="d-updatekey">
+  <h3>2. The update key</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> a new key just for Windows updates, kept only as a locked GitHub secret, with a backup you save in 1Password.</li>
+    <li>No separate key; trust the download and the Windows signature alone.</li>
+  </ol>
+  <p class="why">Why: it matches the Mac's double check (Apple's signature plus Sparkle's key) and is what the security notes promise users.</p>
+</div>
+<div class="decision" id="d-testchannel">
+  <h3>3. How a PC gets test versions</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> a "Get test versions" switch in Settings, off by default. Your Windows test machine turns it on.</li>
+    <li>A separate "loqui test" app installed beside the normal one.</li>
+  </ol>
+  <p class="why">Why: one app to look after, and turning it off simply waits for the next approved version.</p>
+</div>
+<div class="decision" id="d-uninstall">
+  <h3>4. Your data when uninstalling</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> ask whether to also delete history and settings, as the Mac's uninstall script does.</li>
+    <li>Always keep them.</li>
+    <li>Always delete them.</li>
+  </ol>
+  <p class="why">Why: the same choice the Mac gives, and nothing is deleted without asking.</p>
+</div>
+<div class="decision" id="d-store">
+  <h3>5. The Microsoft Store</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> not now. Consider it after launch as a second way in.</li>
+    <li>Publish in the Store at the same time.</li>
+  </ol>
+  <p class="why">Why: the Store reviews apps that watch the keyboard closely and runs its own updates, which would split the testing; the GitHub download comes first.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>The download page and README (step 6). Until then, test versions are on GitHub's releases page only.</li>
+  <li>Any change to how the Mac is built, signed or updated.</li>
+  <li>The Microsoft Store (decision 5).</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>Set up signing</b> (you, about 20 minutes): create the Azure account and Artifact Signing account and submit your ID, following the agent's step-by-step note. When Microsoft approves it, tell the Lead; an agent connects it to GitHub. <span class="ids">SIGN-01</span></li>
+  <li><b>Install the signed test version</b> (Windows test machine): uninstall the old test build, download the newest pre-release from GitHub, run it. No administrator prompt and no "unknown publisher"; the file's properties show James Laws. Dictate once. <span class="ids">SIGN-01, SIGN-02, INST-01, INST-03, PRIV-03</span></li>
+  <li><b>It updates itself</b> (Windows test machine): turn on Get test versions. When the Lead merges a small change, within the hour the update window appears; install it and check your dictionary is still there. <span class="ids">UPD-01 to UPD-04, CHAN-01, CHAN-02</span></li>
+  <li><b>Approve and go back</b> (GitHub): approve the test version in the Promote step; the stable list shows that exact version. The Lead runs a Roll back drill and your test PC returns to the previous version. Then uninstall, choosing to keep your history. <span class="ids">CHAN-03 to CHAN-05, INST-02</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> SIGN-01, SIGN-02, INST-01 to INST-03, UPD-01 to UPD-04, CHAN-01 to CHAN-05, PRIV-03. Earlier steps' checks keep passing.</li>
+    <li><b>Existing code to reuse:</b> <code>release.sh</code> (publish the release before the feed; feed served from <code>docs/</code> on Pages at a stable address, never "latest", because "latest" skips pre-releases), <code>uninstall.sh</code> (ask before deleting data), the vault note on Loqui hosting and updates (where release keys live; never copy keys anywhere).</li>
+    <li><b>Installer:</b> Tauri's NSIS bundle, <code>installMode: currentUser</code>. Two artifacts per version: the full installer (with the model) for downloads, and an update installer without the model for the feed. The model lives in its own folder with a version file; installers add it only when missing or changed and the update installer never removes it. Uninstaller asks about <code>%LOCALAPPDATA%\Loqui</code>.</li>
+    <li><b>Signing:</b> Azure Artifact Signing from GitHub Actions through <code>azure/login</code> with a federated credential (OIDC; no client secret), signing the app, its DLLs, both installers and the uninstaller, with a timestamp. CI verifies every signature (<code>signtool verify /pa</code>) and refuses to publish anything unsigned. The signing account, identity validation and certificate profile are James's; the agent writes him a step-by-step note and does the GitHub side.</li>
+    <li><b>Updates:</b> Tauri's updater plugin with the new public key built in; feeds at <code>https://jameslaws.github.io/loqui/windows/stable.json</code> and <code>…/beta.json</code>, chosen by the Settings switch. Checks once a day and on demand. The private key is a GitHub Actions secret in a <code>release</code> environment; generated without being printed, backed up by James in 1Password, then the local copy deleted.</li>
+    <li><b>Channels and workflows:</b> <code>windows-release.yml</code>: on merge to main, build, sign, publish a GitHub pre-release tagged <code>windows-v0.x.y-beta.N</code> with <code>--latest=false</code>, then commit <code>docs/windows/beta.json</code> (release first, feed second). <code>windows-promote.yml</code>: manual, behind a GitHub environment that needs James's approval; copies the tested pre-release's exact files (checksums compared) to a <code>windows-v0.x.y</code> release, still <code>--latest=false</code>, and writes <code>stable.json</code>. <code>windows-rollback.yml</code>: rebuilds the last good tag's code as the next patch number and promotes it, because installed copies only move forward.</li>
+    <li><b>Shared interfaces and owners:</b> <code>docs/windows/*.json</code> feeds (owned here; step 6 adds the download page's use of <code>stable.json</code>). <code>settings.json</code> gains <code>channel</code> (owned here). The Mac's <code>docs/appcast.xml</code> and <code>v*</code> tags are not touched.</li>
+    <li><b>Privacy check:</b> PRIV-03 extends step 2's network watch over a full install, start, update check and update: only <code>jameslaws.github.io</code> (the feed) and GitHub's release download hosts appear, and only during update checks and downloads.</li>
+    <li><b>Data and outside services:</b> Azure Artifact Signing (James's account), GitHub Releases and Pages. No user data leaves the PC.</li>
+    <li><b>Can't be undone:</b> a published update reaches every PC on that channel; that's why stable needs James's approval and Roll back exists. Microsoft's identity validation is in James's name. Gets the Codex safety review before it ships (risky plan).</li>
+    <li><b>Staging and rollback:</b> staging is the test channel (beta feed and pre-releases); production is the stable feed. Record both, and the Promote and Roll back workflows, in PROJECT.md.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
