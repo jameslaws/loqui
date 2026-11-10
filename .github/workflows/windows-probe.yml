@@ -60,6 +60,7 @@ jobs:
           }
 
   desktop:
+    if: false
     runs-on: windows-latest
     defaults:
       run:
@@ -107,3 +108,45 @@ jobs:
         with:
           name: probe-out
           path: probe-out
+
+  webview:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Make and build a bare Tauri 2 window
+        run: |
+          npx --yes create-tauri-app@latest netprobe -m npm -t vanilla -y
+          cd netprobe
+          npm install
+          npx tauri build --no-bundle
+          Get-ChildItem src-tauri\target\release\*.exe | Select-Object Name, Length
+      - name: Run it for 60 seconds and list every connection its processes open
+        run: |
+          $dnsBefore = Get-DnsClientCache | ForEach-Object Entry | Sort-Object -Unique
+          $exe = Get-ChildItem netprobe\src-tauri\target\release\*.exe | Select-Object -First 1
+          $p = Start-Process $exe.FullName -PassThru
+          $seen = @{}
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          while ($sw.Elapsed.TotalSeconds -lt 60) {
+            $ids = @($p.Id) + @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p.Id -or $_.Name -like 'msedgewebview2*' } | ForEach-Object ProcessId)
+            foreach ($c in Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess }) {
+              $k = "$($c.RemoteAddress):$($c.RemotePort) $($c.State) pid $($c.OwningProcess)"
+              if (-not $seen[$k]) { $seen[$k] = 1; "TCP $k" }
+            }
+            foreach ($u in Get-NetUDPEndpoint -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess }) {
+              $k = "UDP local $($u.LocalAddress):$($u.LocalPort) pid $($u.OwningProcess)"
+              if (-not $seen[$k]) { $seen[$k] = 1; $k }
+            }
+            Start-Sleep -Milliseconds 250
+          }
+          "Processes in the tree: " + (($ids | ForEach-Object { (Get-Process -Id $_ -ErrorAction SilentlyContinue).ProcessName }) -join ', ')
+          "Distinct connections seen: $($seen.Count)"
+          $dnsAfter = Get-DnsClientCache | ForEach-Object Entry | Sort-Object -Unique
+          "New names looked up while it ran (whole machine, includes the runner itself):"
+          Compare-Object $dnsBefore $dnsAfter | Where-Object SideIndicator -eq '=>' | ForEach-Object InputObject
+          Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
