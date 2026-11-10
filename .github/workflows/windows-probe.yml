@@ -1,0 +1,98 @@
+# Throwaway experiment for the Loqui for Windows plan (branch experiment/windows-probe only).
+# Proves the uncertain parts before the plan promises them; deleted once the results are recorded.
+name: Windows probe
+
+on:
+  push:
+    branches: [experiment/windows-probe]
+
+jobs:
+  engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Machine
+        run: |
+          Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-List
+          [Environment]::OSVersion
+          (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' -ErrorAction SilentlyContinue).pv | ForEach-Object { "WebView2 runtime: $_" }
+      - name: Download engine and model
+        run: |
+          $v = "v2.0.1"
+          curl.exe -sSL -o sherpa.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/$v/sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts.tar.bz2"
+          tar -xf sherpa.tar.bz2
+          curl.exe -sSL -o model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2"
+          tar -xf model.tar.bz2
+          Get-ChildItem sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8 -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+          "Model folder MB: " + [math]::Round(((Get-ChildItem sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8 -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)
+          "Engine folder MB: " + [math]::Round(((Get-ChildItem "sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)
+      - name: Make a 60-second English test recording with Windows' own voice
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+          $s.SetOutputToWaveFile("$pwd\long.wav", $fmt)
+          $t = "Thanks for sending the draft over this morning. I read it on the train, and I think the second section works well, but the opening is too long. Could we cut the first two paragraphs and start with the story about the customer who called on a Sunday? That is the moment readers will remember. I would also move the pricing table to the end, because nobody wants numbers before they care about the problem. Let me know if Thursday still works for a call. If not, Friday afternoon is fine, and I can send notes before then so we do not waste the time. One more thing: the headline should say what changes for the reader, not what we built. Talk soon."
+          $s.Speak($t)
+          $s.Dispose()
+          "long.wav bytes: " + (Get-Item long.wav).Length
+      - name: Transcribe the samples and the long recording
+        run: |
+          $v = "v2.0.1"
+          $bin = "sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts\bin\sherpa-onnx-offline.exe"
+          $m = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
+          $wavs = @(Get-ChildItem "$m\test_wavs\*.wav" | ForEach-Object FullName) + "$pwd\long.wav"
+          foreach ($w in $wavs) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            & $bin --tokens="$m\tokens.txt" --encoder="$m\encoder.int8.onnx" --decoder="$m\decoder.int8.onnx" --joiner="$m\joiner.int8.onnx" --model-type=nemo_transducer --num-threads=4 $w 2>&1 | Select-String -Pattern '"text"|RTF|Elapsed|Real time' | ForEach-Object { $_.Line }
+            "== $([IO.Path]::GetFileName($w)) wall clock incl. model load: $($sw.ElapsedMilliseconds) ms"
+          }
+
+  desktop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install a virtual sound cable (VB-CABLE), so a "microphone" exists
+        run: |
+          git clone --depth 1 https://github.com/LABSN/sound-ci-helpers.git helpers
+          & powershell -ExecutionPolicy Bypass -File helpers\windows\setup_sound.ps1
+          Start-Sleep 5
+          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table -AutoSize
+      - name: Download engine and model
+        run: |
+          $v = "v2.0.1"
+          curl.exe -sSL -o sherpa.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/$v/sherpa-onnx-$v-win-x64-shared-MT-Release-no-tts.tar.bz2"
+          tar -xf sherpa.tar.bz2
+          curl.exe -sSL -o model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2"
+          tar -xf model.tar.bz2
+      - name: Make a short spoken sentence with Windows' own voice
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $s.SetOutputToWaveFile("$pwd\say.wav")
+          $s.Speak("Please send the report to Sarah before Friday, and copy the whole team.")
+          $s.Dispose()
+      - name: Shortcut, microphone, engine and paste into Notepad
+        run: |
+          dotnet run --project experiment/probe -c Release -- "$pwd\say.wav" "$pwd\sherpa-onnx-v2.0.1-win-x64-shared-MT-Release-no-tts\bin\sherpa-onnx-offline.exe" "$pwd\sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8" "$pwd\probe-out"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-out
+          path: probe-out
