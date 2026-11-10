@@ -44,7 +44,7 @@ This is the series overview: one outcome per step. Each is proved by its step pl
 
 - Start: step 5 (signed installer, updates and a test channel) merged; James's signing account approved by Microsoft; the Windows test machine with the old test build uninstalled.
 - Action: download the newest pre-release from GitHub and install it. Turn on Get test versions. Wait for the next merged change. Approve a test version in Promote. The Lead runs a Roll back drill. Uninstall, choosing to keep history.
-- Result: no administrator prompt and no "unknown publisher"; the file's properties show James Laws. The update window appears within the hour and the dictionary is still there after updating. The stable list shows the exact approved version; after Roll back the test PC returns to the previous version's behaviour. Uninstall leaves history in place. GitHub's latest release is still the Mac's. Step 5's SIGN-01, SIGN-02, INST-01 to 03, UPD-01 to 04, CHAN-01 to 05 and PRIV-03 all pass.
+- Result: no administrator prompt and no "unknown publisher"; the file's properties show James Laws. The update window appears within the hour and the dictionary is still there after updating. The stable list shows the exact approved version; after Roll back the test PC returns to the previous version's behaviour. Every version made in this step, the drills included, is numbered 0.0.x. Uninstall leaves history in place. GitHub's latest release is still the Mac's. Step 5's SIGN-01, SIGN-02, INST-01 to 03, UPD-01 to 04, CHAN-01 to 05 and PRIV-03 all pass.
 - Checkpoint: 5
 - Test: `WIN-05: A signed version installs with no warnings, updates itself, and can be rolled back`
 

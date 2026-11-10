@@ -89,7 +89,7 @@
   <li><b>Built and signed by GitHub.</b> Releases are made on GitHub's Windows computers through a short-lived login with no stored password. No signing key sits on the Mini or your MacBook.</li>
   <li><b>The installer.</b> For the person's own account, so no administrator is needed. It includes the speech model, so it's about 500 MB to download once. Loqui appears in Start and in Installed apps. Uninstalling asks whether to also delete history and settings, as the Mac's uninstall does.</li>
   <li><b>Updates.</b> loqui checks once a day and when you click Check for updates. A new version shows what's new and installs in one click. Updates are about 12 MB because the speech model stays. Every update is signed with a Windows update key, and loqui refuses any update that isn't.</li>
-  <li><b>The test channel is staging.</b> Every merged change becomes a signed test version within about half an hour. A PC with "Get test versions" switched on in Settings gets it; everyone else only gets versions you approve. Test versions sit on GitHub's releases page marked as pre-releases, linked from nowhere.</li>
+  <li><b>The test channel is staging.</b> Every merged change becomes a signed test version within about half an hour. A PC with "Get test versions" switched on in Settings gets it; everyone else only gets versions you approve. Test versions sit on GitHub's releases page marked as pre-releases, linked from nowhere. Until launch, every Windows version is numbered 0.0.x, so 0.1.0 is kept for the first public one.</li>
   <li><b>Approve and go back.</b> Your Ready to ship approval publishes the exact test version you tried, unchanged. If a version turns out bad, Roll back sends every PC to the last good one automatically.</li>
   <li><b>The Mac is untouched.</b> Windows versions are numbered and listed separately, and GitHub's "latest release" stays the Mac's, so today's Mac links keep working.</li>
 </ul>
@@ -304,7 +304,7 @@
     <li>1.0.0.</li>
     <li>Match the Mac's numbers, releasing both together.</li>
   </ol>
-  <p class="why">Why: the Mac started at 0.1, and the two apps ship on their own schedules, so tied numbers would force empty releases.</p>
+  <p class="why">Why: the Mac started at 0.1, and the two apps ship on their own schedules, so tied numbers would force empty releases. Step 5's test and practice versions are numbered 0.0.x so this number stays free.</p>
 </div>
 
 <div class="decision" id="d-when">
@@ -384,7 +384,7 @@
   <li><b>Dictation</b> (GitHub, then Windows in Parallels on your MacBook): pictures of Notepad holding the spoken sentence and no network connections. Then install the test build, tap Ctrl+Shift+Space, say a few sentences with an "um" in them, tap again: clean text lands, filler gone. <span class="ids">WIN-02</span></li>
   <li><b>Set it up and look back</b> (Windows test machine): the welcome window ticks off the microphone; change the shortcut, add "loki" as "Loqui" to the dictionary and say it; search history and copy from Recent; restart Windows and loqui is by the clock. <span class="ids">WIN-03</span></li>
   <li><b>Your stats</b> (Windows test machine, then GitHub): open Dictation stats; today's words match; pick a day from the shaded calendar. GitHub shows the Mac and Windows giving the same figures. <span class="ids">WIN-04</span></li>
-  <li><b>Signed, updating, reversible</b> (you, about 20 minutes, then the Windows test machine): set up the signing account; install the signed test version with no warning; turn on Get test versions and see the next change arrive by itself; approve a version and watch a Roll back drill. <span class="ids">WIN-05</span></li>
+  <li><b>Signed, updating, reversible</b> (you, about 20 minutes, then the Windows test machine): set up the signing account; install the signed test version with no warning; turn on Get test versions and see the next change arrive by itself; approve a version and watch a Roll back drill, both using practice versions numbered 0.0.x. <span class="ids">WIN-05</span></li>
   <li><b>Go public</b> (private preview, then Ready to ship): the download page offers Windows to Windows visitors and is unchanged for Mac visitors; after a week of daily use, approve; download from the live page on Windows, install and dictate. <span class="ids">WIN-06</span></li>
 </ol>
 </section>
@@ -396,7 +396,8 @@
   <ul>
     <li><b>What to build from:</b> this overview's yes approves the six step plans as written, built in order, each with its own builder: <code>plan/windows-groundwork</code>, <code>plan/windows-dictation</code>, <code>plan/windows-settings</code>, <code>plan/windows-stats</code>, <code>plan/windows-release</code>, <code>plan/windows-launch</code> (folders <code>plans/windows-&lt;step&gt;/</code>). Build notes, check IDs and agent handoffs live in each step plan. Nothing here adds scope.</li>
     <li><b>Checks to turn green:</b> WIN-01 to WIN-06 in this folder's checks.md, each green when every check of its step is green: step 1 WINBASE, CLEAN, PLACE-01, LOOK-01; step 2 DICT, MIC, PASTE, HUD, PRIV-01, PRIV-02, REC-01, PERF-01; step 3 WELC, SET, DICTN, HIST, RECENT, MENU-01, A11Y-01; step 4 STAT, A11Y-02; step 5 SIGN, INST, UPD, CHAN, PRIV-03; step 6 LAUNCH, A11Y-03.</li>
-    <li><b>Order:</b> step plans say 1 needs none; 2 needs 1; 3 needs 2; 4 needs 2 and 3; 5 needs 2; 6 needs 3, 4 and 5. Build in step order: step 5 also builds on step 3's Settings window and tray menu (see changes.md).</li>
+    <li><b>Order:</b> 1 needs none; 2 needs 1; 3 needs 2; 4 needs 2 and 3; 5 needs 2 and 3 (it extends step 3's Settings window and tray menu); 6 needs 3, 4 and 5. Build in step order.</li>
+    <li><b>Version numbers:</b> every Windows version before launch, test and stable, including step 5's Promote and Roll back drills, is 0.0.x. Step 6 makes the first public version 0.1.0.</li>
     <li><b>Shared interfaces and owners, across steps:</b> <code>shared/cleanup-cases.json</code> (step 1; later steps add cases only). <code>windows/design/tokens.json</code> (step 1; screens use only these). <code>%LOCALAPPDATA%\Loqui\settings.json</code> (created in step 2; step 3 adds <code>startAtSignIn</code> and <code>onboarded</code>; step 5 adds <code>channel</code>). <code>history.jsonl</code> and <code>dictation-log.jsonl</code> in the Mac's formats (step 2; read by steps 3 and 4). The tray menu (step 3; step 4 wires Dictation stats, step 5 Check for updates). <code>shared/stats-cases.json</code> and the stats result type (step 4). <code>docs/windows/beta.json</code> and <code>stable.json</code> (step 5). <code>docs/windows/download.html</code> (added in step 6, then owned by the Promote workflow). <code>loqui-core</code> owns all file reading and writing; screens never touch files.</li>
     <li><b>Stack:</b> the stack guide has no Windows default; decision 6 picks Tauri 2 with Rust pinned, React, Vite and TypeScript, pnpm, Biome, Vitest and Playwright; speech through sherpa-onnx with Parakeet TDT 0.6B v3 and the Silero voice activity model, pinned by SHA-256.</li>
     <li><b>Data and outside services:</b> no network at run time except the update check (GitHub Pages) and update downloads (GitHub Releases). Azure Artifact Signing is James's account. CI runs on GitHub's Windows runners only, never on the Mini's runner (it refuses public repos).</li>
