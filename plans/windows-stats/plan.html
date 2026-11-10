@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="none">
+<meta name="plan-touches" content="Windows screens: windows/ui/**; Windows core: windows/crates/loqui-core/**; Shared figures: shared/stats-cases.json; Mac tests: Tests/**, Sources/loqui/StatsView.swift (test seam only)">
+<meta name="plan-size" content="7">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="4">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="2, 3">
+<meta name="plan-lands" content="Windows test build: GitHub checks, https://github.com/jameslaws/loqui/actions">
+<meta name="plan-checkpoint" content="the stats window and calendar picker on Windows, with the Mac's numbers">
+<title>Dictation stats on Windows, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 4: dictation stats</h1>
+  <p class="lede">The Mac's stats window on Windows: words, pace and time saved, the charts, and the calendar that jumps straight to a busy day.</p>
+  <div class="approve"><p><b>What approving this does.</b> A builder adds the stats window to the Windows app, and both apps are checked against one shared set of worked figures so their numbers always agree. It accepts my recommendation below unless you change it.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<ul>
+  <li><b>The stats window.</b> All-time words, dictations and words each; today, this week and this month against the one before; the last 30 days and words by month.</li>
+  <li><b>Patterns for any period.</b> All time, year, month, week or day, with arrows to step and the period spelled out: by weekday, by hour, and the eight tiles (time saved, speaking pace, streak, days active, peak hours, highest volume day, longest dictation, per active day).</li>
+  <li><b>The calendar picker.</b> Click the period to open a calendar shaded by how much you dictated, and click the heavy day to jump to it, as on the Mac.</li>
+  <li><b>The same numbers on both.</b> One sample stats record with its worked answers is shared; the Mac and Windows apps must both produce those exact figures.</li>
+  <li><b>Opens from the tray menu</b> (Dictation stats) and updates while open when you dictate.</li>
+</ul>
+<p>Who it's for: <b>public</b>. Still a test build on the GitHub check page.</p>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the real Mac app, drawn from its own code with sample data, and the Patterns picture from the download page. "After" is the Windows look drawn in a separate page and photographed. Desktop app, so there is no phone size. Click any picture to see it big.</p>
+<h3>Stats</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-stats.png" alt="The Mac stats window: Dictation title, all-time summary, Today, This week and This month cards, last 30 days bars, by month bars, and the Patterns period buttons"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, light</figcaption><img src="shots/after-stats.png" alt="The Windows stats window with the same title, summary, three cards, magenta bar charts for the last 30 days and by month, and the Patterns period buttons with All time selected"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-stats-dark.png" alt="The same stats window in dark mode"></figure>
+</div>
+<h3>Patterns and the calendar picker</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-patterns.png" alt="The Mac Patterns tiles: time saved, speaking pace, current streak, days active, peak hours, highest volume day, longest dictation, per active day"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-stats-picker.png" alt="The Windows Patterns view set to Day, the period Tue, Oct 27, 2026 with its calendar open: October 2026 with days shaded magenta by words dictated and the 27th outlined, over the by-hour chart and the eight tiles"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-stats-picker-dark.png" alt="The same calendar picker in dark mode"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Empty</b> · no dictations yet</figcaption><img src="shots/after-stats-empty.png" alt="The stats window with no dictations: No dictations yet, your words, pace and time saved show up here after your first dictation, press Ctrl+Shift+Space anywhere to start"></figure>
+</div>
+<ul>
+  <li><b>Empty:</b> no dictations at all, as above. A period with none says "No dictations in March 2026." instead of eight zero tiles, as on the Mac.</li>
+  <li><b>Loading:</b> years of records add up in well under a second; no spinner.</li>
+  <li><b>Error:</b> a damaged line in the stats record is skipped and the rest still count, as on the Mac.</li>
+  <li><b>No permission:</b> none needed.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk none"><p><b>Not risky.</b> Why: it only reads loqui's own stats record on your PC, which never holds what you said.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-charts">
+  <h3>1. How the charts are drawn</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> loqui draws its own simple bar charts, matching the Mac's.</li>
+    <li>Use a ready-made chart library.</li>
+  </ol>
+  <p class="why">Why: the charts are only bars with hover labels; drawing them ourselves keeps the Mac's exact look and adds nothing to download or keep updated.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Combining stats from your Mac and your PC. Each computer keeps its own record.</li>
+  <li>New statistics the Mac doesn't have.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>Same numbers</b> (GitHub): the Mac check and both Windows checks list every shared stats figure as passed. <span class="ids">STAT-07</span></li>
+  <li><b>Your stats</b> (Windows test machine): after a few dictations, open Dictation stats from the tray. Today's words match what you said. Pick Day, click the date and choose another day from the shaded calendar; step back with the arrows; pick Month and Year. Dictate once with the window open and watch Today change. <span class="ids">STAT-01 to STAT-06, STAT-08, A11Y-02</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> STAT-01 to STAT-08, A11Y-02. Earlier steps' checks keep passing.</li>
+    <li><b>Existing code to reuse:</b> Mac <code>StatsView.swift</code> (StatsModel: grains, offsets, period labels, comparisons, streaks, peak hours, time saved against 40 words a minute typing, pace only from entries with seconds, the "No dictations in …" rule, tile retitling under a filter) and <code>PeriodPicker.swift</code> (day and week grids, month grid, year list; shading on an absolute scale against the busiest day or month ever, with a square root so quiet days still show; "Picks the whole week").</li>
+    <li><b>Same numbers:</b> add <code>shared/stats-cases.json</code>: one sample dictation log, a fixed "now", a fixed time zone and first weekday, and the expected figures for every card, chart total and tile at each grain. On the Mac, add a test seam so StatsModel can take entries and a clock (no behaviour change) and test it from <code>Tests/loquiTests</code>. On Windows, the figures are computed in <code>loqui-core</code> (Rust) and tested there; the screen only draws them.</li>
+    <li><b>Charts:</b> plain SVG bars in React using step 1's tokens; hover and keyboard focus show the Mac's tooltip text; each bar has an accessible label ("Oct 27: 1,412 words").</li>
+    <li><b>Shared interfaces and owners:</b> the stats command's result type is defined in <code>loqui-core</code> and exported to TypeScript (owned here). The tray menu's Dictation stats item (from step 3) opens this window.</li>
+    <li><b>Testing without Windows:</b> as step 3: the screen runs in a browser on a fake backend for Vitest, Playwright and the axe scan; the Windows check photographs the real window light and dark.</li>
+    <li><b>Data and outside services:</b> reads <code>dictation-log.jsonl</code> only. No network.</li>
+    <li><b>Can't be undone:</b> nothing.</li>
+    <li><b>Staging and rollback:</b> test build on the check run.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
