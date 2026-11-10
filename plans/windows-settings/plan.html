@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="none">
+<meta name="plan-touches" content="Windows screens: windows/ui/**; Windows app: windows/src-tauri/**, windows/crates/loqui-core/**; CI: .github/workflows/windows.yml">
+<meta name="plan-size" content="7">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="3">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="2">
+<meta name="plan-lands" content="Windows test build: GitHub checks, https://github.com/jameslaws/loqui/actions">
+<meta name="plan-checkpoint" content="welcome, settings, dictionary, history and Recent on Windows">
+<title>Settings, history and welcome on Windows, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 3: settings, history and welcome</h1>
+  <p class="lede">Everything you set or look back at on the Mac, on Windows: the welcome window, the shortcut, filler words, your dictionary, history and the Recent menu.</p>
+  <div class="approve"><p><b>What approving this does.</b> A builder adds the Windows welcome, settings and history windows and the full tray menu, all matching the Mac's behaviour in the Windows look from step 1. It accepts my recommendation below unless you change it.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<p>After this step, nothing about Loqui on Windows needs a settings file edited by hand.</p>
+<ul>
+  <li><b>A welcome window on first start.</b> It checks the microphone and leads you to Windows' microphone switch if it's off, then ticks itself off when you turn it on. It shows your shortcut, and offers to start loqui when you sign in. The Mac's Accessibility step has no Windows equivalent, so it isn't there.</li>
+  <li><b>Settings, in two tabs like the Mac.</b> General: change the shortcut by pressing the new one, filler words, how long to keep history, start at sign-in, clear history. Dictionary: what loqui mishears and the spelling you want, with search.</li>
+  <li><b>History.</b> Every saved dictation, newest first, with search, copy and delete, and an empty state that says how to start.</li>
+  <li><b>The full tray menu.</b> The shortcut and whether it's listening, Dictation stats (opens in step 4), Dictation history, Recent (your last five, click to copy), Settings, Welcome and setup, Check for updates (works in step 5), Quit.</li>
+  <li><b>Your Mac settings carry over.</b> The dictionary and filler words use the same file as the Mac, so it can be copied across.</li>
+</ul>
+<p>Who it's for: <b>public</b>. Still a test build on the GitHub check page.</p>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the real Mac app, drawn from its own code with sample data. "After" is the Windows look drawn in a separate page and photographed. Desktop app, so there is no phone size. Click any picture to see it big.</p>
+<h3>Welcome</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-welcome.png" alt="The Mac welcome window: microphone and speech, accessibility and shortcut rows, each with a tick circle, and Finish later"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-welcome.png" alt="The Windows welcome window: a microphone card with Open microphone settings and a note that Windows is blocking desktop apps, a ticked shortcut card showing Ctrl Shift Space, a ticked Start loqui when you sign in switch, and Finish later"></figure>
+</div>
+<h3>Settings, General</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-settings-general.png" alt="The Mac General settings: dictation shortcut, remove filler words with nine filler chips, add a filler word, keep history Forever, Clear History"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-settings-general.png" alt="The Windows General tab: shortcut row with Ctrl Shift Space key caps and Change, cleanup card with the filler switch and chips and an add field, history card with keep history Forever, start loqui when you sign in, and Clear history"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-settings-general-dark.png" alt="The same General tab in dark mode"></figure>
+</div>
+<h3>Settings, Dictionary</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-settings-dictionary.png" alt="The Mac Dictionary tab: search, add term, four rows of heard words and their spellings"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-settings-dictionary.png" alt="The Windows Dictionary tab: search field, Add term button, four rows of heard word, arrow, spelling and a delete button, and the matching rule underneath"></figure>
+</div>
+<h3>History</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-history.png" alt="The Mac history window: search, Clear All, six dictations with time, Copy and delete"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-history.png" alt="The Windows history window: search, Clear all, five dictations in a card list with time, Copy and delete"></figure>
+</div>
+<h3>The tray menu with Recent</h3>
+<p class="muted">The Mac's menu isn't pictured: it lists real recent dictations.</p>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-tray-menu.png" alt="The tray menu: Press Ctrl+Shift+Space to dictate, Dictation stats, Dictation history, Recent with five one-line dictations open beside it, Settings, Welcome and setup, Check for updates, Quit loqui"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-tray-menu-dark.png" alt="The same tray menu in dark mode"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Empty</b> · history</figcaption><img src="shots/after-history-empty.png" alt="The history window with no dictations: No dictations yet, press Ctrl+Shift+Space anywhere and start talking"></figure>
+</div>
+<ul>
+  <li><b>Empty:</b> history as above; Recent says "No dictations yet"; an empty dictionary says "Add words loqui mishears".</li>
+  <li><b>Loading:</b> windows open with their content; nothing here takes long enough to need a spinner.</li>
+  <li><b>Error:</b> a shortcut that would get in the way of typing (no Ctrl or Alt, and not a function key) is refused with "Use Ctrl or Alt with a key, or a function key." A settings file that can't be read is left alone and the window says "Your settings file couldn't be read, so defaults are in use", as on the Mac.</li>
+  <li><b>No permission:</b> the microphone row in the welcome window, above.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk none"><p><b>Not risky.</b> Why: it shows and edits files on your own PC only; Clear history asks first and deletes only loqui's history file, as on the Mac.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-signin">
+  <h3>1. Start loqui when you sign in</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> on by default, with a switch in the welcome window and in Settings.</li>
+    <li>Off by default, as the Mac has it (the Mac has no such setting).</li>
+  </ol>
+  <p class="why">Why: Windows tray apps are expected to start with Windows, and a dictation shortcut is only useful if it's always there.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Stats (step 4) and updates (step 5): their menu items are there and open in those steps.</li>
+  <li>Settings the Mac keeps in its file only (sentence healing words, the pause length, the cleanup log switch). They stay in the file on Windows too.</li>
+  <li>Spoken commands ("new paragraph"): off and hidden, as on the Mac.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>Pictures from Windows</b> (GitHub): the check run shows each window light and dark, taken on the Windows machine, and an accessibility scan with no problems. <span class="ids">MENU-01, A11Y-01</span></li>
+  <li><b>Set it up</b> (Windows test machine): uninstall, install the new test build. The welcome window opens; turn Windows' microphone switch off and on and watch the row tick itself. Change the shortcut to Ctrl+Alt+D and dictate with it. Add "loki" → "Loqui" to the dictionary and say "loki". <span class="ids">WELC-01, WELC-02, SET-01, SET-02, DICTN-01</span></li>
+  <li><b>Look back</b> (Windows test machine): open Dictation history, search, copy one, delete one; open Recent and click one, then paste it. Set history to Off and dictate: nothing new is saved. Clear history. Restart Windows: loqui is by the clock. <span class="ids">SET-03 to SET-05, HIST-01 to HIST-03, RECENT-01</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> WELC-01, WELC-02, SET-01 to SET-05, DICTN-01, HIST-01 to HIST-03, RECENT-01, MENU-01, A11Y-01. Step 2's checks keep passing.</li>
+    <li><b>Existing code to reuse:</b> Mac <code>Onboarding.swift</code> (rows, 1 s polling so a grant ticks off by itself, Finish only when the microphone is allowed), <code>SettingsView.swift</code> (what General and Dictionary hold; save writes only the fields this window owns and keeps the rest of <code>cleanup.json</code>), <code>Shortcut.swift</code> (acceptable combinations, display text), <code>HistoryView.swift</code>, <code>TranscriptionHistory.swift</code> (retention meanings, prune on launch and on change), <code>LoquiApp.swift</code> (menu items, Recent: last five, one line, 48 characters then an ellipsis, click copies).</li>
+    <li><b>Screens:</b> React in <code>windows/ui</code>, step 1's tokens only, one Tauri window per screen opened from the tray (one instance each; reopening focuses it). Screens talk to Rust only through typed commands defined once in <code>loqui-core</code> and exported as TypeScript types; screens never read files.</li>
+    <li><b>Shortcut recorder:</b> pauses the global hook while recording (as the Mac does) and resumes on save or cancel.</li>
+    <li><b>Microphone check:</b> read Windows' consent state for desktop apps; "Open microphone settings" opens <code>ms-settings:privacy-microphone</code>. loqui never changes the switch itself.</li>
+    <li><b>Start at sign-in:</b> the per-user Run key (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>), written and removed by the switch; no administrator.</li>
+    <li><b>Shared interfaces and owners:</b> <code>settings.json</code> gains <code>startAtSignIn</code> and <code>onboarded</code> (owned here). The tray menu is owned here; step 4 wires Dictation stats, step 5 wires Check for updates.</li>
+    <li><b>Testing without Windows:</b> every screen also runs in a browser against a fake backend, so Vitest and Playwright (with an axe accessibility scan) run on the Mini and on Linux CI. The Windows check then opens each real window on <code>windows-latest</code> and photographs it, light and dark.</li>
+    <li><b>Data and outside services:</b> local files only, as above. No network.</li>
+    <li><b>Can't be undone:</b> Clear history deletes the history file, after a confirmation, as on the Mac.</li>
+    <li><b>Staging and rollback:</b> test build on the check run, as in step 2.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
