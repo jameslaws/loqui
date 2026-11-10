@@ -96,17 +96,17 @@ One section per promised outcome. The ID never changes once James has seen it; r
 
 ### CHAN-03: Promote publishes the exact files James tried
 
-- Start: a test version approved by James at Ready to ship.
+- Start: a test version approved by James at Ready to ship (before launch, a 0.0.x version).
 - Action: run `windows-promote.yml` with that version; James approves the environment prompt.
-- Result: a `windows-v…` release whose files have the same checksums as the test version's; `stable.json` points at it; nothing is rebuilt. Without James's approval the workflow waits and changes nothing.
+- Result: a `windows-v…` release whose files have the same checksums as the test version's; `stable.json` points at it; nothing is rebuilt. Without James's approval the workflow waits and changes nothing. No Windows release numbered 0.1.0 or above exists yet.
 - Checkpoint: 4
 - Test: `CHAN-03: Promote publishes the exact files James tried`
 
 ### CHAN-04: Roll back moves every PC to the last good version
 
-- Start: stable version B published after good version A, a PC on B.
+- Start: stable version B published after good version A, a PC on B. In the checkpoint 4 drill, A, B and the rolled-back version are all 0.0.x.
 - Action: run `windows-rollback.yml` naming A.
-- Result: a new version numbered above B, built from A's code, is signed and promoted; the PC on B updates to it on its next check and behaves as A.
+- Result: a new version numbered above B, built from A's code, is signed and promoted; the PC on B updates to it on its next check and behaves as A. The drill uses no number at or above 0.1.0.
 - Checkpoint: 4
 - Test: `CHAN-04: Roll back moves every PC to the last good version`
 
