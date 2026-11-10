@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="none">
+<meta name="plan-touches" content="Windows app: windows/**; Shared rules: shared/cleanup-cases.json (add cases only); CI: .github/workflows/windows.yml">
+<meta name="plan-size" content="8">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="2">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="1">
+<meta name="plan-lands" content="Windows test build: GitHub checks, https://github.com/jameslaws/loqui/actions">
+<meta name="plan-checkpoint" content="speak on Windows and the text lands in Notepad">
+<title>Dictation on Windows, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 2: dictation</h1>
+  <p class="lede">On Windows, press the shortcut, speak, and clean text lands wherever your cursor is, turned into text on the PC itself.</p>
+  <div class="approve"><p><b>What approving this does.</b> A builder makes dictation work on Windows and proves it on GitHub's Windows computers on every change. It accepts my recommendations below unless you change one, including the default shortcut and how you'll try it yourself.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<p>The heart of Loqui, on Windows, working the way it does on the Mac.</p>
+<ul>
+  <li><b>One shortcut, two ways.</b> Tap Ctrl+Shift+Space to start and tap again to stop, or hold it while you talk and let go. Recording starts the moment the key goes down, as on the Mac.</li>
+  <li><b>The dictation bubble.</b> The Mac's dark bubble with the magenta quote marks and live waveform sits at the bottom of the screen, and never takes the cursor away from where you're typing. The loqui icon by the clock turns magenta and pulses while it listens.</li>
+  <li><b>Speech becomes text on the PC.</b> An open speech model that runs on the PC's own processor, with punctuation and capitals. It understands English and 24 other European languages without being told which. Audio never leaves the PC.</li>
+  <li><b>The same cleanup.</b> The step 1 rules run on every dictation, including healing a sentence split by a pause, using the measured pause just as the Mac does.</li>
+  <li><b>Pasted at the cursor.</b> The text is pasted where you were typing and also left on the clipboard. If a window refuses pasted text (programs run as administrator do), the bubble says so and tells you to press Ctrl+V.</li>
+  <li><b>Plain messages when something's wrong.</b> If Windows is blocking the microphone, or there is no microphone, the bubble says what to do.</li>
+  <li><b>Same safety stops as the Mac.</b> It stops by itself after 2 minutes of silence, or 30 minutes in all.</li>
+  <li><b>Records kept the Mac's way.</b> Each dictation is saved to history and to the stats record in the same formats as the Mac, ready for steps 3 and 4 to show. Logs never contain what you said.</li>
+</ul>
+<p>Who it's for: <b>public</b>. This step's build is still a test build on the GitHub check page. Until step 5 signs it, Windows will warn that it comes from an unknown publisher.</p>
+</section>
+
+<section id="how">
+<h2>How it's tested without a Windows machine</h2>
+<p>Every change runs a real dictation on GitHub's Windows computers, end to end, with no person involved:</p>
+<ol>
+  <li>A virtual sound cable gives the machine a microphone, and Windows' microphone switch for desktop apps is turned on.</li>
+  <li>Notepad opens. A script presses Ctrl+Shift+Space the way a keyboard does.</li>
+  <li>Windows' own voice speaks a sentence into the cable. loqui hears it, turns it into text and pastes it.</li>
+  <li>The check reads Notepad's text back, compares it word for word, and saves a picture of the screen.</li>
+  <li>While it runs, every network connection loqui opens is listed. The check fails if there is any.</li>
+</ol>
+<p>The same check covers holding the key, a 60-second dictation, a dictionary word, Windows blocking the microphone, and the Arm version. This was proved in the experiment before planning: the picture below is from that run.</p>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the real Mac app, drawn from its own code. "After" is the Windows look drawn in a separate page and photographed, except the last picture, which is a real Windows screen from the experiment. Desktop app, so there is no phone size. Click any picture to see it big.</p>
+<h3>Listening</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac bubble</figcaption><img src="shots/before-mac-hud.png" alt="The Mac's dictation bubble: two magenta quote marks around a live magenta waveform on a dark pill"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, light</figcaption><img src="shots/after-listening.png" alt="Notepad on a Windows desktop with the cursor ready, the same dark bubble with the waveform at the bottom of the screen, and the loqui icon by the clock in magenta"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-listening-dark.png" alt="The same listening screen in dark mode"></figure>
+</div>
+<h3>Pasted</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-pasted.png" alt="Notepad now holding the dictated sentence at the cursor, and the bubble showing a check mark and PASTED"></figure>
+  <figure class="mac"><figcaption><b>Proof</b> · a real Windows run</figcaption><img src="shots/ci-proof-notepad.png" alt="A real screenshot from GitHub's Windows computer: Notepad holding 'Please send the report to Sarah before Friday, and copy the whole team.' typed by the experiment from spoken audio"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>No permission</b> · microphone blocked</figcaption><img src="shots/after-mic-blocked.png" alt="The bubble showing a warning: Windows is blocking the microphone; turn on Let desktop apps access your microphone in Settings, then try again"></figure>
+  <figure class="mac"><figcaption><b>Error</b> · paste refused</figcaption><img src="shots/after-on-clipboard.png" alt="An administrator Notepad window and the bubble saying this window won't accept typing from loqui and the text is on the clipboard, press Ctrl+V"></figure>
+</div>
+<ul>
+  <li><b>Empty:</b> if nothing was heard, the bubble simply goes away and nothing is pasted, as on the Mac.</li>
+  <li><b>Loading:</b> the speech model loads in the background when loqui starts (about 2.5 seconds). A press before then still records, and the text arrives once it has loaded. While the last words are turned into text, the bubble shows a small spinner.</li>
+  <li><b>Error:</b> no microphone at all gives "loqui can't find a microphone". A window that refuses pasted text gives the message above.</li>
+  <li><b>No permission:</b> Windows' microphone switch, above. Step 3's welcome window leads you to it.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk none"><p><b>Not risky.</b> Why: it's a test build, nothing is sent anywhere, and it touches no one's existing data. It does watch the keyboard, as the Mac app does: it acts only on the one shortcut and records no other keys, and a check proves typed text never reaches any loqui file.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-engine">
+  <h3>1. Which speech engine</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> NVIDIA's open Parakeet model (version 3), run by an open engine on the PC's processor.</li>
+    <li>OpenAI's open Whisper model.</li>
+    <li>Windows' own speech recognition.</li>
+  </ol>
+  <p class="why">Why: in the experiment it was word-perfect and eight to sixteen times faster than speaking, on ordinary processors. Whisper needs a graphics card to be as quick. Windows' own dictation sends audio to Microsoft, which breaks the promise.</p>
+</div>
+<div class="decision" id="d-model">
+  <h3>2. Where the speech model comes from</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> inside the installer. The download is about 500 MB, and loqui never fetches anything but the update check.</li>
+    <li>A small installer that downloads the model from GitHub on first start.</li>
+  </ol>
+  <p class="why">Why: a first-start download would add a second network request, so the README's "the only network request is the update check" would have to change. Updates stay small either way, because the model is kept between versions.</p>
+</div>
+<div class="decision" id="d-shortcut">
+  <h3>3. The default shortcut</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Ctrl+Shift+Space, changeable in Settings (step 3).</li>
+    <li>Ctrl+R, the direct match for the Mac's Cmd+R.</li>
+    <li>F9 on its own.</li>
+  </ol>
+  <p class="why">Why: Ctrl+R reloads the page in every Windows browser, and many laptop keyboards need Fn for F9. Ctrl+Shift+Space is free in nearly every app.</p>
+</div>
+<div class="decision" id="d-clipboard">
+  <h3>4. Your text on the clipboard</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> leave it on the clipboard like the Mac, but keep it out of Windows' clipboard history and its sync to your Microsoft account.</li>
+    <li>Leave it on the clipboard, history and sync included (Windows' default).</li>
+    <li>Put back whatever was on the clipboard before.</li>
+  </ol>
+  <p class="why">Why: Windows can upload clipboard contents to Microsoft to share them with your other devices, which would carry dictated text off the PC.</p>
+</div>
+<div class="decision" id="d-tryit">
+  <h3>5. How you try it yourself</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Parallels Desktop on your MacBook (about $100 a year) running Windows 11 for Arm, which is free to install for testing. It uses the MacBook's microphone and keyboard.</li>
+    <li>A second-hand Windows laptop, about $300 once.</li>
+    <li>Only the pictures from the checks, until the launch step.</li>
+  </ol>
+  <p class="why">Why: you see it from this step on, with your own voice, without another machine on the desk; an agent can set it up over the MacBook connection once you've bought Parallels.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Changing the shortcut on screen, the dictionary and filler words on screen, history and the Recent menu, the welcome window (step 3). Until then they're set in the settings file.</li>
+  <li>Stats (step 4); signing, installer and updates (step 5); the download page (step 6).</li>
+  <li>Pasting into programs run as administrator. The text is on the clipboard instead.</li>
+  <li>Using a graphics card for speech, and choosing between speech models.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>Proved on Windows</b> (GitHub, on your MacBook): open the pull request's checks. The Windows check shows pictures of Notepad holding the spoken sentence, for tap, hold and a 60-second dictation, and a line saying loqui opened no network connections. <span class="ids">DICT-01 to DICT-07, PASTE-01, HUD-01, HUD-02, PRIV-01, PRIV-02, REC-01</span></li>
+  <li><b>Your own voice</b> (the Windows test machine from decision 5): install the test build, open Notepad, tap Ctrl+Shift+Space, say a few sentences with an "um" in them, tap again. The text lands cleaned up, with the filler gone. Hold the shortcut and talk, then let go. Turn the microphone switch off in Windows Settings and try again: the bubble says what to do. <span class="ids">MIC-01, MIC-02, PASTE-02, PERF-01</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> DICT-01 to 07, MIC-01, MIC-02, PASTE-01, PASTE-02, HUD-01, HUD-02, PRIV-01, PRIV-02, REC-01, PERF-01. Step 1's CLEAN checks keep passing; add shared cases only.</li>
+    <li><b>Existing code to reuse:</b> Mac <code>VoiceKeyService.swift</code> (gesture machine states, 0.35 s hold threshold, exact modifier match on key-down, key-up matched by key code only while a gesture is in flight, autorepeat swallowed, reset on a lost key-up; watchdog 120 s silence and 30 min ceiling; 80 ms pause before paste; bubble timings 0.9 s and 1.8 s; log lines). <code>VoiceTranscriber.swift</code> (timed healing from segment gaps). <code>DictationLog.swift</code>, <code>TranscriptionHistory.swift</code>, <code>CleanupAudit.swift</code> for file formats, retention and the 2 MB audit log limit. The experiment code in <code>plans/windows-dictation/experiment/</code>: hook thread, SendInput, clipboard formats, Notepad readback, VB-CABLE and microphone consent setup.</li>
+    <li><b>Keyboard:</b> <code>WH_KEYBOARD_LL</code> on its own thread with a message loop; the callback only matches and posts to a channel, because Windows silently removes slow hooks. Accept injected key events (the checks rely on them) but tag loqui's own Ctrl+V with a marker in <code>dwExtraInfo</code> and ignore it. Allowed shortcuts mirror the Mac: Ctrl or Alt with a key, or a bare F1 to F24.</li>
+    <li><b>Audio and speech:</b> WASAPI shared mode on the default communications microphone, resampled to 16 kHz mono; rebuild on device change; log starvation over 5 s. sherpa-onnx C API (v2.0.1 shared build) with Parakeet TDT 0.6B v3 int8 and the Silero voice activity model, both pinned by SHA-256. Cut segments at pauses while recording so only the last segment is decoded after release; feed segment gaps to the timed heal. Load the model once at start on a background thread and keep it.</li>
+    <li><b>Paste:</b> clipboard set with Unicode text plus <code>CanIncludeInClipboardHistory</code> and <code>CanUploadToCloudClipboard</code> set to 0 (decision 4). Then SendInput Ctrl+V. If the foreground process runs at a higher integrity level than loqui, skip the paste and show the clipboard message.</li>
+    <li><b>Bubble:</b> a second Tauri window: transparent, always on top, not in the taskbar, never activated, ignores the mouse; bottom centre of the monitor holding the foreground window. Uses step 1's tokens.</li>
+    <li><b>Shared interfaces and owners:</b> <code>%LOCALAPPDATA%\Loqui\settings.json</code> (shortcut, history retention days with the Mac's meanings: -1 off, 0 forever, N days) is created here; step 3 adds fields and the screens. <code>history.jsonl</code> and <code>dictation-log.jsonl</code> keep the Mac's JSON shapes; steps 3 and 4 read them. The core crate owns all file reading and writing; screens never touch files directly.</li>
+    <li><b>Model files:</b> the test build packs the model from the sherpa-onnx release, checked against its SHA-256 in CI. Installed under the app's folder in <code>models\</code>; step 5's installer keeps it across updates. The app never downloads anything.</li>
+    <li><b>Checks:</b> <code>windows/e2e/</code> drives the run described above on <code>windows-latest</code> with VB-CABLE (pinned by SHA-256) and the microphone consent keys. The Arm runner has no proven virtual cable driver, so its run uses a test-only file audio source compiled only into test builds (a Cargo feature), never into release builds; CI fails if a release build contains it. Network watch: list TCP connections owned by loqui and its web view processes for the whole run; any non-loopback address fails PRIV-01.</li>
+    <li><b>Data and outside services:</b> none at run time. CI downloads the engine, model and VB-CABLE, each pinned by SHA-256.</li>
+    <li><b>Can't be undone:</b> nothing.</li>
+    <li><b>Staging and rollback:</b> the test build is the check run's attachment; going back means using an earlier run's build.</li>
+    <li><b>Experiments (2026-11-10):</b> <a href="https://github.com/jameslaws/loqui/actions/runs/42824603865">engine run</a>: model 640 MB on disk (487 MB download), engine 67 MB; 43.6 s of speech in 5.2 s on a 2-core AMD EPYC runner and 2.8 s on a 4-core Arm Cobalt 100; model load about 2.5 s; German, Spanish and French samples exact. <a href="https://github.com/jameslaws/loqui/actions/runs/42825237405">Desktop run</a>: the hook saw and swallowed an injected Ctrl+Shift+Space; first try failed with "access denied" because Windows' desktop microphone switch was off, then capture through VB-CABLE gave an exact transcript in 3.2 s including model load, and Ctrl+V into Notepad matched exactly. <a href="https://github.com/jameslaws/loqui/actions/runs/42825640143">Web view run</a>: a bare Tauri 2 window ran 60 s with no internet connections and no new name lookups on the machine. Not measured yet: memory use (PERF-01 records it).</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
