@@ -8,6 +8,7 @@ on:
 
 jobs:
   engine:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +82,16 @@ jobs:
           tar -xf sherpa.tar.bz2
           curl.exe -sSL -o model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2"
           tar -xf model.tar.bz2
+      - name: Turn on Windows' "let desktop apps use the microphone" privacy switch
+        run: |
+          foreach ($root in 'HKLM:', 'HKCU:') {
+            $k = "$root\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone"
+            "before $root : " + (Get-ItemProperty $k -ErrorAction SilentlyContinue).Value
+            New-Item -Path $k -Force | Out-Null
+            Set-ItemProperty -Path $k -Name Value -Value Allow
+            New-Item -Path "$k\NonPackaged" -Force | Out-Null
+            Set-ItemProperty -Path "$k\NonPackaged" -Name Value -Value Allow
+          }
       - name: Make a short spoken sentence with Windows' own voice
         run: |
           Add-Type -AssemblyName System.Speech
