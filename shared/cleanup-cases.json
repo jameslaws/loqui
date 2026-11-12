@@ -49,7 +49,7 @@
     { "id": "lone-i-05", "rule": "lone-i", "in": "naïve i guess", "out": "Naïve I guess" },
 
     { "id": "sentence-heal-01", "rule": "sentence-heal", "in": "we could go. or we could stay", "out": "We could go or we could stay" },
-    { "id": "sentence-heal-02", "rule": "sentence-heal", "in": "I read the report. which reminds me", "out": "I read the report, which reminds me" },
+    { "id": "sentence-heal-02", "rule": "sentence-heal", "in": "I read the report. which reminds me", "out": "I read the report which reminds me" },
     { "id": "sentence-heal-03", "rule": "sentence-heal", "in": "we met Dana. whose team won", "out": "We met Dana, whose team won" },
     { "id": "sentence-heal-04", "rule": "sentence-heal", "in": "the client. whom we called", "out": "The client, whom we called" },
     { "id": "sentence-heal-05", "rule": "sentence-heal", "in": "I stayed late. Because the build broke", "out": "I stayed late because the build broke" },
