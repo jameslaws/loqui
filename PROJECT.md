@@ -1,5 +1,5 @@
 ---
-playbook: v5.2.2
+playbook: v5.3.0
 skills: [core, crew, planning, testing, code-standards, checkpoint, shipping, stack-guide, access, accessibility, design-slot, playbook]
 access: public             # anyone downloads it, no account
 design: proposed-in-plan   # Mac: BRAND.md. Windows: windows/design/tokens.json (approved in plans/windows-groundwork)
