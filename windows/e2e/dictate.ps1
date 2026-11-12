@@ -410,6 +410,10 @@ switch ($Verb) {
     Start-Sleep -Milliseconds $mid
     if ($Shot) { [Dk]::Screenshot("$Shot-listening.png") }
     Start-Sleep -Milliseconds ([int]($seconds * 1000) - $mid + $After)
+    # Notepad again, in case something else (a stray Windows prompt on GitHub's
+    # computers) came to the front meanwhile. A no-op when Notepad is in front,
+    # so it can't hide loqui taking the foreground: the sampler records that.
+    [Dk]::Focus($h)
     $stoppedAt = $sampler.Clock.ElapsedMilliseconds
     if ($Mode -eq 'hold') { [Dk]::Up($keys) } else { [Dk]::Tap($keys) }
     $landed = Wait-Text $h $before 20000

@@ -54,6 +54,9 @@ async function startsOnThisPc() {
   const started = desk("start", { Exe: installed.exe, Shot: join(shots, `${label}-start.png`) });
   expect(started.ms).toBeLessThanOrEqual(2000);
   running = started.pid;
+  // The first start opens the welcome window (WELC-01). Wait for it, so it
+  // can't arrive while the tray menu is open and close it under the click.
+  expect(desk("window", { ProcessId: running, Title: "Welcome to loqui", Wait: 30000 }).title).toBe("Welcome to loqui");
 
   const menu = desk("open-menu", { ProcessId: running, Shot: join(shots, `${label}-menu.png`) });
   // The full menu (MENU-01 in plans/windows-version): it replaced groundwork's

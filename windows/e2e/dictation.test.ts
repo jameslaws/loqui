@@ -83,6 +83,9 @@ beforeAll(async () => {
   ]) {
     dk("make-wav", { Text: text, Wav: wav(name) });
   }
+  // GitHub's Arm computers sometimes start a Windows Subsystem for Linux
+  // installer that takes the front of the screen; close it.
+  ps("Get-Process wsl, wslinstaller, wslhost -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
   // A fresh start: loqui's records and settings from earlier runs removed (never the installed app).
   ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
   for (const name of ["history.jsonl", "dictation-log.jsonl", "settings.json", "cleanup.json", "logs"]) {

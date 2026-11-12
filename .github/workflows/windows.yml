@@ -186,6 +186,7 @@ jobs:
         if: (success() || failure()) && matrix.arch == 'x64'
         run: |
           foreach ($w in 'sentence', 'paragraph') {
+            if (-not (Test-Path "target\e2e\$w.wav")) { "no $w recording: the dictation checks didn't get that far"; continue }
             cargo run --release -q -p loqui-speech --example transcribe -- target\release "target\e2e\$w.wav"
           }
 
