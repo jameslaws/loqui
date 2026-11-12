@@ -1,4 +1,4 @@
-import type { General, HistoryItem, ShortcutView, Term, Welcome } from "./bindings";
+import type { General, HistoryItem, ShortcutView, Stats, StatsRequest, Term, Welcome } from "./bindings";
 import { events } from "./bindings";
 
 /**
@@ -26,9 +26,12 @@ export interface Backend {
   openMicrophoneSettings(): Promise<void>;
   finishWelcome(): Promise<void>;
   closeWindow(): Promise<void>;
+  stats(request: StatsRequest): Promise<Stats>;
   /** Call `then` whenever history changes; returns how to stop. */
   onHistoryChanged(then: () => void): () => void;
   onSettingsChanged(then: () => void): () => void;
+  /** A dictation was counted for stats. */
+  onStatsChanged(then: () => void): () => void;
 }
 
 async function tauriBackend(): Promise<Backend> {
@@ -58,8 +61,10 @@ async function tauriBackend(): Promise<Backend> {
     openMicrophoneSettings: () => invoke("open_microphone_settings"),
     finishWelcome: () => invoke("finish_welcome"),
     closeWindow: () => invoke("close_window"),
+    stats: (request) => invoke("stats", { request }),
     onHistoryChanged: on(events.historyChanged),
     onSettingsChanged: on(events.settingsChanged),
+    onStatsChanged: on(events.statsChanged),
   };
 }
 

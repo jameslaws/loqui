@@ -75,6 +75,12 @@ pub fn settings(app: &AppHandle) {
     open(app, SETTINGS, "loqui settings", (640.0, 640.0), false);
 }
 
+/// Tall enough for the cards and both charts above a 768-pixel screen's
+/// taskbar; the rest scrolls, and the window can be made bigger.
+pub fn stats(app: &AppHandle) {
+    open(app, "stats", "loqui dictation stats", (680.0, 660.0), true);
+}
+
 pub fn history(app: &AppHandle) {
     open(
         app,

@@ -57,6 +57,7 @@ fn main() {
             commands::open_microphone_settings,
             commands::finish_welcome,
             commands::close_window,
+            stats::stats,
         ])
         .setup(|app| {
             let dir = loqui_core::records::data_dir()

@@ -18,12 +18,15 @@ tauri-build = "=2.7.4"
 [dependencies]
 tauri = { version = "=2.12.5", features = ["tray-icon", "image-png"] }
 loqui-core = { path = "../crates/loqui-core" }
+# The time now in the PC's own time zone, for stats (the version loqui-core uses).
+chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
 
 [target.'cfg(windows)'.dependencies]
 loqui-speech = { path = "../crates/loqui-speech" }
 serde_json = "=1.0.154"
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
+  "Win32_Globalization",
   "Win32_Graphics_Gdi",
   "Win32_Security",
   "Win32_System_DataExchange",

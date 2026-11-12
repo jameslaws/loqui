@@ -333,8 +333,9 @@ impl Center {
         self.log(&format!(
             "dictation ended ({reason}) — {words} words in {secs}s"
         ));
-        if let Err(e) = self.records.record_stats(words, Some(spoken), now) {
-            self.log(&format!("couldn't save the stats line: {e}"));
+        match self.records.record_stats(words, Some(spoken), now) {
+            Ok(()) => crate::commands::stats_changed(&self.app),
+            Err(e) => self.log(&format!("couldn't save the stats line: {e}")),
         }
         let retention = Settings::load(&self.data.join("settings.json"))
             .settings

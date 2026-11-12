@@ -22,6 +22,12 @@ pub fn history_changed(app: &AppHandle) {
     let _ = app.emit(events::HISTORY_CHANGED, ());
 }
 
+/// A dictation was counted: an open stats window shows it at once.
+#[cfg(windows)]
+pub fn stats_changed(app: &AppHandle) {
+    let _ = app.emit(events::STATS_CHANGED, ());
+}
+
 fn settings_changed(app: &AppHandle) {
     let _ = app.emit(events::SETTINGS_CHANGED, ());
 }

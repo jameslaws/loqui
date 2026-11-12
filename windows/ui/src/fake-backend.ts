@@ -6,8 +6,9 @@ import { defaultFillers, sampleDictionary, sampleHistory } from "./sample";
  * A stand-in for loqui, for the screen tests in a plain browser. It keeps the
  * same promises in memory and lets a test look inside (`window.loquiFake`).
  * The real rules live in loqui-core and are tested there; this only answers
- * the way loqui answers. Start it with `?history=empty`, `?mic=blocked` or
- * `?problem=1` in the page's address.
+ * the way loqui answers. Start it with `?history=empty`, `?stats=empty`,
+ * `?mic=blocked` or `?problem=1` in the page's address. Stats come from
+ * loqui-core itself, through the page server (ui/fake-stats.ts).
  */
 export interface FakeState {
   shortcut: string;
@@ -23,6 +24,8 @@ export interface FakeState {
   hookPaused: boolean;
   closed: boolean;
   problem: string | null;
+  /** Dictations counted for stats since the page opened, on top of the shared sample. */
+  statsAdded: { words: number; seconds: number }[];
 }
 
 declare global {
@@ -52,8 +55,9 @@ export function fakeBackend(): Backend {
     hookPaused: false,
     closed: false,
     problem: ask.get("problem") ? "Your settings file couldn't be read, so defaults are in use." : null,
+    statsAdded: [],
   };
-  const listeners = { history: new Set<() => void>(), settings: new Set<() => void>() };
+  const listeners = { history: new Set<() => void>(), settings: new Set<() => void>(), stats: new Set<() => void>() };
   const emit = (which: keyof typeof listeners) => {
     for (const then of listeners[which]) then();
   };
@@ -70,6 +74,9 @@ export function fakeBackend(): Backend {
       state.microphoneAllowed = true;
     },
     dictate: (text) => {
+      const words = text.split(/\s+/).filter(Boolean).length;
+      state.statsAdded.push({ words, seconds: Math.max(1, Math.round((words / 150) * 60)) });
+      emit("stats");
       if (state.retention < 0) return;
       state.history.unshift({ at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), text });
       emit("history");
@@ -144,7 +151,21 @@ export function fakeBackend(): Backend {
     closeWindow: async () => {
       state.closed = true;
     },
+    stats: async (request) => {
+      const answer = await fetch("/__fake/stats", {
+        method: "POST",
+        body: JSON.stringify({
+          request,
+          empty: ask.get("stats") === "empty",
+          added: state.statsAdded,
+          shortcut: state.shortcut,
+        }),
+      });
+      if (!answer.ok) throw await answer.text();
+      return answer.json();
+    },
     onHistoryChanged: subscribe("history"),
     onSettingsChanged: subscribe("settings"),
+    onStatsChanged: subscribe("stats"),
   };
 }

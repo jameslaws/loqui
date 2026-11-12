@@ -736,12 +736,10 @@ fn hour_tick(h: usize) -> String {
 /// Everything the window shows, as text and bars.
 pub fn view(f: &Figures, shortcut: &str, first_weekday: Weekday) -> Stats {
     let p = &f.period;
-    let empty_text = p.empty.then(|| {
-        if p.label == "Today" {
-            "No dictations yet today.".to_string()
-        } else {
-            format!("No dictations in {}.", p.label)
-        }
+    let empty_text = p.empty.then(|| match p.label.as_str() {
+        "Today" => "No dictations yet today.".to_string(),
+        "Yesterday" => "No dictations yesterday.".to_string(),
+        label => format!("No dictations in {label}."),
     });
     let bar = |label: String, tick: String, words: u64| Bar {
         label,
@@ -1032,6 +1030,11 @@ mod tests {
         assert_eq!(
             view(&f, "", Weekday::Sun).period.empty_text.as_deref(),
             Some("No dictations yet today.")
+        );
+        let f = figures(&log, at("2026-11-10 10:00"), Weekday::Sun, Grain::Day, -1);
+        assert_eq!(
+            view(&f, "", Weekday::Sun).period.empty_text.as_deref(),
+            Some("No dictations yesterday.")
         );
     }
 
