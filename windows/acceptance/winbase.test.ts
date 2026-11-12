@@ -30,8 +30,9 @@ function desk(verb: string, args: Record<string, string | number> = {}) {
 }
 
 function installer(): string {
-  const dir = join(windowsDir, "target", "release", "bundle", "nsis");
-  const file = readdirSync(dir).find((name) => name.endsWith("-setup.exe"));
+  // The full installer, the one people download (pnpm build: scripts/release/build.mjs).
+  const dir = join(windowsDir, "target", "installers");
+  const file = readdirSync(dir).find((name) => name.startsWith("loqui-setup-") && name.endsWith(".exe"));
   if (!file) throw new Error(`no installer in ${dir}; run pnpm build first`);
   return join(dir, file);
 }
