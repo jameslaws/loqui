@@ -39,6 +39,7 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::general,
             commands::begin_shortcut,
@@ -57,6 +58,10 @@ fn main() {
             commands::open_microphone_settings,
             commands::finish_welcome,
             commands::close_window,
+            updates::updates,
+            updates::check_for_updates,
+            updates::install_update,
+            updates::set_test_versions,
         ])
         .setup(|app| {
             let dir = loqui_core::records::data_dir()
@@ -65,6 +70,9 @@ fn main() {
             let settings = store.settings().settings;
             app.manage(store);
             tray::install(app.handle(), &settings.shortcut.to_string())?;
+            // Checks as loqui starts and once a day; not from development builds,
+            // which Check for updates still can.
+            updates::start(app.handle(), !cfg!(debug_assertions));
             #[cfg(windows)]
             {
                 if let Err(e) = dictation::start(app.handle()) {

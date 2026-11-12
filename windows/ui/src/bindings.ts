@@ -23,4 +23,28 @@ export type Welcome = {
  */
 microphoneAllowed: boolean, shortcut: ShortcutView, startAtSignIn: boolean, };
 
-export const events = { historyChanged: "history-changed", settingsChanged: "settings-changed" } as const;
+export type UpdateStatus = { "state": "notChecked" } | { "state": "checking" } | { "state": "upToDate" } | { "state": "available", version: string, 
+/**
+ * The release notes: one change per line, each starting "- ".
+ */
+notes: string, 
+/**
+ * The download, in whole megabytes, when the list says.
+ */
+sizeMb: number | null, } | { "state": "downloading", percent: number | null, } | { "state": "installing" } | { "state": "checkFailed", message: string, } | { "state": "installFailed", message: string, };
+
+export type Updates = { 
+/**
+ * The version running now.
+ */
+version: string, 
+/**
+ * "Get test versions" is on.
+ */
+testVersions: boolean, 
+/**
+ * When the last check finished (ISO 8601, UTC), if there was one.
+ */
+checkedAt: string | null, status: UpdateStatus, };
+
+export const events = { historyChanged: "history-changed", settingsChanged: "settings-changed", updatesChanged: "updates-changed" } as const;

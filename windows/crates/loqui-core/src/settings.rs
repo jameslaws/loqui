@@ -1,7 +1,8 @@
 //! `%LOCALAPPDATA%\Loqui\settings.json`: the Windows app's own settings. The
 //! dictation part created it with the shortcut and how long history is kept;
 //! the settings screens add whether loqui starts at sign-in and whether the
-//! welcome was finished. Read as forgivingly as `cleanup.json`: missing keys
+//! welcome was finished; updates add which versions this PC gets (`channel`).
+//! Read as forgivingly as `cleanup.json`: missing keys
 //! take their defaults, and a file that won't parse is left untouched (so a
 //! typo can be fixed) while the defaults are used.
 //!
@@ -9,6 +10,7 @@
 //! the file, so a later part's settings (and anything typed in by hand) survive.
 
 use crate::shortcut::Shortcut;
+use crate::updates::Channel;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -22,6 +24,8 @@ pub struct Settings {
     pub start_at_sign_in: bool,
     /// The welcome window was finished, so it no longer opens by itself.
     pub onboarded: bool,
+    /// "Get test versions": which update list this PC reads (decision 12: off).
+    pub channel: Channel,
 }
 
 impl Default for Settings {
@@ -31,6 +35,7 @@ impl Default for Settings {
             history_retention_days: 0,
             start_at_sign_in: true,
             onboarded: false,
+            channel: Channel::Stable,
         }
     }
 }
@@ -45,6 +50,8 @@ struct Stored {
     history_retention_days: Option<i64>,
     start_at_sign_in: Option<bool>,
     onboarded: Option<bool>,
+    /// "stable" or "test"; anything else reads as stable.
+    channel: Option<String>,
 }
 
 /// Settings as read, plus a line for the log when something fell back to a default.
@@ -81,6 +88,10 @@ impl Settings {
                     .unwrap_or(defaults.history_retention_days),
                 start_at_sign_in: stored.start_at_sign_in.unwrap_or(defaults.start_at_sign_in),
                 onboarded: stored.onboarded.unwrap_or(defaults.onboarded),
+                channel: match stored.channel.as_deref() {
+                    Some("test") => Channel::Test,
+                    _ => defaults.channel,
+                },
             },
             problem,
             unreadable: false,
@@ -93,6 +104,13 @@ impl Settings {
             history_retention_days: Some(self.history_retention_days),
             start_at_sign_in: Some(self.start_at_sign_in),
             onboarded: Some(self.onboarded),
+            channel: Some(
+                match self.channel {
+                    Channel::Stable => "stable",
+                    Channel::Test => "test",
+                }
+                .into(),
+            ),
         };
         match serde_json::to_value(stored) {
             Ok(Value::Object(map)) => map,
@@ -200,13 +218,27 @@ mod tests {
     }
 
     #[test]
+    fn get_test_versions_is_saved_as_the_channel() {
+        let path = scratch("channel");
+        assert_eq!(Settings::load(&path).settings.channel, Channel::Stable);
+        Settings::update(&path, |s| s.channel = Channel::Test).unwrap();
+        assert_eq!(Settings::load(&path).settings.channel, Channel::Test);
+        let saved: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(saved["channel"], "test");
+        // A value typed in by hand that loqui doesn't know means the public list.
+        let odd = Settings::from_json(r#"{"channel": "nightly"}"#).unwrap();
+        assert_eq!(odd.settings.channel, Channel::Stable);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
     fn a_broken_file_is_left_alone_and_a_missing_one_is_created() {
         let path = scratch("created");
         let created = Settings::load(&path);
         assert_eq!(created.settings, Settings::default());
         assert_eq!(
             std::fs::read_to_string(&path).unwrap(),
-            "{\n  \"historyRetentionDays\": 0,\n  \"onboarded\": false,\n  \"shortcut\": \"Ctrl+Shift+Space\",\n  \"startAtSignIn\": true\n}"
+            "{\n  \"channel\": \"stable\",\n  \"historyRetentionDays\": 0,\n  \"onboarded\": false,\n  \"shortcut\": \"Ctrl+Shift+Space\",\n  \"startAtSignIn\": true\n}"
         );
 
         std::fs::write(&path, "{ not json").unwrap();
@@ -225,12 +257,12 @@ mod tests {
     fn saving_keeps_keys_loqui_does_not_own() {
         let path = scratch("kept");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, r#"{"shortcut": "F9", "channel": "test"}"#).unwrap();
+        std::fs::write(&path, r#"{"shortcut": "F9", "somethingNew": "kept"}"#).unwrap();
         let saved = Settings::update(&path, |s| s.start_at_sign_in = false).unwrap();
         assert_eq!(saved.shortcut.to_string(), "F9");
         let text = std::fs::read_to_string(&path).unwrap();
         let value: Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(value["channel"], "test");
+        assert_eq!(value["somethingNew"], "kept");
         assert_eq!(value["startAtSignIn"], false);
         assert_eq!(value["shortcut"], "F9");
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();

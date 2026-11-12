@@ -13,6 +13,7 @@ pub mod records;
 pub mod settings;
 pub mod shortcut;
 pub mod timed_heal;
+pub mod updates;
 pub mod voice_key;
 
 pub use cleanup::clean;
