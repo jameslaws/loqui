@@ -89,10 +89,22 @@ fn busy(status: Option<&UpdateStatus>) -> bool {
     )
 }
 
-fn status(app: &AppHandle) -> Option<UpdateStatus> {
-    let checker = app.state::<Checker>();
-    let inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
-    inner.status.clone()
+/// A check by hand begins: it says "Checking" at once, before any window can
+/// show the last answer. False if a check, download or install is under way.
+fn begin_by_hand(app: &AppHandle) -> bool {
+    let began = {
+        let checker = app.state::<Checker>();
+        let mut inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let free = !busy(inner.status.as_ref());
+        if free {
+            inner.status = Some(UpdateStatus::Checking);
+        }
+        free
+    };
+    if began {
+        let _ = app.emit(events::UPDATES_CHANGED, ());
+    }
+    began
 }
 
 /// Get ready to check, and with `automatic`, check now and once a day.
@@ -122,23 +134,28 @@ pub fn start(app: &AppHandle, automatic: bool) {
 /// Check for updates, from the tray menu: the update window opens and says
 /// what it found.
 pub fn check(app: &AppHandle) {
+    let began = begin_by_hand(app);
     open_window(app);
-    let app = app.clone();
-    tauri::async_runtime::spawn(async move {
-        check_now(&app, true).await;
-    });
+    if began {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            check_now(&app, true).await;
+        });
+    }
 }
 
-/// Ask this PC's update list whether there's a newer version.
+/// Ask this PC's update list whether there's a newer version. A check by
+/// hand has already begun (`begin_by_hand`); an automatic one waits its turn.
 async fn check_now(app: &AppHandle, by_hand: bool) {
-    if busy(status(app).as_ref()) {
-        return;
+    if !by_hand {
+        let checker = app.state::<Checker>();
+        let inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
+        if busy(inner.status.as_ref()) {
+            return;
+        }
     }
     let channel = app.state::<Store>().settings().settings.channel;
     let list = FEEDS.for_channel(channel);
-    if by_hand {
-        set(app, |i| i.status = Some(UpdateStatus::Checking));
-    }
     let found = ask(app, list).await;
     let now = iso8601(unix_now());
     match found {
@@ -314,7 +331,9 @@ pub fn updates(app: AppHandle) -> Updates {
 /// Check now, by hand; the answer comes back when the check is done.
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle) -> Updates {
-    check_now(&app, true).await;
+    if begin_by_hand(&app) {
+        check_now(&app, true).await;
+    }
     view(&app)
 }
 
