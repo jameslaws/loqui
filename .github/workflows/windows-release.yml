@@ -101,7 +101,7 @@ jobs:
           echo "Changes since: ${since:-the beginning}"
           {
             if [ -n "$WHY" ]; then echo "- $WHY"; fi
-            cd windows && node scripts/release/notes.mjs changes "$since"
+            (cd windows && node scripts/release/notes.mjs changes "$since")
           } > changes.md
           cat changes.md
 
