@@ -72,10 +72,20 @@ async function download({ url, sha256: expected }) {
   mkdirSync(cache, { recursive: true });
   const file = join(cache, url.split("/").at(-1));
   if (existsSync(file) && (await sha256(file)) === expected) return file;
-  console.log(`Downloading ${url}`);
-  const response = await fetch(url);
-  if (!response.ok || !response.body) throw new Error(`${url}: ${response.status}`);
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(file));
+  // A dropped connection is retried; a wrong checksum never is.
+  for (let attempt = 1; ; attempt++) {
+    console.log(`Downloading ${url}`);
+    try {
+      const response = await fetch(url);
+      if (!response.ok || !response.body) throw new Error(`${url}: ${response.status}`);
+      await pipeline(Readable.fromWeb(response.body), createWriteStream(file));
+      break;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      console.log(`  ${error.cause?.code ?? error.message}; trying again`);
+      await new Promise((resolve) => setTimeout(resolve, 5000 * attempt));
+    }
+  }
   const actual = await sha256(file);
   if (actual !== expected) {
     rmSync(file);
