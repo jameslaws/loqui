@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
-const project = readFileSync(join(import.meta.dirname, "../../PROJECT.md"), "utf8");
+const project = readFileSync(join(import.meta.dirname, "../../PROJECT.md"), "utf8").replaceAll("\r\n", "\n");
 const front = project.split("---")[1] ?? "";
 const field = (name: string) => front.match(new RegExp(`^${name}:\\s*(\\S+)`, "m"))?.[1];
 const section = (heading: string) => project.split(`## ${heading}\n`)[1]?.split("\n## ")[0]?.trim() ?? "";

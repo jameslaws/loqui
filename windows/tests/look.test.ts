@@ -20,7 +20,10 @@ function contrast(a: string, b: string): number {
 
 /** The approved look sheet's CSS variables, light and dark. */
 function lookSheet() {
-  const css = readFileSync(join(import.meta.dirname, "../../plans/windows-groundwork/mockups/win.css"), "utf8");
+  const css = readFileSync(
+    join(import.meta.dirname, "../../plans/windows-groundwork/mockups/win.css"),
+    "utf8",
+  ).replaceAll("\r\n", "\n");
   const vars = (block: string) =>
     Object.fromEntries([...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
   const light = vars(css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {"))));
