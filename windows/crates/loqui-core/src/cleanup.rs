@@ -94,23 +94,74 @@ fn any_case(phrase: &str) -> String {
             },
         )
         .collect();
-    // Each fold point doubles the pattern at most; a phrase with dozens of
-    // them is not a real phrase, so keep its plain form.
-    let fold_points = (0..folded.len())
-        .filter(|&i| {
-            MULTI_CHAR_FOLDS.iter().any(|(_, to)| {
-                folded[i..]
-                    .iter()
-                    .copied()
-                    .take(to.chars().count())
-                    .eq(to.chars())
-            })
-        })
-        .count();
-    if fold_points > 16 {
-        return regex::escape(phrase);
+    // Only overlapping fold spans need to share alternatives. Independent
+    // spans are concatenated, so repeating a word doesn't multiply the pattern.
+    let mut out = String::new();
+    let mut i = 0;
+    while i < folded.len() {
+        let len = longest_fold(&folded[i..]);
+        if len == 0 {
+            out.push_str(&regex::escape(&folded[i].to_string()));
+            i += 1;
+            continue;
+        }
+        let mut end = i + len;
+        let mut next = i + 1;
+        while next < end {
+            end = end.max(next + longest_fold(&folded[next..]));
+            next += 1;
+        }
+        let cluster = &folded[i..end];
+        // An arbitrarily long overlapping run (e.g. sssss...) would still
+        // expand exponentially. Preserve the previous longest-fold matching
+        // for that cluster, without losing folds elsewhere in the phrase.
+        if cluster.len() > 8 {
+            out.push_str(&longest_fold_pattern(cluster));
+        } else {
+            out.push_str(&folded_pattern(cluster));
+        }
+        i = end;
     }
-    folded_pattern(&folded)
+    out
+}
+
+fn longest_fold(folded: &[char]) -> usize {
+    MULTI_CHAR_FOLDS
+        .iter()
+        .filter(|(_, to)| {
+            folded
+                .iter()
+                .copied()
+                .take(to.chars().count())
+                .eq(to.chars())
+        })
+        .map(|(_, to)| to.chars().count())
+        .max()
+        .unwrap_or(0)
+}
+
+fn longest_fold_pattern(folded: &[char]) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < folded.len() {
+        let len = longest_fold(&folded[i..]);
+        if len == 0 {
+            out.push_str(&regex::escape(&folded[i].to_string()));
+            i += 1;
+            continue;
+        }
+        let run: String = folded[i..i + len].iter().collect();
+        let mut choices = vec![regex::escape(&run)];
+        choices.extend(
+            MULTI_CHAR_FOLDS
+                .iter()
+                .filter(|(_, to)| *to == run)
+                .map(|(from, _)| regex::escape(&from.to_string())),
+        );
+        out.push_str(&format!("(?:{})", choices.join("|")));
+        i += len;
+    }
+    out
 }
 
 fn folded_pattern(folded: &[char]) -> String {
