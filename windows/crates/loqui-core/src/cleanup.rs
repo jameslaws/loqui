@@ -15,6 +15,12 @@ fn pattern(p: &str) -> Regex {
     Regex::new(&format!("(?i){p}")).expect("cleanup patterns are valid")
 }
 
+/// A pattern built from settings. If it can't be built, the rule leaves the
+/// text alone, as the Mac does.
+fn settings_pattern(p: &str) -> Option<Regex> {
+    Regex::new(&format!("(?i){p}")).ok()
+}
+
 static RUNS_OF_SPACE: LazyLock<Regex> = LazyLock::new(|| pattern(r"[ \t]{2,}"));
 static SPACE_BEFORE_PUNCTUATION: LazyLock<Regex> = LazyLock::new(|| pattern(r" +([,.!?;:])"));
 static SPACE_BEFORE_NEWLINE: LazyLock<Regex> = LazyLock::new(|| pattern(r"[ \t]+\n"));
@@ -58,8 +64,10 @@ pub fn clean(raw: &str, cfg: &CleanupConfig) -> String {
 
 /// Whole-word, any-case replacement; the replacement is used literally.
 fn replace_word(text: &str, phrase: &str, replacement: &str) -> String {
-    let re = pattern(&format!(r"\b{}\b", any_case(phrase)));
-    re.replace_all(text, NoExpand(replacement)).into_owned()
+    match settings_pattern(&format!(r"\b{}\b", any_case(phrase))) {
+        Some(re) => re.replace_all(text, NoExpand(replacement)).into_owned(),
+        None => text.to_string(),
+    }
 }
 
 fn alternation(words: &[String]) -> String {
@@ -72,10 +80,10 @@ fn alternation(words: &[String]) -> String {
 
 /// A pattern for `phrase` in any case, the way the Mac matches it. The Mac's
 /// matching uses full case folding, so "strasse" also finds "straße" and
-/// "office" finds "oﬃce"; Rust's `(?i)` only folds one character to one
-/// character. So the phrase is folded first, and wherever the folded text could
-/// have come from a single character (ss from ß, ffi from ﬃ), that character
-/// is allowed too.
+/// "office" finds "oﬃce", "oﬀice" and "ofﬁce"; Rust's `(?i)` only folds one
+/// character to one character. So the phrase is folded first, and at every
+/// point where a single character folds to the text that follows (ß to ss, ﬀ to
+/// ff), that character is offered as well as the plain letters.
 fn any_case(phrase: &str) -> String {
     let folded: Vec<char> = phrase
         .chars()
@@ -86,38 +94,99 @@ fn any_case(phrase: &str) -> String {
             },
         )
         .collect();
+    // Only overlapping fold spans need to share alternatives. Independent
+    // spans are concatenated, so repeating a word doesn't multiply the pattern.
     let mut out = String::new();
     let mut i = 0;
     while i < folded.len() {
-        // The longest folded run starting here that a single character folds to.
-        let longest = MULTI_CHAR_FOLDS
-            .iter()
-            .map(|(_, to)| to.chars().count())
-            .filter(|&len| {
-                let run: String = folded[i..].iter().take(len).collect();
-                run.chars().count() == len && MULTI_CHAR_FOLDS.iter().any(|(_, to)| *to == run)
-            })
-            .max();
-        match longest {
-            Some(len) => {
-                let run: String = folded[i..i + len].iter().collect();
-                let mut choices = vec![regex::escape(&run)];
-                choices.extend(
-                    MULTI_CHAR_FOLDS
-                        .iter()
-                        .filter(|(_, to)| *to == run)
-                        .map(|(from, _)| regex::escape(&from.to_string())),
-                );
-                out.push_str(&format!("(?:{})", choices.join("|")));
-                i += len;
-            }
-            None => {
-                out.push_str(&regex::escape(&folded[i].to_string()));
-                i += 1;
-            }
+        let len = longest_fold(&folded[i..]);
+        if len == 0 {
+            out.push_str(&regex::escape(&folded[i].to_string()));
+            i += 1;
+            continue;
         }
+        let mut end = i + len;
+        let mut next = i + 1;
+        while next < end {
+            end = end.max(next + longest_fold(&folded[next..]));
+            next += 1;
+        }
+        let cluster = &folded[i..end];
+        // An arbitrarily long overlapping run (e.g. sssss...) would still
+        // expand exponentially. Preserve the previous longest-fold matching
+        // for that cluster, without losing folds elsewhere in the phrase.
+        if cluster.len() > 8 {
+            out.push_str(&longest_fold_pattern(cluster));
+        } else {
+            out.push_str(&folded_pattern(cluster));
+        }
+        i = end;
     }
     out
+}
+
+fn longest_fold(folded: &[char]) -> usize {
+    MULTI_CHAR_FOLDS
+        .iter()
+        .filter(|(_, to)| {
+            folded
+                .iter()
+                .copied()
+                .take(to.chars().count())
+                .eq(to.chars())
+        })
+        .map(|(_, to)| to.chars().count())
+        .max()
+        .unwrap_or(0)
+}
+
+fn longest_fold_pattern(folded: &[char]) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < folded.len() {
+        let len = longest_fold(&folded[i..]);
+        if len == 0 {
+            out.push_str(&regex::escape(&folded[i].to_string()));
+            i += 1;
+            continue;
+        }
+        let run: String = folded[i..i + len].iter().collect();
+        let mut choices = vec![regex::escape(&run)];
+        choices.extend(
+            MULTI_CHAR_FOLDS
+                .iter()
+                .filter(|(_, to)| *to == run)
+                .map(|(from, _)| regex::escape(&from.to_string())),
+        );
+        out.push_str(&format!("(?:{})", choices.join("|")));
+        i += len;
+    }
+    out
+}
+
+fn folded_pattern(folded: &[char]) -> String {
+    let Some(first) = folded.first() else {
+        return String::new();
+    };
+    let plain = regex::escape(&first.to_string()) + &folded_pattern(&folded[1..]);
+    let mut choices: Vec<String> = MULTI_CHAR_FOLDS
+        .iter()
+        .filter(|(_, to)| {
+            folded
+                .iter()
+                .copied()
+                .take(to.chars().count())
+                .eq(to.chars())
+        })
+        .map(|(from, to)| {
+            regex::escape(&from.to_string()) + &folded_pattern(&folded[to.chars().count()..])
+        })
+        .collect();
+    if choices.is_empty() {
+        return plain;
+    }
+    choices.insert(0, plain);
+    format!("(?:{})", choices.join("|"))
 }
 
 fn remove_fillers(text: &str, fillers: &[String]) -> String {

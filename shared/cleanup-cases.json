@@ -15,6 +15,7 @@
     { "id": "fillers-07", "rule": "fillers", "config": { "fillers": ["you know", "like"] }, "in": "it was, you know, like really good", "out": "It was, really good" },
     { "id": "fillers-08", "rule": "fillers", "in": "um, café au lait please", "out": "Café au lait please" },
     { "id": "fillers-09", "rule": "fillers", "in": "um, uh, okay", "out": "Okay" },
+    {"id": "fillers-10", "rule": "fillers", "config": {"fillers": ["first class assistant staff office postmaster"]}, "in": "the first class assistant staff office postmaster report is here", "out": "The report is here"},
 
     { "id": "dictionary-01", "rule": "dictionary", "config": { "dictionary": { "loki": "loqui" } }, "in": "i use loki every day", "out": "I use loqui every day" },
     { "id": "dictionary-02", "rule": "dictionary", "config": { "dictionary": { "sarah k": "Sara K.", "sarah": "Sarah" } }, "in": "sarah and sarah k", "out": "Sarah and Sara K." },
@@ -28,6 +29,11 @@
     { "id": "dictionary-10", "rule": "dictionary", "config": { "dictionary": { "strasse": "street" } }, "in": "die straße", "out": "Die street" },
     { "id": "dictionary-11", "rule": "dictionary", "config": { "dictionary": { "straße": "street" } }, "in": "the STRASSE sign", "out": "The street sign" },
     { "id": "dictionary-12", "rule": "dictionary", "config": { "dictionary": { "office": "Office" } }, "in": "the oﬃce is open", "out": "The Office is open" },
+    { "id": "dictionary-13", "rule": "dictionary", "config": { "dictionary": { "office": "Office" } }, "in": "the oﬀice and the ofﬁce", "out": "The Office and the Office" },
+    { "id": "dictionary-14", "rule": "dictionary", "config": { "dictionary": { "mississippi": "Mississippi" } }, "in": "the mißißippi river", "out": "The Mississippi river" },
+    {"id": "dictionary-15", "rule": "dictionary", "config": {"dictionary": {"first class assistant staff office postmaster": "OK"}}, "in": "the first class assistant staff office postmaster is here", "out": "The OK is here"},
+    {"id": "dictionary-16", "rule": "dictionary", "config": {"dictionary": {"straße office office office office office office office office": "OK"}}, "in": "the strasse oﬀice oﬀice oﬀice oﬀice oﬀice oﬀice oﬀice oﬀice", "out": "The OK"},
+    {"id": "dictionary-17", "rule": "dictionary", "config": {"dictionary": {"ssssssssssssssssss office": "OK"}}, "in": "the ßßßßßßßßß ofﬁce", "out": "The OK"},
 
     { "id": "spoken-formatting-01", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "first point new line second point", "out": "First point\nSecond point" },
     { "id": "spoken-formatting-02", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "dear team new paragraph thanks for waiting", "out": "Dear team\n\nThanks for waiting" },
@@ -65,6 +71,7 @@
     { "id": "sentence-heal-12", "rule": "sentence-heal", "in": "it was good. orange juice next", "out": "It was good. Orange juice next" },
     { "id": "sentence-heal-13", "rule": "sentence-heal", "config": { "continuationWords": ["then"] }, "in": "we ate. then we left. or not", "out": "We ate then we left. Or not" },
     { "id": "sentence-heal-14", "rule": "sentence-heal", "in": "it's done. which isn't bad", "out": "It's done, which isn't bad" },
+    {"id": "sentence-heal-15", "rule": "sentence-heal", "config": {"continuationWords": ["first class assistant staff office postmaster"]}, "in": "we met. first class assistant staff office postmaster is here", "out": "We met first class assistant staff office postmaster is here"},
 
     { "id": "capitals-01", "rule": "capitals", "in": "hello world. this is loqui! is it? yes", "out": "Hello world. This is loqui! Is it? Yes" },
     { "id": "capitals-02", "rule": "capitals", "in": "Hello there", "out": "Hello there" },
