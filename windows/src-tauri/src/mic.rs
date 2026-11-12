@@ -120,6 +120,13 @@ pub fn start(out: Outlets) -> Result<Capture, MicError> {
         });
     }
 
+    // Windows doesn't always refuse a blocked microphone: a desktop app can be
+    // handed silence instead. So read the privacy switches first, every time
+    // (switching them back on works without restarting loqui).
+    if !crate::windows_shell::microphone_allowed() {
+        return Err(MicError::Blocked);
+    }
+
     let (opened, result) = sync_channel(1);
     let thread = std::thread::Builder::new()
         .name("loqui microphone".into())

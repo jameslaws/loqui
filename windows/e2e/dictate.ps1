@@ -324,12 +324,21 @@ function Wait-Text([IntPtr]$h, [string]$before, [int]$timeout) {
   return @{ text = $text; ms = $(if ($text -ne $before) { $ms } else { -1 }) }
 }
 
+# loqui and everything it started. Windows reuses process numbers, and a
+# process keeps its parent's number after the parent ends, so a child only
+# counts if it started after its parent: otherwise a long-running service
+# whose parent's number was reused would look like loqui's.
 function Tree-Ids([int]$root) {
-  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId
+  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, CreationDate
+  $born = @{}; foreach ($p in $all) { $born[[int]$p.ProcessId] = $p.CreationDate }
   $ids = @($root); $grew = $true
   while ($grew) {
     $grew = $false
-    foreach ($p in $all) { if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true } }
+    foreach ($p in $all) {
+      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId) -and $p.CreationDate -ge $born[[int]$p.ParentProcessId]) {
+        $ids += $p.ProcessId; $grew = $true
+      }
+    }
   }
   return $ids
 }
@@ -361,6 +370,7 @@ switch ($Verb) {
     Out-Json @{ text = (Notepad-Text $h) }
   }
   'read' { Out-Json @{ text = (Notepad-Text ([IntPtr]$Hwnd)) } }
+  'state' { Out-Json @{ bubble = [Dk]::BubbleState($ProcessId) } }
   'type' {
     [Dk]::Focus([IntPtr]$Hwnd)
     [Dk]::Type($Text)

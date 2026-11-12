@@ -312,13 +312,18 @@ function Window-Owners {
   (Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName): $($_.MainWindowTitle)" }) -join ' | '
 }
 
+# loqui and everything it started; a child only counts if it started after
+# its parent, because Windows reuses process numbers.
 function Process-Tree([int]$root) {
-  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name
+  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, CreationDate
+  $born = @{}; foreach ($p in $all) { $born[[int]$p.ProcessId] = $p.CreationDate }
   $ids = @($root); $grew = $true
   while ($grew) {
     $grew = $false
     foreach ($p in $all) {
-      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true }
+      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId) -and $p.CreationDate -ge $born[[int]$p.ParentProcessId]) {
+        $ids += $p.ProcessId; $grew = $true
+      }
     }
   }
   return ,@($all | Where-Object { $ids -contains $_.ProcessId } | ForEach-Object { @{ pid = $_.ProcessId; name = $_.Name } })

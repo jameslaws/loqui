@@ -8,7 +8,7 @@ import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 
 const windowsDir = join(import.meta.dirname, "..");
 const shots = process.env.LOQUI_SHOTS ?? join(windowsDir, "target", "shots");
@@ -66,6 +66,13 @@ const shot = (name: string) => join(shots, name);
 const states = (changes: string[]) =>
   changes.map((c) => c.split("|")).map(([ms, fg, state]) => ({ ms: Number(ms), fg, state }));
 
+/** loqui's settings file, with the welcome finished (the welcome's own checks are in e2e/screens). */
+function writeSettings(change: Record<string, unknown>) {
+  mkdirSync(data, { recursive: true });
+  const settings = { shortcut: "Ctrl+Shift+Space", historyRetentionDays: 0, onboarded: true, ...change };
+  writeFileSync(join(data, "settings.json"), JSON.stringify(settings));
+}
+
 let pid = 0;
 let notepad = 0;
 let watcher: ChildProcess | undefined;
@@ -114,6 +121,8 @@ beforeAll(async () => {
     rmSync(join(data, name), { recursive: true, force: true });
   }
   rmSync(stopWatching, { force: true });
+  // The welcome was finished long ago: it mustn't open over Notepad on a restart.
+  writeSettings({});
 
   if (arm) {
     // The test build with the file in place of the microphone.
@@ -141,6 +150,13 @@ beforeAll(async () => {
 /** Turns the virtual sound cable, and so the only microphone, off or on. */
 const cable = (verb: "Enable" | "Disable") =>
   `Get-PnpDevice -Class MEDIA, AudioEndpoint -ErrorAction SilentlyContinue | Where-Object FriendlyName -like '*CABLE*' | ${verb}-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue; exit 0`;
+
+beforeEach(async () => {
+  if (!onWindows || !pid) return;
+  if (dk("state", { ProcessId: pid }).bubble !== "loqui listening") return;
+  dk("keys", { Hwnd: notepad, ProcessId: pid });
+  for (let i = 0; i < 40 && dk("state", { ProcessId: pid }).bubble !== "loqui hidden"; i++) await sleep(250);
+});
 
 afterAll(() => {
   if (!onWindows) return;
@@ -177,9 +193,9 @@ test.runIf(x64)(
     const r = dictate("dict-04", wav("paragraph"));
     paragraph = r.text;
     expect(words(r.text)).toEqual(words(PARAGRAPH));
-    expect(words(r.text).slice(-12).join(" ")).toBe(
-      "should say what changes for the reader not what we built talk soon",
-    );
+    // Its final sentence, explicitly: the words most at risk when it stops.
+    const last = words("The headline should say what changes for the reader, not what we built. Talk soon.");
+    expect(words(r.text).slice(-last.length)).toEqual(last);
     expect(r.ms).toBeGreaterThanOrEqual(0);
     expect(r.ms).toBeLessThanOrEqual(1500);
   },
@@ -204,19 +220,13 @@ test.runIf(x64)("REC-01: History and stats records match the Mac's format", () =
   expect(stats.every((s) => iso.test(s.at) && s.seconds > 1)).toBe(true);
 
   // History off: the dictation is counted for stats, and its text kept nowhere.
-  writeFileSync(
-    join(data, "settings.json"),
-    JSON.stringify({ shortcut: "Ctrl+Shift+Space", historyRetentionDays: -1 }),
-  );
+  writeSettings({ historyRetentionDays: -1 });
   try {
     expect(dictate("rec-01-off", wav("sentence")).text).toBe(SENTENCE);
     expect(lines(join(data, "history.jsonl"))).toHaveLength(2);
     expect(lines(join(data, "dictation-log.jsonl"))).toHaveLength(3);
   } finally {
-    writeFileSync(
-      join(data, "settings.json"),
-      JSON.stringify({ shortcut: "Ctrl+Shift+Space", historyRetentionDays: 0 }),
-    );
+    writeSettings({ historyRetentionDays: 0 });
   }
 });
 
@@ -280,8 +290,13 @@ test.runIf(x64)("HUD-01: The bubble never takes the cursor", () => {
   expect(r.foregroundKept, `the foreground went to ${r.lostTo}`).toBe(true);
 
   const seen = states(r.changes);
-  const order = seen.map((s) => s.state).filter((s, i, all) => s !== all[i - 1]);
-  expect(order).toEqual(["loqui hidden", "loqui listening", "loqui finishing", "loqui pasted", "loqui hidden"]);
+  // The spinner shows only while the last words are being turned into text,
+  // which can be over before the check looks again (every 20 ms).
+  const order = seen
+    .map((s) => s.state)
+    .filter((s, i, all) => s !== all[i - 1])
+    .filter((s) => s !== "loqui finishing");
+  expect(order).toEqual(["loqui hidden", "loqui listening", "loqui pasted", "loqui hidden"]);
   const pasted = seen.find((s) => s.state === "loqui pasted")?.ms ?? 0;
   const gone = seen.filter((s) => s.state === "loqui hidden").at(-1)?.ms ?? 0;
   expect(gone - pasted).toBeGreaterThanOrEqual(700);
