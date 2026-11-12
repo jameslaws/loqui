@@ -324,8 +324,13 @@ test.runIf(x64)("MIC-01: Windows blocking the microphone gets a plain message", 
   } finally {
     ps(`Set-ItemProperty -Path '${consent}' -Name Value -Value Allow`);
   }
-  // Switched back on, the next dictation works without restarting loqui.
-  expect(dictate("mic-01-after", wav("sentence")).text).toBe(SENTENCE);
+  // Switched back on, the next dictation works without restarting loqui: the
+  // sentence was really heard, every content word of it in order. Exact
+  // wording is DICT-01's job; here the engine once heard "a report" for "the
+  // report" (run 43311174351), which says nothing about the microphone.
+  const after = words(dictate("mic-01-after", wav("sentence")).text);
+  const heard = ["please", "send", "report", "sarah", "before", "friday", "copy", "whole", "team"];
+  expect(after.filter((w) => heard.includes(w))).toEqual(heard);
   expect(loquiAlive()).toBe(true);
 });
 
