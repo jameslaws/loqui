@@ -429,8 +429,8 @@ Every check from the old step plans 2 to 6, with the same IDs, grouped by the pa
 ### CHAN-03: Promote publishes the exact files James tried
 
 - Start: before the ship, a 0.0.x test version in the drill run on `windows-version` (the same Promote steps against a drill list, never the public one). At the ship, the 0.1.0 test version James approved.
-- Action: run the Promote steps with that version; approve the environment prompt (James, at the ship).
-- Result: a `windows-v…` release whose files have the same checksums as the test version's; the list (the drill list, or `stable.json` at the ship) points at it; nothing is rebuilt. Without the approval the run waits and changes nothing. Before the ship, no Windows release numbered 0.1.0 or above exists and the public list is untouched.
+- Action: run the Promote steps with that version (at the ship, the Lead starts them after James presses Ship in Aiva).
+- Result: a `windows-v…` release whose files have the same checksums as the test version's; the list (the drill list, or `stable.json` at the ship) points at it; nothing is rebuilt. Only the repository's owner can start Promote, and only from main; anyone else's run stops before changing anything. Before the ship, no Windows release numbered 0.1.0 or above exists and the public list is untouched.
 - Checkpoint: 1
 - Test: `CHAN-03: Promote publishes the exact files James tried`
 

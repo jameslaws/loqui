@@ -16,6 +16,64 @@ Format:
 
 ---
 
+Found while building Part D (2026-11-12).
+
+### Promote has no GitHub approval step
+
+- **Kind:** Behind it (the Lead settled it on the board, 2026-11-12: James approves in Aiva with Ship, so he has no GitHub step)
+- **Before:** Promote ran behind a GitHub environment that waited for James's approval, and without it changed nothing (CHAN-03).
+- **After:** James's Ship in Aiva is the approval; the Lead then starts Promote. Only the repository's owner can start it, and only from main; anyone else's run stops before changing anything. CHAN-03's action and result say so.
+- **Why:** one approval, in the place James already approves things.
+- **Checks affected:** CHAN-03 (reworded).
+
+### loqui installs to AppData\Local\Programs\loqui
+
+- **Kind:** Behind it
+- **Before:** the plan's installer picture says "Installs to C:\Users\you\AppData\Local\Programs\loqui"; Tauri's installer would have put it in AppData\Local\loqui.
+- **After:** as the picture says. Windows doesn't tell AppData\Local\loqui and AppData\Local\Loqui (loqui's data) apart, so the default would have put the app inside your data. A copy from an early test build is moved out of the data folder when the new installer runs, and your data stays.
+- **Why:** "Keep" on uninstall must leave the data folder untouched, which it can't if the app lives in it.
+- **Checks affected:** none (INST-01 and INST-02 as written).
+
+### A newer installer installs straight over the old version
+
+- **Kind:** Behind it
+- **Before:** Tauri's installer offers "uninstall before installing" when an older loqui is there, which opens the uninstaller part way through.
+- **After:** a newer full installer installs over the old version and keeps everything; an older one is refused with "A newer version of loqui is already installed, so this one wasn't." loqui uses its own copy of Tauri's installer script for this (windows/src-tauri/installer), with its changes marked.
+- **Why:** INST-03, and no surprise uninstall window for teammates.
+- **Checks affected:** none.
+
+### Uninstalling asks with a tick box
+
+- **Kind:** Behind it
+- **Before:** "Uninstalling asks whether to also delete history and settings."
+- **After:** the uninstaller's first page has "Also delete my dictation history, dictionary, settings and stats", unticked. Unticked keeps `%LOCALAPPDATA%\Loqui`; ticked deletes it.
+- **Why:** the place Windows uninstallers ask this, and nothing is deleted unless chosen.
+- **Checks affected:** none (INST-02 as written).
+
+### Pull request test builds can't update from GitHub
+
+- **Kind:** Behind it
+- **Before:** each Windows check run attached a test build teammates could install.
+- **After:** the Windows check's builds read update lists on GitHub's computer itself and are signed with a key made for the run, so the update checks run there without the real key. They still install and dictate, but never update from GitHub. Teammates install from the test channel instead (try.md), which uses the real lists and key.
+- **Why:** the checks must prove updating, including a refused bad signature, without loqui's update key leaving its locked GitHub environment.
+- **Checks affected:** none.
+
+### No public list yet reads as up to date
+
+- **Kind:** Behind it
+- **Before:** the plan didn't say what a PC on the public list sees before the first public version, when that list doesn't exist.
+- **After:** a missing list counts as "nothing newer", so Check for updates says "loqui is up to date" rather than "Couldn't reach the update server".
+- **Why:** teammates with Get test versions off would otherwise see an error until the ship.
+- **Checks affected:** none.
+
+### Where the update checks are proved
+
+- **Kind:** Behind it
+- **Before:** UPD-04 on a runner with a fake clock; PRIV-03 over a full install and update; CHAN-04's PC behaves as A.
+- **After:** UPD-04: loqui-core's schedule runs 25 hours on a fake clock (start and 24 h), and the Windows check counts the start and by-hand requests at the list. PRIV-03: proved in the drill, where loqui reads real GitHub lists; the Windows check's builds only ever reach the runner itself. CHAN-04: the drill builds A and B from the same commit, so "behaves as A" is checked as the roll back being built from A's commit, and dictating.
+- **Why:** an app can't be made to live 25 real hours in a check, and only the drill uses GitHub's real hosts before the ship.
+- **Checks affected:** none (wording as written).
+
 Found while building Parts A and B (2026-11-12).
 
 ### About loqui stays in the tray menu
