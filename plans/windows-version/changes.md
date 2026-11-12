@@ -16,6 +16,40 @@ Format:
 
 ---
 
+Found while building Part C (2026-11-12).
+
+### By month shows the last 12 months
+
+- **Kind:** Behind it (the plan's own picture and the Mac already show it; waiting for the Lead to confirm)
+- **Before:** STAT-02 said "one bar per month since the first entry"; the plan's stats picture and the Mac's window show the last 12 months.
+- **After:** the last 12 months, this one last, as in the picture and on the Mac. Older months are still in the calendar's Month and Year views.
+- **Why:** STAT-07 promises the Mac and Windows give the same figures, and the picture is what was approved.
+- **Checks affected:** STAT-02 (its result should say "the last 12 months").
+
+### A day is named as the Mac names it
+
+- **Kind:** Behind it
+- **Before:** the plan's calendar picture labels the chosen day "Tue, Oct 27, 2026"; STAT-03 says the label uses the Mac's wording.
+- **After:** "Oct 27, 2026", "Today" or "Yesterday", the Mac's wording, as STAT-03 asks. The calendar's buttons still read out the weekday.
+- **Why:** the two apps share one list of labels (shared/stats-cases.json).
+- **Checks affected:** none.
+
+### Small wording fixes the Mac doesn't have
+
+- **Kind:** Behind it
+- **Before:** the Mac says "No dictations in Yesterday.", "1 dictations" and "1,997 last week  ▼65%".
+- **After:** Windows says "No dictations yesterday.", "1 dictation", and "1,997 last week · ▼ 65%" as in the plan's picture. The figures are the same; the Mac is unchanged.
+- **Why:** plain English, and the picture's wording.
+- **Checks affected:** none.
+
+### Calendar shading stays readable
+
+- **Kind:** Behind it
+- **Before:** the Mac shades a day from 16% to 88% of the brand colour and turns its number white on the darkest days.
+- **After:** Windows shades from 16% to 72% (the deep brand colour in light mode), on the same square-root scale against the busiest day ever, so every day's number passes the contrast check in light and dark.
+- **Why:** with the Mac's range, the darkest days' numbers fail WCAG AA on Windows.
+- **Checks affected:** none (STAT-04 and A11Y-02 as written).
+
 Found while building Parts A and B (2026-11-12).
 
 ### About loqui stays in the tray menu
