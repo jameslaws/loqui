@@ -276,7 +276,7 @@ Every check from the old step plans 2 to 6, with the same IDs, grouped by the pa
 
 - Start: as STAT-01.
 - Action: hover, then Tab to, the bar for Oct 27 and the bar for September.
-- Result: 30 daily bars and one bar per month since the first entry; each label gives the date or month and its words, matching the shared file (for example "Oct 27: 1,412 words" if that is the file's figure).
+- Result: 30 daily bars and one bar for each of the last 12 months; each label gives the date or month and its words, matching the shared file (for example "Oct 27: 1,412 words" if that is the file's figure).
 - Checkpoint: 5
 - Test: `STAT-02: The two charts show each day and month, with hover labels`
 

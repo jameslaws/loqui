@@ -20,11 +20,11 @@ Found while building Part C (2026-11-12).
 
 ### By month shows the last 12 months
 
-- **Kind:** Behind it (the plan's own picture and the Mac already show it; waiting for the Lead to confirm)
+- **Kind:** Behind it (the plan's own picture and the Mac already show it; the Lead confirmed it on the board, 2026-11-12)
 - **Before:** STAT-02 said "one bar per month since the first entry"; the plan's stats picture and the Mac's window show the last 12 months.
 - **After:** the last 12 months, this one last, as in the picture and on the Mac. Older months are still in the calendar's Month and Year views.
 - **Why:** STAT-07 promises the Mac and Windows give the same figures, and the picture is what was approved.
-- **Checks affected:** STAT-02 (its result should say "the last 12 months").
+- **Checks affected:** STAT-02 (its result now says "one bar for each of the last 12 months").
 
 ### A day is named as the Mac names it
 
