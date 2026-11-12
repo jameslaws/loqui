@@ -72,7 +72,7 @@ pub fn welcome(app: &AppHandle) {
 }
 
 pub fn settings(app: &AppHandle) {
-    open(app, SETTINGS, "loqui settings", (640.0, 700.0), false);
+    open(app, SETTINGS, "loqui settings", (640.0, 640.0), false);
 }
 
 pub fn history(app: &AppHandle) {
