@@ -454,7 +454,7 @@ Every check from the old step plans 2 to 6, with the same IDs, grouped by the pa
 
 - Start: a fresh install on a runner with Part A's network watch.
 - Action: install, start, finish welcome, dictate three times, check for updates, install an update.
-- Result: the only outside connections are to the update list's host during update checks (`jameslaws.github.io` for the public list, `github.com` for the test list) and GitHub's release download hosts during the update download. The list is attached to the run.
+- Result: the only outside connections are to the update list's host during update checks (`jameslaws.github.io` for the public list, `github.com` for the test list), GitHub's release download hosts during the update download, and, during those same checks, Windows confirming that GitHub's certificate is still valid (the certificate authority's revocation service); nothing of the person's is sent. The list is attached to the run.
 - Checkpoint: 1
 - Test: `PRIV-03: The update check is the only network use`
 

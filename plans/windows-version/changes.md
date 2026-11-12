@@ -52,6 +52,14 @@ Found while building Part C (2026-11-12).
 
 Found while building Part D (2026-11-12).
 
+### The update check also lets Windows confirm GitHub's certificate
+
+- **Kind:** Behind it (the Lead settled it on the board, 2026-11-12, and is telling James)
+- **Before:** PRIV-03 listed only GitHub's hosts as the update check's connections.
+- **After:** the drill showed one more, during the check: Windows asking the certificate authority whether GitHub's security certificate is still valid, as it does for any secure connection. It carries nothing of the person's. loqui keeps it; PRIV-03 now names it, and the README (Part E) should say it in plain words: the update check also lets Windows confirm GitHub's certificate is still valid.
+- **Why:** turning it off would mean loqui carrying its own certificate list and skipping the revocation check.
+- **Checks affected:** PRIV-03 (reworded); LAUNCH-05's README wording.
+
 ### Promote has no GitHub approval step
 
 - **Kind:** Behind it (the Lead settled it on the board, 2026-11-12: James approves in Aiva with Ship, so he has no GitHub step)

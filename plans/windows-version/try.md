@@ -167,5 +167,5 @@ Checks: INST-02, INST-03
 ## What to do
 Look at the release drill: test versions A and B published, A then B promoted to the drill's own public list, and a roll back to A's code under a higher number, with a PC on GitHub's computers updating A, B, then the roll back, every connection it made listed.
 Where: https://github.com/jameslaws/loqui/actions/workflows/windows-drill.yml
-See: every job green except the separate signing proof, which stops before publishing because no signing account is connected (as it should); the PC's connections all went to GitHub, only while checking or downloading; GitHub's "latest release" is still the Mac's.
+See: every job green except the separate signing proof, which stops before publishing because no signing account is connected (as it should); the PC's connections all went to GitHub, plus Windows confirming GitHub's certificate, and only while checking or downloading; GitHub's "latest release" is still the Mac's.
 Checks: SIGN-02, CHAN-03, CHAN-04, CHAN-05, PRIV-03

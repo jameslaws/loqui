@@ -173,7 +173,9 @@ test.runIf(drill)(
 test.runIf(drill)("PRIV-03: The update check is the only network use", async () => {
   writeFileSync(stopWatching, "");
   await sleep(1500);
-  const seen: { at: number; remote: string; port: number; process: string }[] = existsSync(connections)
+  const seen: { at: number; remote: string; port: number; process: string; names?: string[] }[] = existsSync(
+    connections,
+  )
     ? readFileSync(connections, "utf8")
         .split("\n")
         .filter(Boolean)
@@ -181,22 +183,50 @@ test.runIf(drill)("PRIV-03: The update check is the only network use", async () 
     : [];
   const names: Record<string, string[]> = inst("names");
   const local = /^(127\.|::1$|0\.0\.0\.0$|::$)/;
-  const outside = seen.filter((c) => !local.test(c.remote)).map((c) => ({ ...c, names: names[c.remote] ?? [] }));
+  const outside = seen
+    .filter((c) => !local.test(c.remote))
+    .map((c) => ({ ...c, names: [...new Set([...(c.names ?? []), ...(names[c.remote] ?? [])])] }));
+  // GitHub's own list of its addresses, for an address whose name Windows had already forgotten.
+  const meta = (await (await fetch("https://api.github.com/meta")).json()) as Record<string, unknown>;
+  const ranges = Object.values(meta)
+    .filter((v): v is string[] => Array.isArray(v))
+    .flat()
+    .filter((r) => /^\d+\.\d+\.\d+\.\d+\/\d+$/.test(r));
+  const inGitHub = (ip: string) => ranges.some((r) => inRange(ip, r));
   writeFileSync(join(shots, "priv-03-outside.json"), JSON.stringify({ outside, online, dictating }, null, 2));
   console.log(`PRIV-03: ${seen.length} connections, ${outside.length} outside this PC`);
   // There were some: the checks and downloads really went to GitHub.
   expect(outside.length).toBeGreaterThan(0);
   const github = /(^|\.)(github\.com|githubusercontent\.com|github\.io)$/;
+  // Windows asking the certificate authority whether GitHub's certificate is
+  // still valid: plain web, to the authority's revocation service.
+  const certificate = /(^|\.)(ocsp|crl|pki|cacerts)[\w-]*\.|digicert|sectigo|usertrust|lencr\.org/;
   for (const c of outside) {
-    expect(c.port, `${c.remote} by ${c.process}`).toBe(443);
-    expect(
-      c.names.some((n) => github.test(n)),
-      `${c.remote} (${c.names.join(", ") || "no name"}) is GitHub's`,
-    ).toBe(true);
     expect(
       online.some((w) => c.at >= w.from - 2000 && c.at <= w.to),
       `${c.remote} at ${new Date(c.at).toISOString()} was during a check or download`,
     ).toBe(true);
     expect(dictating.some((d) => c.at >= d.from && c.at <= d.to)).toBe(false);
+    if (c.port === 80) {
+      expect(
+        c.names.some((n) => certificate.test(n)),
+        `${c.remote}:80 (${c.names.join(", ") || "no name"}) is a certificate check`,
+      ).toBe(true);
+      continue;
+    }
+    expect(c.port, `${c.remote} by ${c.process}`).toBe(443);
+    expect(
+      c.names.some((n) => github.test(n)) || inGitHub(c.remote),
+      `${c.remote} (${c.names.join(", ") || "no name"}) is GitHub's`,
+    ).toBe(true);
   }
 });
+
+/** An IPv4 address inside a range such as 140.82.112.0/20. */
+function inRange(ip: string, range: string) {
+  const [base, bits] = range.split("/");
+  const n = (a: string) => a.split(".").reduce((v, part) => v * 256 + Number(part), 0);
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return false;
+  const size = 2 ** (32 - Number(bits));
+  return Math.floor(n(ip) / size) === Math.floor(n(base) / size);
+}

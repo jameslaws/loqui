@@ -196,7 +196,9 @@ switch ($Verb) {
         if (-not $seen[$key]) {
           $seen[$key] = 1
           $name = ($all | Where-Object { $_.ProcessId -eq $c.OwningProcess } | Select-Object -First 1).Name
-          @{ at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); remote = "$($c.RemoteAddress)"; port = $c.RemotePort; process = $name } |
+          # The names Windows looked up for this address, asked now, before they expire.
+          $hosts = @(Get-DnsClientCache -ErrorAction SilentlyContinue | Where-Object { "$($_.Data)" -eq "$($c.RemoteAddress)" } | ForEach-Object { "$($_.Entry)" } | Select-Object -Unique)
+          @{ at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); remote = "$($c.RemoteAddress)"; port = $c.RemotePort; process = $name; names = $hosts } |
             ConvertTo-Json -Compress | Add-Content -Path $Out
         }
       }
