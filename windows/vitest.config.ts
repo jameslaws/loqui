@@ -35,6 +35,16 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      // Windows only, last: the real stats window, light and dark (both Windows computers).
+      {
+        test: {
+          name: "windows-stats",
+          include: ["e2e/windows-stats.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 300_000,
+          fileParallelism: false,
+        },
+      },
     ],
   },
 });

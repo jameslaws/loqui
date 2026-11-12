@@ -29,8 +29,9 @@ jobs:
         run: swift build -c release
 
       # CLEAN-02: every example in shared/cleanup-cases.json, listed by id.
-      # The Windows check runs the same file, so the two apps can't drift.
-      - name: "CLEAN-02: The Mac app passes every shared example"
+      # STAT-07: every figure in shared/stats-cases.json, listed by id.
+      # The Windows check runs the same files, so the two apps can't drift.
+      - name: "CLEAN-02 and STAT-07: The Mac app passes every shared example and stats figure"
         run: swift test
 
       # Assembles and ad-hoc signs exactly the way install.sh does, so a broken

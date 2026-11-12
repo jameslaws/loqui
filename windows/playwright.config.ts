@@ -19,8 +19,10 @@ export default defineConfig({
     { name: "dark", use: { colorScheme: "dark" } },
   ],
   webServer: {
-    command: "pnpm exec vite ui --port 5174 --strictPort",
+    // The stats screen's figures come from loqui-core (ui/fake-stats.ts): built first.
+    command: "cargo build -q -p loqui-core --example stats_server && pnpm exec vite ui --port 5174 --strictPort",
     url: "http://localhost:5174/settings.html",
     reuseExistingServer: false,
+    timeout: 300_000,
   },
 });

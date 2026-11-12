@@ -20,8 +20,9 @@ permissions:
   contents: read
 
 jobs:
-  # The welcome, settings and history screens in a browser against loqui's
-  # stand-in: keyboard use, the accessibility scan, and every screen check.
+  # The welcome, settings, history and stats screens in a browser against
+  # loqui's stand-in (stats figures from loqui-core itself): keyboard use, the
+  # accessibility scan, and every screen check.
   screens:
     name: Windows screens (in a browser)
     runs-on: ubuntu-latest
@@ -45,7 +46,13 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: The browser the checks use
         run: pnpm exec playwright install --with-deps --only-shell chromium
-      - name: "WELC, SET, DICTN, HIST and A11Y-01: the screens, light and dark"
+      # The stats screens ask loqui-core for their figures.
+      - name: Rust, pinned in rust-toolchain.toml
+        run: rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows
+      - name: "WELC, SET, DICTN, HIST, STAT, A11Y-01 and A11Y-02: the screens, light and dark"
         run: pnpm test:screens
 
   windows:
@@ -137,8 +144,9 @@ jobs:
 
       # CLEAN-03 lists every shared example by id; CLEAN-05 loads the Mac's settings
       # files; REC-01 writes the history and stats lines the Mac's tests decode;
+      # STAT-07 lists every shared stats figure by id, as the Mac's tests do;
       # the screens' types in ui/src/bindings.ts must match the Rust.
-      - name: "CLEAN-03, CLEAN-05 and REC-01: the Windows core passes every shared example and keeps the Mac's formats"
+      - name: "CLEAN-03, CLEAN-05, REC-01 and STAT-07: the Windows core passes every shared example and keeps the Mac's formats"
         run: cargo test -p loqui-core
 
       - name: "CLEAN-01, LOOK-01 and PLACE-01: the examples file, the look and the project record"
@@ -196,6 +204,13 @@ jobs:
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:windows-screens
+
+      # Both computers: the real stats window from the tray, light and dark.
+      - name: "STAT and A11Y-02 on Windows: the real stats window, light and dark"
+        if: success() || failure()
+        env:
+          LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
+        run: pnpm test:windows-stats
 
       - name: Screenshots taken on this computer
         if: always()

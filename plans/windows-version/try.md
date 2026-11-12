@@ -100,3 +100,31 @@ A teammate: in Settings, change the shortcut to Ctrl+Alt+D and dictate with it; 
 Where: the Windows PC with the test build
 See: the new shortcut works at once and the old one types normally; "Loqui" spelled right; the history does what it says; Recent's item pastes in full; nothing new in history while it's Off; and loqui by the clock after signing in.
 Checks: SET-01, SET-02, SET-03, SET-04, SET-05, DICTN-01, HIST-01, HIST-02, HIST-03, RECENT-01
+
+## Part C: stats
+
+## What to do
+Look at Dictation stats on GitHub's Windows computers, light and dark, opened from the tray menu with the shared sample record moved to today.
+Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
+See: "Dictation" with 40,664 words all-time, 557 dictations and 73 words each; Today 212 and "0 yesterday"; This week and This month with last week and last month; the last 30 days and the last 12 months as bars; Patterns with its eight tiles. The damaged lines in the sample are skipped.
+Shots: built/c-stats-light.png, built/c-stats-dark.png
+Checks: STAT-01, STAT-02, STAT-03, A11Y-02
+
+## What to do
+Look at the calendar, light and dark, then the window after a dictation while it was open, and the window with no dictations.
+Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
+See: days shaded by their words, the busiest darkest, and "Darker days had more words"; after the 13-word sentence, Today and the all-time line up by 13 without reopening; with no record, "No dictations yet" and the shortcut to press.
+Shots: built/c-stats-picker-light.png, built/c-stats-picker-dark.png, built/c-stats-updated.png, built/c-stats-empty.png
+Checks: STAT-04, STAT-05, STAT-08
+
+## What to do
+Look at the Mac and Windows giving the same figures: the Windows check's core tests and the Mac's tests, each listing the shared stats figures by name.
+Where: the Windows check above (step "CLEAN-03, CLEAN-05, REC-01 and STAT-07") and the Mac build on the pull request (step "CLEAN-02 and STAT-07")
+See: every line of shared/stats-cases.json passing on the Mac and on both Windows computers: the top of the window, the last 30 days, the months, the calendar's busiest day and month, the damaged lines skipped, and each period from all time to a single day, including the night the clocks went back.
+Checks: STAT-07
+
+## What to do
+A teammate: after a few days of dictating, open Dictation stats from the tray menu. Check Today against what you said. Choose Day, click the date, go back a month and click a dark day. Step back and forward with the arrows. Then leave the window open and dictate once.
+Where: the Windows PC with the test build
+See: Today matches your words; the calendar's darker days are the busy ones and a click shows that day; the right arrow stops at today; Today goes up by your words without reopening the window. A month with nothing in it says "No dictations in" that month.
+Checks: STAT-01, STAT-02, STAT-03, STAT-04, STAT-05, STAT-06, STAT-08
