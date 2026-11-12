@@ -15,6 +15,12 @@ fn pattern(p: &str) -> Regex {
     Regex::new(&format!("(?i){p}")).expect("cleanup patterns are valid")
 }
 
+/// A pattern built from settings. If it can't be built, the rule leaves the
+/// text alone, as the Mac does.
+fn settings_pattern(p: &str) -> Option<Regex> {
+    Regex::new(&format!("(?i){p}")).ok()
+}
+
 static RUNS_OF_SPACE: LazyLock<Regex> = LazyLock::new(|| pattern(r"[ \t]{2,}"));
 static SPACE_BEFORE_PUNCTUATION: LazyLock<Regex> = LazyLock::new(|| pattern(r" +([,.!?;:])"));
 static SPACE_BEFORE_NEWLINE: LazyLock<Regex> = LazyLock::new(|| pattern(r"[ \t]+\n"));
@@ -58,8 +64,10 @@ pub fn clean(raw: &str, cfg: &CleanupConfig) -> String {
 
 /// Whole-word, any-case replacement; the replacement is used literally.
 fn replace_word(text: &str, phrase: &str, replacement: &str) -> String {
-    let re = pattern(&format!(r"\b{}\b", any_case(phrase)));
-    re.replace_all(text, NoExpand(replacement)).into_owned()
+    match settings_pattern(&format!(r"\b{}\b", any_case(phrase))) {
+        Some(re) => re.replace_all(text, NoExpand(replacement)).into_owned(),
+        None => text.to_string(),
+    }
 }
 
 fn alternation(words: &[String]) -> String {
@@ -72,57 +80,44 @@ fn alternation(words: &[String]) -> String {
 
 /// A pattern for `phrase` in any case, the way the Mac matches it. The Mac's
 /// matching uses full case folding, so "strasse" also finds "straße" and
-/// "office" finds "oﬃce"; Rust's `(?i)` only folds one character to one
-/// character. So the phrase is folded first, and wherever the folded text could
-/// have come from a single character (ss from ß, ffi from ﬃ), that character
-/// is allowed too.
+/// "office" finds "oﬃce", "oﬀice" and "ofﬁce"; Rust's `(?i)` only folds one
+/// character to one character. So the phrase is folded first, and at every
+/// point where a single character folds to the text that follows (ß to ss, ﬀ to
+/// ff), that character is offered as well as the plain letters.
 fn any_case(phrase: &str) -> String {
     let folded: Vec<char> = phrase
         .chars()
-        .flat_map(
-            |c| match MULTI_CHAR_FOLDS.iter().find(|(from, _)| *from == c) {
-                Some((_, to)) => to.chars().collect::<Vec<_>>(),
-                None => c.to_lowercase().collect(),
-            },
-        )
+        .flat_map(|c| match MULTI_CHAR_FOLDS.iter().find(|(from, _)| *from == c) {
+            Some((_, to)) => to.chars().collect::<Vec<_>>(),
+            None => c.to_lowercase().collect(),
+        })
         .collect();
-    let mut out = String::new();
-    let mut i = 0;
-    while i < folded.len() {
-        // The longest folded run starting here that a single character folds to.
-        let longest = MULTI_CHAR_FOLDS
-            .iter()
-            .map(|(_, to)| to.chars().count())
-            .filter(|&len| {
-                let run: String = folded[i..].iter().take(len).collect();
-                run.chars().count() == len && MULTI_CHAR_FOLDS.iter().any(|(_, to)| *to == run)
-            })
-            .max();
-        match longest {
-            Some(len) => {
-                let run: String = folded[i..i + len].iter().collect();
-                let mut choices = vec![regex::escape(&run)];
-                choices.extend(
-                    MULTI_CHAR_FOLDS
-                        .iter()
-                        .filter(|(_, to)| *to == run)
-                        .map(|(from, _)| regex::escape(&from.to_string())),
-                );
-                out.push_str(&format!("(?:{})", choices.join("|")));
-                i += len;
-            }
-            None => {
-                out.push_str(&regex::escape(&folded[i].to_string()));
-                i += 1;
-            }
-        }
+    // Each fold point doubles the pattern at most; a phrase with dozens of
+    // them is not a real phrase, so keep its plain form.
+    let fold_points = (0..folded.len())
+        .filter(|&i| MULTI_CHAR_FOLDS.iter().any(|(_, to)| folded[i..].iter().copied().take(to.chars().count()).eq(to.chars())))
+        .count();
+    if fold_points > 16 {
+        return regex::escape(phrase);
     }
-    out
+    folded_pattern(&folded)
 }
 
-fn remove_fillers(text: &str, fillers: &[String]) -> String {
-    let re = pattern(&format!(r"\b(?:{})\b,?", alternation(fillers)));
-    re.replace_all(text, "").into_owned()
+fn folded_pattern(folded: &[char]) -> String {
+    let Some(first) = folded.first() else {
+        return String::new();
+    };
+    let plain = regex::escape(&first.to_string()) + &folded_pattern(&folded[1..]);
+    let mut choices: Vec<String> = MULTI_CHAR_FOLDS
+        .iter()
+        .filter(|(_, to)| folded.iter().copied().take(to.chars().count()).eq(to.chars()))
+        .map(|(from, to)| regex::escape(&from.to_string()) + &folded_pattern(&folded[to.chars().count()..]))
+        .collect();
+    if choices.is_empty() {
+        return plain;
+    }
+    choices.insert(0, plain);
+    format!("(?:{})", choices.join("|"))
 }
 
 /// Collapse runs of spaces, drop space before punctuation and before a line

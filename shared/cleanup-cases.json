@@ -28,6 +28,8 @@
     { "id": "dictionary-10", "rule": "dictionary", "config": { "dictionary": { "strasse": "street" } }, "in": "die straße", "out": "Die street" },
     { "id": "dictionary-11", "rule": "dictionary", "config": { "dictionary": { "straße": "street" } }, "in": "the STRASSE sign", "out": "The street sign" },
     { "id": "dictionary-12", "rule": "dictionary", "config": { "dictionary": { "office": "Office" } }, "in": "the oﬃce is open", "out": "The Office is open" },
+    { "id": "dictionary-13", "rule": "dictionary", "config": { "dictionary": { "office": "Office" } }, "in": "the oﬀice and the ofﬁce", "out": "The Office and the Office" },
+    { "id": "dictionary-14", "rule": "dictionary", "config": { "dictionary": { "mississippi": "Mississippi" } }, "in": "the mißißippi river", "out": "The Mississippi river" },
 
     { "id": "spoken-formatting-01", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "first point new line second point", "out": "First point\nSecond point" },
     { "id": "spoken-formatting-02", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "dear team new paragraph thanks for waiting", "out": "Dear team\n\nThanks for waiting" },
