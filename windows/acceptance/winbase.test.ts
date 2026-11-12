@@ -40,6 +40,8 @@ let running = 0;
 
 async function startsOnThisPc() {
   mkdirSync(shots, { recursive: true });
+  // A fresh GitHub machine can still be on Windows' first sign-in screens.
+  desk("ready-desktop", { Shot: join(shots, `${label}-desktop.png`) });
   const localAppData = process.env.LOCALAPPDATA ?? "";
   expect(existsSync(join(localAppData, "loqui", "loqui.exe"))).toBe(false);
 

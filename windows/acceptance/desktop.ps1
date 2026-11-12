@@ -61,6 +61,64 @@ public static class Desk {
     return Shell_NotifyIconGetRect(ref id, out rect) == 0;
   }
 
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+  [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern int GetMenuItemCount(IntPtr menu);
+  [DllImport("user32.dll")] static extern uint GetMenuState(IntPtr menu, uint item, uint flags);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetMenuString(IntPtr menu, uint item, StringBuilder text, int max, uint flags);
+  [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr hwnd, IntPtr menu, uint item, out RECT rect);
+
+  /// The open pop-up menu's window, if one is showing.
+  public static IntPtr MenuWindow() {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows(delegate (IntPtr h, IntPtr l) {
+      var cls = new StringBuilder(64);
+      GetClassName(h, cls, 64);
+      if (cls.ToString() == "#32768" && IsWindowVisible(h)) { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
+
+  static IntPtr OpenMenu() {
+    IntPtr w = MenuWindow();
+    return w == IntPtr.Zero ? IntPtr.Zero : SendMessage(w, 0x01E1, IntPtr.Zero, IntPtr.Zero); // MN_GETHMENU
+  }
+
+  /// The open menu's items as "name|enabled", separators left out.
+  public static string[] MenuItems() {
+    IntPtr menu = OpenMenu();
+    var items = new System.Collections.Generic.List<string>();
+    if (menu == IntPtr.Zero) return items.ToArray();
+    int count = GetMenuItemCount(menu);
+    for (uint i = 0; i < count; i++) {
+      uint state = GetMenuState(menu, i, 0x400);           // MF_BYPOSITION
+      if ((state & 0x800) != 0) continue;                  // MF_SEPARATOR
+      var text = new StringBuilder(256);
+      GetMenuString(menu, i, text, 256, 0x400);
+      bool enabled = (state & 0x3) == 0;                   // not MF_GRAYED or MF_DISABLED
+      items.Add(text.ToString() + "|" + (enabled ? "1" : "0"));
+    }
+    return items.ToArray();
+  }
+
+  /// Clicks the open menu's item with this name. False if there is no such item.
+  public static bool ClickMenuItem(string name) {
+    IntPtr menu = OpenMenu();
+    if (menu == IntPtr.Zero) return false;
+    int count = GetMenuItemCount(menu);
+    for (uint i = 0; i < count; i++) {
+      var text = new StringBuilder(256);
+      GetMenuString(menu, i, text, 256, 0x400);
+      RECT r;
+      if (text.ToString() == name && GetMenuItemRect(IntPtr.Zero, menu, i, out r)) {
+        Click((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2);
+        return true;
+      }
+    }
+    return false;
+  }
+
   public static void Click(int x, int y) {
     SetCursorPos(x, y);
     System.Threading.Thread.Sleep(80);
@@ -183,19 +241,33 @@ function Open-Menu {
   return @{ how = $how }
 }
 
-function Find-Menu {
-  $cond = New-Object System.Windows.Automation.PropertyCondition($Prop::ClassNameProperty, '#32768')
-  return $UIA::RootElement.FindFirst($Tree::Children, $cond)
-}
+function Find-Menu { [Desk]::MenuWindow() -ne [IntPtr]::Zero }
 
-function Menu-Items($menu) {
-  $cond = New-Object System.Windows.Automation.PropertyCondition($Prop::ControlTypeProperty,
-    [System.Windows.Automation.ControlType]::MenuItem)
+function Menu-Items {
   $items = @()
-  foreach ($el in $menu.FindAll($Tree::Descendants, $cond)) {
-    if ($el.Current.Name) { $items += @{ name = $el.Current.Name; enabled = $el.Current.IsEnabled } }
+  foreach ($entry in [Desk]::MenuItems()) {
+    $name, $enabled = $entry -split '\|'
+    $items += @{ name = $name; enabled = ($enabled -eq '1') }
   }
   return ,$items
+}
+
+# Windows' first sign-in screens (the privacy choices) can still be up on a
+# fresh GitHub machine. Click through them the way a person would.
+function Ready-Desktop {
+  $clicked = @()
+  foreach ($round in 1..8) {
+    $taskbar = Find-Taskbar
+    if ($taskbar -and (Taskbar-Names)) { return @{ clicked = $clicked; taskbar = $true } }
+    foreach ($label in 'Accept', 'Next', 'Skip', 'Not now', 'Done') {
+      $button = Named $UIA::RootElement $label
+      if ($button -and $button.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button) {
+        Click-Element $button; $clicked += $label; Start-Sleep -Milliseconds 1500; break
+      }
+    }
+    Start-Sleep -Milliseconds 1000
+  }
+  return @{ clicked = $clicked; taskbar = [bool]((Find-Taskbar) -and (Taskbar-Names)) }
 }
 
 function Process-Tree([int]$root) {
@@ -233,14 +305,11 @@ switch ($Verb) {
     $how = Open-Menu
     Start-Sleep -Milliseconds 300
     if ($Shot) { [Desk]::Screenshot($Shot) }
-    Out-Json @{ how = $how.how; items = (Menu-Items (Find-Menu)) }
+    Out-Json @{ how = $how.how; items = (Menu-Items) }
   }
   'choose' {
-    $menu = Find-Menu
-    if (-not $menu) { Fail 'no menu is open' }
-    $el = Named $menu $Item
-    if (-not $el) { Fail "the menu has no '$Item'" }
-    Click-Element $el
+    if (-not (Find-Menu)) { Fail 'no menu is open' }
+    if (-not [Desk]::ClickMenuItem($Item)) { Fail "the menu has no '$Item' (it has: $([Desk]::MenuItems() -join ', '))" }
     Out-Json @{ chose = $Item }
   }
   'dismiss' {
@@ -262,6 +331,12 @@ switch ($Verb) {
     }
     if ($Shot) { [Desk]::Screenshot($Shot) }
     Out-Json @{ title = $win.Current.Name; texts = @($texts) }
+  }
+  'ready-desktop' {
+    $result = Ready-Desktop
+    if ($Shot) { [Desk]::Screenshot($Shot) }
+    if (-not $result.taskbar) { Fail "the desktop has no taskbar after clicking: $($result.clicked -join ', ')" }
+    Out-Json $result
   }
   'screenshot' {
     [Desk]::Screenshot($Shot)
