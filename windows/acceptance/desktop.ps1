@@ -515,7 +515,11 @@ switch ($Verb) {
       $c = Window-Contents $win
       if ($c.texts.Count -gt 1 -and (-not $Name -or $c.texts -contains $Name)) { $c }
     }
-    if (-not $contents) { $contents = Window-Contents $win }
+    if (-not $contents) {
+      $seen = Window-Contents $win
+      if ($Name) { Fail "'$Title' never showed '$Name'. It shows: $($seen.texts -join ' | ')" }
+      $contents = $seen
+    }
     if ($Shot) { [Desk]::Front([IntPtr]$win.Current.NativeWindowHandle); Start-Sleep -Milliseconds 400; [Desk]::Screenshot($Shot) }
     Out-Json $contents
   }

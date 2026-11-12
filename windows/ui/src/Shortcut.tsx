@@ -3,26 +3,29 @@ import { backend } from "./backend";
 import type { ShortcutView } from "./bindings";
 import { KeyCaps, why } from "./ui";
 
-/** A key as loqui names it, from where it is on the keyboard. Modifiers alone give null. */
-function keyName(code: string): string | null {
-  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-  if (/^Digit\d$/.test(code)) return code.slice(5);
-  if (code === "Space" || /^F\d{1,2}$/.test(code)) return code;
-  if (/^(Control|Alt|Shift|Meta|OS)(Left|Right)?$/.test(code)) return null;
-  return code;
+/**
+ * A key as loqui names it, from its Windows key code (what loqui's keyboard
+ * watcher matches). Modifiers alone give null; keys loqui can't use give "".
+ */
+function keyName(keyCode: number): string | null {
+  if ([16, 17, 18, 91, 92].includes(keyCode)) return null;
+  if ((keyCode >= 65 && keyCode <= 90) || (keyCode >= 48 && keyCode <= 57)) return String.fromCharCode(keyCode);
+  if (keyCode === 32) return "Space";
+  if (keyCode >= 112 && keyCode <= 135) return `F${keyCode - 111}`;
+  return "";
 }
 
 /** What was pressed, as text loqui reads: "Ctrl+Alt+D". */
-export function pressed(event: Pick<KeyboardEvent, "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">) {
-  const key = keyName(event.code);
-  if (!key) return null;
+export function pressed(event: Pick<KeyboardEvent, "keyCode" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">) {
+  const key = keyName(event.keyCode);
+  if (key === null) return null;
   const mods = [
     event.ctrlKey && "Ctrl",
     event.altKey && "Alt",
     event.shiftKey && "Shift",
     event.metaKey && "Win",
   ].filter(Boolean);
-  return [...mods, key].join("+");
+  return [...mods, key || "?"].join("+");
 }
 
 /**
@@ -49,7 +52,7 @@ export function ShortcutRecorder({
       event.preventDefault();
       event.stopPropagation();
       if (event.repeat) return;
-      if (event.code === "Escape") {
+      if (event.key === "Escape") {
         setRecording(false);
         return;
       }

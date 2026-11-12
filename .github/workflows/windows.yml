@@ -180,6 +180,15 @@ jobs:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:e2e
 
+      # For reading when DICT-04 misses words: the same engine on the checks'
+      # own recordings, straight from the files with no microphone in between.
+      - name: "Diagnostics: the speech engine on the checks' recordings, from the files"
+        if: (success() || failure()) && matrix.arch == 'x64'
+        run: |
+          foreach ($w in 'sentence', 'paragraph') {
+            cargo run --release -q -p loqui-speech --example transcribe -- target\release "target\e2e\$w.wav"
+          }
+
       # Runs even when a dictation check failed, so one run reports on both parts.
       - name: "WELC, SET, HIST, RECENT and MENU on Windows: the real windows, light and dark"
         if: (success() || failure()) && matrix.arch == 'x64'

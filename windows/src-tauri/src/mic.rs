@@ -281,12 +281,19 @@ impl Stream {
         let mut pending = Vec::with_capacity(BLOCK * 4);
         let mut checked = Instant::now();
         let mut broken = false;
-        let mut gaps = 0;
+        // Where Windows dropped sound, in seconds into the dictation. Its very
+        // first packet is always marked, so that one isn't counted.
+        let mut gaps: Vec<f64> = Vec::new();
+        let mut heard = 0usize;
         loop {
             let stopping = stop.load(Ordering::SeqCst);
+            let before = pending.len();
             let read = self.read(&mut pending);
             let failed = read.is_err();
-            gaps += read.unwrap_or(0);
+            if read.is_ok_and(|g| g > 0) && heard > 0 {
+                gaps.push(heard as f64 / 16_000.0);
+            }
+            heard += pending.len() - before;
             while pending.len() >= BLOCK {
                 let mut block: Vec<f32> = pending.drain(..BLOCK).collect();
                 out.pass(&mut block);
@@ -295,9 +302,11 @@ impl Stream {
                 if !pending.is_empty() {
                     out.pass(&mut pending);
                 }
-                if gaps > 0 {
+                if !gaps.is_empty() {
+                    let at: Vec<String> = gaps.iter().map(|g| format!("{g:.2}s")).collect();
                     out.log(&format!(
-                        "WARNING: Windows dropped sound {gaps} times during this dictation"
+                        "WARNING: Windows dropped sound during this dictation, at {}",
+                        at.join(", ")
                     ));
                 }
                 break;
