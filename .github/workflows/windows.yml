@@ -243,6 +243,9 @@ jobs:
       - name: The next version, for the update and install checks
         if: (success() || failure()) && steps.build.outcome == 'success'
         run: |
+          # The Arm dictation check leaves its test build running from target\release.
+          Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 2
           $v = (Get-Content package.json -Raw | ConvertFrom-Json).version.Split('.')
           $next = "$($v[0]).$($v[1]).$([int]$v[2] + 1)"
           @{ version = $next; bundle = @{ windows = @{ nsis = @{ compression = 'none' } } } } |

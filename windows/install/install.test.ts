@@ -155,34 +155,41 @@ test.runIf(onWindows)(
   "UPD-03: Offline, the check fails quietly",
   async () => {
     await stopServing();
-    await start("upd-03-start");
-    // The check as it starts can't reach the list, and nothing pops up.
-    expect(desk("no-window", { ProcessId: pid, Title: "loqui update", Wait: 15_000 }).appeared).toBe(false);
-    checkByHand("Couldn't reach the update server. Try again later.", "upd-03-offline");
-    closeUpdateWindow();
-    // Dictation still works (on Arm there is no microphone; DICT-07 dictates there).
-    if (arch === "x64") {
-      dk("make-wav", { Text: "Offline is fine.", Wav: join(windowsDir, "target", "e2e", "offline.wav") });
-      const notepad = dk("notepad").hwnd;
-      dk("clear", { Hwnd: notepad });
-      const r = dk(
-        "dictate",
-        {
-          Hwnd: notepad,
-          ProcessId: pid,
-          Wav: join(windowsDir, "target", "e2e", "offline.wav"),
-          Shot: shot("upd-03-dictated"),
-        },
-        180_000,
-      );
-      expect(r.text).toBe("Offline is fine.");
-      ps("Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+    try {
+      await offline();
+    } finally {
+      serve();
     }
-    expect(facts().processes.map((p) => p.pid)).toContain(pid);
-    serve();
   },
   300_000,
 );
+
+async function offline() {
+  await start("upd-03-start");
+  // The check as it starts can't reach the list, and nothing pops up.
+  expect(desk("no-window", { ProcessId: pid, Title: "loqui update", Wait: 15_000 }).appeared).toBe(false);
+  checkByHand("Couldn't reach the update server. Try again later.", "upd-03-offline");
+  closeUpdateWindow();
+  // Dictation still works (on Arm there is no microphone; DICT-07 dictates there).
+  if (arch === "x64") {
+    dk("make-wav", { Text: "Offline is fine.", Wav: join(windowsDir, "target", "e2e", "offline.wav") });
+    const notepad = dk("notepad").hwnd;
+    dk("clear", { Hwnd: notepad });
+    const r = dk(
+      "dictate",
+      {
+        Hwnd: notepad,
+        ProcessId: pid,
+        Wav: join(windowsDir, "target", "e2e", "offline.wav"),
+        Shot: shot("upd-03-dictated"),
+      },
+      180_000,
+    );
+    expect(r.text).toBe("Offline is fine.");
+    ps("Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+  }
+  expect(facts().processes.map((p) => p.pid)).toContain(pid);
+}
 
 test.runIf(onWindows)("CHAN-02: Only PCs with test versions on get them", async () => {
   // The next version is a test version; the public list still has this one.

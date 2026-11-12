@@ -49,6 +49,13 @@ $UninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\loqui
 $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $StartMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
 
+# SHA-256 by .NET: Windows PowerShell started from PowerShell 7 can't load Get-FileHash.
+function Sha256([string]$path) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  $stream = [IO.File]::OpenRead($path)
+  try { return ([BitConverter]::ToString($sha.ComputeHash($stream)) -replace '-', '') } finally { $stream.Dispose(); $sha.Dispose() }
+}
+
 function Modified([string]$path) {
   if (Test-Path $path) { (Get-Item $path).LastWriteTimeUtc.ToString('o') } else { $null }
 }
@@ -62,7 +69,7 @@ function Facts {
   $dataFiles = @()
   if (Test-Path $Data) {
     $dataFiles = @(Get-ChildItem $Data -Recurse -File | ForEach-Object {
-      @{ name = $_.FullName.Substring($Data.Length + 1); sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash }
+      @{ name = $_.FullName.Substring($Data.Length + 1); sha256 = (Sha256 $_.FullName) }
     })
   }
   return @{
@@ -83,9 +90,14 @@ function Facts {
   }
 }
 
+# The uninstaller's window: NSIS names it "loqui Uninstall".
 function Find-Uninstaller {
-  $cond = New-Object System.Windows.Automation.PropertyCondition($UIA::NameProperty, 'loqui Uninstall')
-  return $UIA::RootElement.FindFirst($Tree::Children, $cond)
+  $all = $UIA::RootElement.FindAll($Tree::Children, [System.Windows.Automation.Condition]::TrueCondition)
+  foreach ($w in $all) { if ($w.Current.Name -match '^loqui\s+Uninstall') { return $w } }
+  return $null
+}
+function Top-Windows {
+  ($UIA::RootElement.FindAll($Tree::Children, [System.Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name } | Where-Object { $_ }) -join ' | '
 }
 function Named($root, [string]$name) {
   $cond = New-Object System.Windows.Automation.PropertyCondition($UIA::NameProperty, $name)
@@ -118,7 +130,7 @@ switch ($Verb) {
     $exe = $key.UninstallString.Trim('"')
     Start-Process -FilePath $exe | Out-Null
     $win = Wait-Until 20000 { Find-Uninstaller }
-    if (-not $win) { Fail 'no loqui Uninstall window appeared' }
+    if (-not $win) { Fail "no loqui Uninstall window appeared. Windows: $(Top-Windows)" }
     $box = Wait-Until 10000 { Named $win 'Also delete my dictation history, dictionary, settings and stats' }
     if (-not $box) { Fail 'the uninstaller does not ask about your data' }
     $toggle = $box.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
