@@ -1,0 +1,137 @@
+{
+  "about": [
+    "The cleanup rules, written down once as examples that the Mac app and the Windows app must both pass.",
+    "Each case runs the full cleanup on `in` and must produce exactly `out`. `config` holds only the cleanup.json keys that differ from the shipped defaults; it is read with the same loader as a real cleanup.json, so missing keys take their defaults.",
+    "Each timed case banks its `segments` in order, the way the recognizer hands them over: the gap is the segment's `start` minus the previous segment's `end` (no gap is measured when either is missing, and a segment with no times keeps the previous end). The banked text then runs through the full cleanup and must produce `out`.",
+    "Later steps add cases. Changing an existing case's `out` needs a changes.md entry, because it changes what users get."
+  ],
+  "cases": [
+    { "id": "fillers-01", "rule": "fillers", "in": "um I think we should go", "out": "I think we should go" },
+    { "id": "fillers-02", "rule": "fillers", "in": "so uh, the meeting is at noon", "out": "So the meeting is at noon" },
+    { "id": "fillers-03", "rule": "fillers", "in": "I was, um, going to call", "out": "I was, going to call" },
+    { "id": "fillers-04", "rule": "fillers", "in": "Umm, the hmm report is uhh ready.", "out": "The report is ready." },
+    { "id": "fillers-05", "rule": "fillers", "in": "the summit fixed the error", "out": "The summit fixed the error" },
+    { "id": "fillers-06", "rule": "fillers", "config": { "removeFillers": false }, "in": "um I think so", "out": "Um I think so" },
+    { "id": "fillers-07", "rule": "fillers", "config": { "fillers": ["you know", "like"] }, "in": "it was, you know, like really good", "out": "It was, really good" },
+    { "id": "fillers-08", "rule": "fillers", "in": "um, café au lait please", "out": "Café au lait please" },
+    { "id": "fillers-09", "rule": "fillers", "in": "um, uh, okay", "out": "Okay" },
+
+    { "id": "dictionary-01", "rule": "dictionary", "config": { "dictionary": { "loki": "loqui" } }, "in": "i use loki every day", "out": "I use loqui every day" },
+    { "id": "dictionary-02", "rule": "dictionary", "config": { "dictionary": { "sarah k": "Sara K.", "sarah": "Sarah" } }, "in": "sarah and sarah k", "out": "Sarah and Sara K." },
+    { "id": "dictionary-03", "rule": "dictionary", "config": { "dictionary": { "git": "Git" } }, "in": "digit and git and github", "out": "Digit and Git and github" },
+    { "id": "dictionary-04", "rule": "dictionary", "config": { "dictionary": { "jira": "Jira" } }, "in": "JIRA and jira and JiRa", "out": "Jira and Jira and Jira" },
+    { "id": "dictionary-05", "rule": "dictionary", "config": { "dictionary": { "zoe": "Zoë" } }, "in": "tell zoe hi", "out": "Tell Zoë hi" },
+    { "id": "dictionary-06", "rule": "dictionary", "config": { "dictionary": { "café": "Café Loqui" } }, "in": "meet at the CAFÉ", "out": "Meet at the Café Loqui" },
+    { "id": "dictionary-07", "rule": "dictionary", "config": { "dictionary": { "o'neil": "O'Neill" } }, "in": "call o'neil today", "out": "Call O'Neill today" },
+    { "id": "dictionary-08", "rule": "dictionary", "config": { "dictionary": { "dollar sign": "$1" } }, "in": "it costs five dollar sign", "out": "It costs five $1" },
+    { "id": "dictionary-09", "rule": "dictionary", "config": { "dictionary": { "pr": "PR", "pr review": "PR review" } }, "in": "send the pr review and the pr", "out": "Send the PR review and the PR" },
+
+    { "id": "spoken-formatting-01", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "first point new line second point", "out": "First point\nSecond point" },
+    { "id": "spoken-formatting-02", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "dear team new paragraph thanks for waiting", "out": "Dear team\n\nThanks for waiting" },
+    { "id": "spoken-formatting-03", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "hello New Line world", "out": "Hello\nWorld" },
+    { "id": "spoken-formatting-04", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "that's all. new paragraph next item", "out": "That's all.\n\nNext item" },
+    { "id": "spoken-formatting-05", "rule": "spoken-formatting", "in": "add a new line to the list", "out": "Add a new line to the list" },
+    { "id": "spoken-formatting-06", "rule": "spoken-formatting", "in": "start a new paragraph here", "out": "Start a new paragraph here" },
+    { "id": "spoken-formatting-07", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "a newline is not a new liner", "out": "A newline is not a new liner" },
+
+    { "id": "tidy-01", "rule": "tidy", "in": "hello   world", "out": "Hello world" },
+    { "id": "tidy-02", "rule": "tidy", "in": "wait , what ?", "out": "Wait, what?" },
+    { "id": "tidy-03", "rule": "tidy", "in": "one ; two : three .", "out": "One; two: three." },
+    { "id": "tidy-04", "rule": "tidy", "in": "a\t\tb", "out": "A b" },
+    { "id": "tidy-05", "rule": "tidy", "in": "  hello there  ", "out": "Hello there" },
+    { "id": "tidy-06", "rule": "tidy", "in": ", , hello there", "out": "Hello there" },
+    { "id": "tidy-07", "rule": "tidy", "in": "first line   \nsecond line", "out": "First line\nSecond line" },
+
+    { "id": "lone-i-01", "rule": "lone-i", "in": "i think i can", "out": "I think I can" },
+    { "id": "lone-i-02", "rule": "lone-i", "in": "i'm sure i'll be there and i've said so", "out": "I'm sure I'll be there and I've said so" },
+    { "id": "lone-i-03", "rule": "lone-i", "in": "it is in the wiki", "out": "It is in the wiki" },
+    { "id": "lone-i-04", "rule": "lone-i", "in": "maybe i, maybe not", "out": "Maybe I, maybe not" },
+    { "id": "lone-i-05", "rule": "lone-i", "in": "naïve i guess", "out": "Naïve I guess" },
+
+    { "id": "sentence-heal-01", "rule": "sentence-heal", "in": "we could go. or we could stay", "out": "We could go or we could stay" },
+    { "id": "sentence-heal-02", "rule": "sentence-heal", "in": "I read the report. which reminds me", "out": "I read the report, which reminds me" },
+    { "id": "sentence-heal-03", "rule": "sentence-heal", "in": "we met Dana. whose team won", "out": "We met Dana, whose team won" },
+    { "id": "sentence-heal-04", "rule": "sentence-heal", "in": "the client. whom we called", "out": "The client, whom we called" },
+    { "id": "sentence-heal-05", "rule": "sentence-heal", "in": "I stayed late. Because the build broke", "out": "I stayed late because the build broke" },
+    { "id": "sentence-heal-06", "rule": "sentence-heal", "in": "it is faster. Than the old one", "out": "It is faster than the old one" },
+    { "id": "sentence-heal-07", "rule": "sentence-heal", "in": "not this. nor that", "out": "Not this nor that" },
+    { "id": "sentence-heal-08", "rule": "sentence-heal", "in": "the plan. Which works", "out": "The plan, which works" },
+    { "id": "sentence-heal-09", "rule": "sentence-heal", "in": "we could go.\nor stay", "out": "We could go.\nOr stay" },
+    { "id": "sentence-heal-10", "rule": "sentence-heal", "in": "we left. And then it rained", "out": "We left. And then it rained" },
+    { "id": "sentence-heal-11", "rule": "sentence-heal", "config": { "healSentenceSplits": false }, "in": "we could go. or we could stay", "out": "We could go. Or we could stay" },
+    { "id": "sentence-heal-12", "rule": "sentence-heal", "in": "it was good. orange juice next", "out": "It was good. Orange juice next" },
+    { "id": "sentence-heal-13", "rule": "sentence-heal", "config": { "continuationWords": ["then"] }, "in": "we ate. then we left. or not", "out": "We ate then we left. Or not" },
+    { "id": "sentence-heal-14", "rule": "sentence-heal", "in": "it's done. which isn't bad", "out": "It's done, which isn't bad" },
+
+    { "id": "capitals-01", "rule": "capitals", "in": "hello world. this is loqui! is it? yes", "out": "Hello world. This is loqui! Is it? Yes" },
+    { "id": "capitals-02", "rule": "capitals", "in": "Hello there", "out": "Hello there" },
+    { "id": "capitals-03", "rule": "capitals", "in": "first\nsecond", "out": "First\nSecond" },
+    { "id": "capitals-04", "rule": "capitals", "in": "the API is ready", "out": "The API is ready" },
+    { "id": "capitals-05", "rule": "capitals", "in": "état is French", "out": "état is French" },
+    { "id": "capitals-06", "rule": "capitals", "in": "one.  two", "out": "One. Two" },
+    { "id": "capitals-07", "rule": "capitals", "in": "3 apples. then 4", "out": "3 apples. Then 4" },
+
+    { "id": "combined-01", "rule": "combined", "config": { "dictionary": { "loki": "loqui" } }, "in": "um so i tried loki. which um works great", "out": "So I tried loqui, which works great" },
+    { "id": "combined-02", "rule": "combined", "config": { "spokenFormatting": true }, "in": "uh i'm done new paragraph um next steps", "out": "I'm done\n\nNext steps" }
+  ],
+  "timedCases": [
+    { "id": "timed-heal-01", "rule": "timed-heal", "segments": [
+      { "text": "I finished the report.", "start": 0.0, "end": 2.0 },
+      { "text": "And then we left.", "start": 2.3, "end": 3.5 }
+    ], "out": "I finished the report and then we left." },
+    { "id": "timed-heal-02", "rule": "timed-heal", "segments": [
+      { "text": "I finished the report.", "start": 0.0, "end": 2.0 },
+      { "text": "And then we left.", "start": 3.0, "end": 4.0 }
+    ], "out": "I finished the report. And then we left." },
+    { "id": "timed-heal-03", "rule": "timed-heal", "segments": [
+      { "text": "I finished the report.", "start": 0.0, "end": 2.0 },
+      { "text": "And then we left." }
+    ], "out": "I finished the report. And then we left." },
+    { "id": "timed-heal-04", "rule": "timed-heal", "segments": [
+      { "text": "Ready." },
+      { "text": "But wait.", "start": 1.0, "end": 2.0 }
+    ], "out": "Ready. But wait." },
+    { "id": "timed-heal-05", "rule": "timed-heal", "segments": [
+      { "text": "It works.", "start": 0.0, "end": 1.0 },
+      { "text": "But slowly.", "start": 1.2, "end": 2.0 }
+    ], "out": "It works but slowly." },
+    { "id": "timed-heal-06", "rule": "timed-heal", "segments": [
+      { "text": "We were late.", "start": 0.0, "end": 1.5 },
+      { "text": "So we ran.", "start": 1.75, "end": 2.5 }
+    ], "out": "We were late so we ran." },
+    { "id": "timed-heal-07", "rule": "timed-heal", "segments": [
+      { "text": "Exactly at the limit.", "start": 0.0, "end": 1.0 },
+      { "text": "And it still heals.", "start": 1.5, "end": 2.5 }
+    ], "out": "Exactly at the limit and it still heals." },
+    { "id": "timed-heal-08", "rule": "timed-heal", "segments": [
+      { "text": "We stopped.", "start": 0.0, "end": 1.0 },
+      { "text": "Then we left.", "start": 1.1, "end": 2.0 }
+    ], "out": "We stopped. Then we left." },
+    { "id": "timed-heal-09", "rule": "timed-heal", "config": { "healSentenceSplits": false }, "segments": [
+      { "text": "It works.", "start": 0.0, "end": 1.0 },
+      { "text": "And it is fast.", "start": 1.1, "end": 2.0 }
+    ], "out": "It works. And it is fast." },
+    { "id": "timed-heal-10", "rule": "timed-heal", "segments": [
+      { "text": "I think", "start": 0.0, "end": 1.0 },
+      { "text": "and so on.", "start": 1.1, "end": 2.0 }
+    ], "out": "I think and so on." },
+    { "id": "timed-heal-11", "rule": "timed-heal", "segments": [
+      { "text": "It was fine.", "start": 0.0, "end": 1.0 },
+      { "text": "And, honestly, good.", "start": 1.25, "end": 2.0 }
+    ], "out": "It was fine and, honestly, good." },
+    { "id": "timed-heal-12", "rule": "timed-heal", "config": { "maxPauseSeconds": 1.0 }, "segments": [
+      { "text": "Give it a moment.", "start": 0.0, "end": 1.0 },
+      { "text": "So it can load.", "start": 1.75, "end": 2.5 }
+    ], "out": "Give it a moment so it can load." },
+    { "id": "timed-heal-13", "rule": "timed-heal", "segments": [
+      { "text": "One.", "start": 0.0, "end": 1.0 },
+      { "text": "Two." },
+      { "text": "And three.", "start": 1.25, "end": 2.0 }
+    ], "out": "One. Two and three." },
+    { "id": "timed-heal-14", "rule": "timed-heal", "config": { "timedHealWords": ["then"] }, "segments": [
+      { "text": "We stopped.", "start": 0.0, "end": 1.0 },
+      { "text": "Then we left.", "start": 1.25, "end": 2.0 },
+      { "text": "And that was it.", "start": 2.25, "end": 3.0 }
+    ], "out": "We stopped then we left. And that was it." }
+  ]
+}

@@ -1,0 +1,21 @@
+[package]
+name = "loqui-core"
+description = "Loqui's rules and files, with no Windows or UI code: builds and tests on any computer."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[[test]]
+name = "shared_cases"
+harness = false
+
+[dev-dependencies]
+libtest-mimic = "0.8.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"

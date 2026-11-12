@@ -171,42 +171,18 @@ final class VoiceTranscriber: ObservableObject {
     /// to the text-only rule in TextCleanup.
     @available(macOS 26, *)
     private func bankTimed(_ text: String, span: (start: CMTime, end: CMTime)?) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         defer { lastSegmentEnd = span?.end ?? lastSegmentEnd }
-        guard !trimmed.isEmpty else { return }
-        guard !finalized.isEmpty, finalized.hasSuffix(".") else {
-            bank(trimmed)
-            return
-        }
-
-        let cfg = CleanupConfigFile.load()
-        let firstWord = trimmed.prefix(while: { !$0.isWhitespace })
-            .lowercased().trimmingCharacters(in: .punctuationCharacters)
         let measured: Double? = {
             guard let s = span?.start, let e = lastSegmentEnd else { return nil }
             let d = (s - e).seconds
             return d.isFinite ? d : nil
         }()
-
-        let eligible = cfg.healSentenceSplits
-            && cfg.timedHealWords.contains(firstWord)
-            && (measured.map { $0 <= cfg.maxPauseSeconds } ?? false)
-
-        if let measured {
-            CleanupAudit.boundary(gap: measured, word: firstWord, healed: eligible)
+        let result = TimedHeal.bank(text, after: finalized, gap: measured,
+                                    config: CleanupConfigFile.load())
+        if let b = result.boundary {
+            CleanupAudit.boundary(gap: b.gap, word: b.word, healed: b.healed)
         }
-
-        if eligible {
-            finalized.removeLast()      // the period the pause caused
-            finalized += " " + lowercasingFirst(trimmed)
-        } else {
-            bank(trimmed)
-        }
-    }
-
-    private func lowercasingFirst(_ s: String) -> String {
-        guard let f = s.first else { return s }
-        return f.lowercased() + s.dropFirst()
+        finalized = result.text
     }
 
     /// Overall audio span of a result, taken from its first and last timed runs.

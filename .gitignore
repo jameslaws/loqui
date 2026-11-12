@@ -20,3 +20,8 @@ build/
 
 # Lavish review artifacts (scratch, not source)
 .lavish/
+
+# Windows app build output
+windows/target/
+windows/node_modules/
+windows/ui/dist/
