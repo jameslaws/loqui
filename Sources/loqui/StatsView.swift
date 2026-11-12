@@ -148,14 +148,21 @@ final class StatsModel: ObservableObject {
         }
     }
 
+    /// Test seam: the figures for a given record, moment, calendar and period,
+    /// with nothing read from disk and no live updates. The app uses `init()`.
+    init(entries: [DictationEntry], now: Date, calendar: Calendar, grain: StatsGrain, offset: Int) {
+        self.grain = grain
+        self.offset = min(0, offset)
+        reload(entries: entries, now: now, cal: calendar)
+    }
+
     deinit {
         if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
-    func reload() {
-        let cal = Calendar.current
-        let now = Date()
-        let entries = DictationLog.shared.load()
+    /// The app always passes nothing: the saved record, now, and this Mac's calendar.
+    func reload(entries saved: [DictationEntry]? = nil, now: Date = Date(), cal: Calendar = .current) {
+        let entries = saved ?? DictationLog.shared.load()
 
         allTimeWords = entries.reduce(0) { $0 + $1.words }
         totalDictations = entries.count
@@ -165,8 +172,9 @@ final class StatsModel: ObservableObject {
             entries.filter(pred).reduce(0) { $0 + $1.words }
         }
 
-        todayWords = sum { cal.isDateInToday($0.at) }
-        yesterdayWords = sum { cal.isDateInYesterday($0.at) }
+        let yesterday = cal.date(byAdding: .day, value: -1, to: now) ?? now
+        todayWords = sum { cal.isDate($0.at, inSameDayAs: now) }
+        yesterdayWords = sum { cal.isDate($0.at, inSameDayAs: yesterday) }
 
         let weekItv = cal.dateInterval(of: .weekOfYear, for: now)
         weekWords = sum { weekItv?.contains($0.at) ?? false }
@@ -320,25 +328,29 @@ final class StatsModel: ObservableObject {
     static func label(for grain: StatsGrain, window: DateInterval?,
                       cal: Calendar, now: Date) -> String {
         guard let window else { return "All time" }
+        // In the calendar's own language and time zone: this Mac's, in the app.
+        let style = Date.FormatStyle(locale: cal.locale ?? .autoupdatingCurrent, calendar: cal,
+                                     timeZone: cal.timeZone)
         let start = window.start
         let last = window.end.addingTimeInterval(-1)
         switch grain {
         case .allTime:
             return "All time"
         case .year:
-            return start.formatted(.dateTime.year())
+            return start.formatted(style.year())
         case .month:
-            return start.formatted(.dateTime.month(.wide).year())
+            return start.formatted(style.month(.wide).year())
         case .week:
-            let from = start.formatted(.dateTime.month(.abbreviated).day())
+            let from = start.formatted(style.month(.abbreviated).day())
             let to = cal.isDate(start, equalTo: last, toGranularity: .month)
-                ? last.formatted(.dateTime.day())
-                : last.formatted(.dateTime.month(.abbreviated).day())
+                ? last.formatted(style.day())
+                : last.formatted(style.month(.abbreviated).day())
             return "\(from) – \(to)"
         case .day:
-            if cal.isDateInToday(start) { return "Today" }
-            if cal.isDateInYesterday(start) { return "Yesterday" }
-            return start.formatted(.dateTime.month(.abbreviated).day().year())
+            if cal.isDate(start, inSameDayAs: now) { return "Today" }
+            if let yesterday = cal.date(byAdding: .day, value: -1, to: now),
+               cal.isDate(start, inSameDayAs: yesterday) { return "Yesterday" }
+            return start.formatted(style.month(.abbreviated).day().year())
         }
     }
 

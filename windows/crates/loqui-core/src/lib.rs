@@ -12,6 +12,7 @@ pub mod dictation;
 pub mod records;
 pub mod settings;
 pub mod shortcut;
+pub mod stats;
 pub mod timed_heal;
 pub mod voice_key;
 

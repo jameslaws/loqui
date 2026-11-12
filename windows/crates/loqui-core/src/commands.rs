@@ -73,6 +73,8 @@ pub mod events {
     pub const HISTORY_CHANGED: &str = "history-changed";
     /// A setting changed in another window.
     pub const SETTINGS_CHANGED: &str = "settings-changed";
+    /// A dictation was counted for stats.
+    pub const STATS_CHANGED: &str = "stats-changed";
 }
 
 /// Reads and writes loqui's files for the screens.
@@ -231,6 +233,19 @@ impl Store {
             .map_err(|e| format!("loqui couldn't clear the history: {e}"))
     }
 
+    /// The stats window's figures for a period, counted in the time zone of
+    /// `now` (the PC's own) with weeks starting on `first_weekday`.
+    pub fn stats<Tz: chrono::TimeZone>(
+        &self,
+        request: &crate::stats::StatsRequest,
+        now: &chrono::DateTime<Tz>,
+        first_weekday: chrono::Weekday,
+    ) -> crate::stats::Stats {
+        let log = std::fs::read_to_string(self.records.stats_path()).unwrap_or_default();
+        let shortcut = self.settings().settings.shortcut.to_string();
+        crate::stats::stats(&log, now, first_weekday, request, &shortcut)
+    }
+
     /// The tray menu's Recent list: the last `n` dictations as (one line, full text).
     pub fn recent(&self, n: usize) -> Vec<(String, String)> {
         self.records
@@ -252,6 +267,9 @@ pub fn typescript() -> String {
         HistoryItem::decl(&cfg),
         Welcome::decl(&cfg),
     ];
+    let decls = decls
+        .into_iter()
+        .chain(crate::stats::typescript_decls(&cfg));
     let mut out = String::from(
         "// Made by loqui-core (crates/loqui-core/src/commands.rs). Don't edit by hand:\n\
          // `LOQUI_WRITE_BINDINGS=1 cargo test -p loqui-core` writes it again.\n\n",
@@ -262,9 +280,10 @@ pub fn typescript() -> String {
         out.push_str("\n\n");
     }
     out.push_str(&format!(
-        "export const events = {{ historyChanged: \"{}\", settingsChanged: \"{}\" }} as const;\n",
+        "export const events = {{ historyChanged: \"{}\", settingsChanged: \"{}\", statsChanged: \"{}\" }} as const;\n",
         events::HISTORY_CHANGED,
-        events::SETTINGS_CHANGED
+        events::SETTINGS_CHANGED,
+        events::STATS_CHANGED
     ));
     out
 }
