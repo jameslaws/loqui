@@ -68,3 +68,13 @@ pub fn explain_missing_webview() {
         }
     }
 }
+
+/// Dictation couldn't start at all: say so once, and keep loqui running.
+pub fn explain_no_dictation(why: &str) {
+    let text = wide(&format!("loqui can't start dictation on this PC.\n\n{why}"));
+    let title = wide("loqui");
+    // SAFETY: both strings are null-terminated and outlive the call.
+    unsafe {
+        MessageBoxW(null_mut(), text.as_ptr(), title.as_ptr(), MB_ICONWARNING);
+    }
+}

@@ -90,8 +90,7 @@ impl CleanupConfig {
     /// Where Windows keeps the file: `%LOCALAPPDATA%\Loqui\cleanup.json`,
     /// never the roaming profile.
     pub fn path() -> Option<PathBuf> {
-        let base = std::env::var_os("LOCALAPPDATA")?;
-        Some(Path::new(&base).join("Loqui").join("cleanup.json"))
+        Some(crate::records::data_dir()?.join("cleanup.json"))
     }
 
     /// Load from `path`. A missing file is created with the defaults. A file

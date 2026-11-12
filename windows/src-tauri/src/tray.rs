@@ -8,6 +8,11 @@ use tauri::AppHandle;
 
 const DARK_INK: &[u8] = include_bytes!("../icons/tray/mic-dark-ink.png");
 const LIGHT_INK: &[u8] = include_bytes!("../icons/tray/mic-light-ink.png");
+#[cfg(windows)]
+const RECORDING: &[u8] = include_bytes!("../icons/tray/mic-recording.png");
+#[cfg(windows)]
+const RECORDING_DIM: &[u8] = include_bytes!("../icons/tray/mic-recording-dim.png");
+const ID: &str = "loqui";
 
 pub fn install(app: &AppHandle) -> tauri::Result<()> {
     let running = MenuItem::with_id(app, "running", "loqui is running", false, None::<&str>)?;
@@ -24,7 +29,7 @@ pub fn install(app: &AppHandle) -> tauri::Result<()> {
         ],
     )?;
 
-    TrayIconBuilder::with_id("loqui")
+    TrayIconBuilder::with_id(ID)
         .icon(Image::from_bytes(icon_for_taskbar())?)
         .tooltip("loqui")
         .menu(&menu)
@@ -50,4 +55,22 @@ fn icon_for_taskbar() -> &'static [u8] {
     } else {
         LIGHT_INK
     }
+}
+
+#[cfg(windows)]
+/// While loqui listens the icon is magenta and pulses: call this with
+/// `Some(bright)` on each beat, and `None` when it stops.
+pub fn show_recording(app: &AppHandle, beat: Option<bool>) {
+    let Some(tray) = app.tray_by_id(ID) else {
+        return;
+    };
+    let (icon, tip) = match beat {
+        Some(true) => (RECORDING, "loqui is listening"),
+        Some(false) => (RECORDING_DIM, "loqui is listening"),
+        None => (icon_for_taskbar(), "loqui"),
+    };
+    if let Ok(image) = Image::from_bytes(icon) {
+        let _ = tray.set_icon(Some(image));
+    }
+    let _ = tray.set_tooltip(Some(tip));
 }

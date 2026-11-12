@@ -1,0 +1,13 @@
+[package]
+name = "loqui-speech"
+description = "Speech into text on the computer itself: the sherpa-onnx engine with the Parakeet model, cut into segments at pauses."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Loads the engine's library when loqui starts instead of linking it, so a
+# missing or broken engine is a message in loqui, not a Windows error box, and
+# this crate builds and tests on any computer.
+libloading = "=0.8.9"

@@ -7,7 +7,14 @@
 mod case_folds;
 pub mod cleanup;
 pub mod config;
+pub mod dictation;
+pub mod records;
+pub mod settings;
+pub mod shortcut;
 pub mod timed_heal;
+pub mod voice_key;
 
 pub use cleanup::clean;
 pub use config::CleanupConfig;
+pub use settings::Settings;
+pub use shortcut::{Mods, Shortcut};

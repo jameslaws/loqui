@@ -1,0 +1,112 @@
+/* Loqui for Windows: the proposed look, for plan mockups only.
+   Windows 11 conventions (Segoe UI Variable, 4px control corners, 8px window corners, soft Mica
+   surfaces) carrying Loqui's brand: magenta as the accent and icon ground, cream on magenta,
+   hierarchy from type rather than colour blocks. Selawik is Microsoft's open Segoe UI stand-in,
+   used here because the mockups are photographed on a Mac. */
+@font-face { font-family: "Seg"; src: url(fonts/selawk.ttf); font-weight: 400; unicode-range: U+0000-2025, U+2027-FFFF; }
+@font-face { font-family: "Seg"; src: url(fonts/selawksb.ttf); font-weight: 600; unicode-range: U+0000-2025, U+2027-FFFF; }
+@font-face { font-family: "Seg"; src: url(fonts/selawkb.ttf); font-weight: 700; unicode-range: U+0000-2025, U+2027-FFFF; }
+
+:root {
+  --brand: #E91E63; --brand-deep: #C2185B; --cream: #FBF7F2;
+  --bg: #F3F1EE; --card: #FFFFFF; --card-2: #FAF9F7; --stroke: #E3DFDA;
+  --text: #1A1A1A; --muted: #5F5B57; --faint: #8A847F;
+  --accent: #C2185B; --on-accent: #FFFFFF; --accent-text: #B0154F;
+  --control: #FFFFFF; --control-stroke: #D6D1CB; --hover: #F0EDE9;
+  --wall-1: #DCE3EA; --wall-2: #BCC9D6; --taskbar: rgba(243, 241, 238, 0.86); --taskbar-text: #1A1A1A;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --r-control: 4px; --r-card: 8px; --r-window: 8px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1F1D1C; --card: #2A2827; --card-2: #252322; --stroke: #3A3735;
+    --text: #F5F2EE; --muted: #B8B2AC; --faint: #8F8983;
+    --accent: #FF7AA2; --on-accent: #1A1A1A; --accent-text: #FF8AB0;
+    --control: #2F2D2C; --control-stroke: #46423F; --hover: #34312F;
+    --wall-1: #1C2633; --wall-2: #0F151D; --taskbar: rgba(32, 30, 29, 0.88); --taskbar-text: #F5F2EE;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: "Seg", "Segoe UI Variable Text", "Segoe UI", sans-serif; font-size: 14px; line-height: 20px; color: var(--text); }
+
+/* The desktop scene */
+.desk { position: relative; width: 1440px; height: 900px; overflow: hidden; background: linear-gradient(160deg, var(--wall-1), var(--wall-2)); }
+.taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: var(--taskbar); backdrop-filter: blur(30px); border-top: 1px solid var(--stroke); display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--taskbar-text); }
+.tb-app { width: 40px; height: 40px; border-radius: 4px; display: grid; place-items: center; }
+.tb-app.on { background: rgba(127, 127, 127, 0.14); }
+.tb-start { display: grid; grid-template-columns: 9px 9px; gap: 2px; }
+.tb-start i { width: 9px; height: 9px; background: #3D8BD9; display: block; border-radius: 1px; }
+.tb-search { height: 32px; width: 200px; border-radius: 16px; background: var(--card); border: 1px solid var(--stroke); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--muted); font-size: 13px; }
+.tray { position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; }
+.tray .ti { width: 32px; height: 40px; display: grid; place-items: center; border-radius: 4px; }
+.tray .ti.hot { background: rgba(127, 127, 127, 0.16); }
+.clock { text-align: right; padding: 0 8px; }
+
+/* Windows */
+.win { position: absolute; background: var(--bg); border-radius: var(--r-window); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
+.titlebar { height: 40px; display: flex; align-items: center; padding-left: 14px; gap: 10px; font-size: 12px; color: var(--text); flex: none; }
+.titlebar img { width: 16px; height: 16px; border-radius: 3px; }
+.titlebar .grow { flex: 1; }
+.caps { display: flex; height: 40px; }
+.caps span { width: 46px; display: grid; place-items: center; color: var(--text); }
+.content { flex: 1; overflow: hidden; }
+
+/* Type */
+.title { font-size: 28px; line-height: 36px; font-weight: 600; margin: 0; }
+.subtitle { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0; }
+.body-strong { font-weight: 600; }
+.caption { font-size: 12px; line-height: 16px; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* Controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--r-control); background: var(--control); border: 1px solid var(--control-stroke); color: var(--text); font: inherit; white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.quiet { background: transparent; border-color: transparent; }
+.btn.danger { color: #C42B1C; }
+@media (prefers-color-scheme: dark) { .btn.danger { color: #FF99A4; } }
+.field { height: 32px; border-radius: var(--r-control); background: var(--control); border: 1px solid var(--control-stroke); border-bottom: 2px solid var(--faint); padding: 0 10px; display: flex; align-items: center; color: var(--text); }
+.field.ph { color: var(--faint); }
+.field.focus { border-bottom-color: var(--accent); }
+.toggle { width: 40px; height: 20px; border-radius: 10px; border: 1px solid var(--faint); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 3px; left: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+.toggle.on { background: var(--accent); border-color: var(--accent); }
+.toggle.on::after { left: 23px; background: var(--on-accent); }
+.select { height: 32px; min-width: 140px; border-radius: var(--r-control); background: var(--control); border: 1px solid var(--control-stroke); padding: 0 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.keycap { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--control-stroke); border-bottom-width: 2px; background: var(--control); font-size: 12px; font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 12px; border-radius: 14px; background: var(--hover); border: 1px solid var(--stroke); font-size: 13px; }
+.chip b { font-weight: 400; color: var(--muted); width: 16px; text-align: center; }
+
+/* Settings cards (Windows 11 settings rows) */
+.group-label { font-weight: 600; margin: 20px 0 8px; }
+.card { background: var(--card); border: 1px solid var(--stroke); border-radius: var(--r-card); }
+.row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; min-height: 64px; }
+.row + .row { border-top: 1px solid var(--stroke); }
+.row .grow { flex: 1; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; padding: 0 24px; }
+.tab { padding: 8px 12px 10px; color: var(--muted); position: relative; }
+.tab.on { color: var(--text); font-weight: 600; }
+.tab.on::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 3px; border-radius: 2px; background: var(--accent); }
+
+/* Menus (Windows 11 context menu) */
+.menu { position: absolute; background: var(--card); border: 1px solid var(--stroke); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 4px; min-width: 260px; }
+.mi { height: 32px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 4px; white-space: nowrap; }
+.mi.hot { background: var(--hover); }
+.mi.dim { color: var(--muted); }
+.mi .grow { flex: 1; }
+.mi .key { color: var(--muted); font-size: 12px; }
+.sep { height: 1px; background: var(--stroke); margin: 4px 0; }
+
+/* The dictation HUD: always dark, like the Mac's */
+.hud { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 13px 22px; border-radius: 22px; background: rgba(28, 26, 25, 0.9); border: 1px solid rgba(233, 30, 99, 0.3); color: #FBF7F2; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35); }
+.hud .q { font-family: Georgia, "Times New Roman", serif; font-size: 40px; line-height: 20px; height: 20px; color: var(--brand); font-weight: 700; }
+.hud .bars { display: flex; gap: 4px; align-items: center; height: 36px; }
+.hud .bars i { width: 3.5px; border-radius: 2px; background: var(--brand); display: block; }
+.hud .label { font-size: 11px; letter-spacing: 2px; font-weight: 700; color: #F48FB1; }
+
+.focus-ring { outline: 2px solid var(--text); outline-offset: 2px; }

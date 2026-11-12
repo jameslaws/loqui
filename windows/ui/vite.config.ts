@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -10,5 +11,16 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(version) },
   clearScreen: false,
   server: { port: 5173, strictPort: true },
-  build: { outDir: "dist", emptyOutDir: true, target: "es2022" },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    target: "es2022",
+    // Two pages: the About window and the dictation bubble.
+    rollupOptions: {
+      input: {
+        about: fileURLToPath(new URL("index.html", import.meta.url)),
+        bubble: fileURLToPath(new URL("bubble.html", import.meta.url)),
+      },
+    },
+  },
 });

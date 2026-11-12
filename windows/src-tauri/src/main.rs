@@ -1,10 +1,23 @@
-//! loqui for Windows. In this first step it starts, sits in the notification
-//! area with About and Quit, and leaves nothing running when it quits.
+//! loqui for Windows: it sits in the notification area, and when you press
+//! the shortcut and speak, clean text lands wherever you're typing. The
+//! speech is turned into text on the PC itself.
 
 // No console window behind the app in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod about;
+#[cfg(windows)]
+mod bubble;
+#[cfg(windows)]
+mod dictation;
+#[cfg(windows)]
+mod hook;
+#[cfg(windows)]
+mod mic;
+#[cfg(windows)]
+mod paste;
+#[cfg(windows)]
+mod speech;
 mod tray;
 #[cfg(windows)]
 mod windows_shell;
@@ -23,6 +36,10 @@ fn main() {
     tauri::Builder::default()
         .setup(|app| {
             tray::install(app.handle())?;
+            #[cfg(windows)]
+            if let Err(e) = dictation::start(app.handle()) {
+                windows_shell::explain_no_dictation(&e);
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

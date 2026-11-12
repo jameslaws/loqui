@@ -26,3 +26,7 @@ windows/target/
 windows/node_modules/
 windows/ui/dist/
 windows/src-tauri/gen/
+# The speech engine and model, downloaded by scripts/fetch-speech.mjs (too big for git)
+windows/src-tauri/engine/
+windows/src-tauri/models/
+windows/.speech-cache/
