@@ -4,19 +4,29 @@
 // Runs after `pnpm build` and the WINBASE checks (which install loqui). On the
 // Intel/AMD computer, against the installed build; on Arm, DICT-07 runs a test
 // build that plays a file instead of the microphone (`pnpm build:test-audio`).
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
+import {
+  type Args,
+  data,
+  desk,
+  dk,
+  installedExe,
+  lines,
+  localAppData,
+  MIC_SWITCH,
+  modelLoaded,
+  ps,
+  windowsDir,
+} from "./drive";
 
-const windowsDir = join(import.meta.dirname, "..");
 const shots = process.env.LOQUI_SHOTS ?? join(windowsDir, "target", "shots");
 const onWindows = process.platform === "win32";
 const x64 = onWindows && process.arch === "x64";
 const arm = onWindows && process.arch === "arm64";
-const localAppData = process.env.LOCALAPPDATA ?? "";
-const data = join(localAppData, "Loqui");
 const voiceLog = join(data, "logs", "voice-key.log");
 
 const SENTENCE = "Please send the report to Sarah before Friday, and copy the whole team.";
@@ -27,46 +37,19 @@ const MIC_BLOCKED =
   "loqui notice: Windows is blocking the microphone. Turn on \u201cLet desktop apps access your microphone\u201d in Settings, then try again.";
 const NO_MIC = "loqui notice: loqui can't find a microphone.";
 
-type Args = Record<string, string | number | boolean>;
-
-function powershell(script: string, verb: string, args: Args, timeout: number) {
-  const argv = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, verb];
-  for (const [key, value] of Object.entries(args)) {
-    if (value === true) argv.push(`-${key}`);
-    else argv.push(`-${key}`, String(value));
-  }
-  let out: string;
-  try {
-    out = execFileSync("powershell.exe", argv, { encoding: "utf8", timeout, maxBuffer: 1 << 24 });
-  } catch (error) {
-    const { stdout, stderr } = error as { stdout?: string; stderr?: string };
-    throw new Error(`${verb} failed: ${stdout ?? ""} ${stderr ?? ""}`);
-  }
-  return JSON.parse(out.trim().split(/\r?\n/).at(-1) ?? "");
-}
-
-/** One action from dictate.ps1 (dictation) or desktop.ps1 (install, start, tray menu). */
-const dk = (verb: string, args: Args = {}, timeout = 120_000) =>
-  powershell(join(import.meta.dirname, "dictate.ps1"), verb, args, timeout);
-const desk = (verb: string, args: Args = {}) =>
-  powershell(join(windowsDir, "acceptance", "desktop.ps1"), verb, args, 90_000);
-const ps = (command: string) =>
-  execFileSync("powershell.exe", ["-NoProfile", "-Command", command], { encoding: "utf8" });
-
 const words = (text: string) =>
   text
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s']/gu, " ")
     .split(/\s+/)
     .filter(Boolean);
-const lines = (file: string) => (existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean) : []);
 const shot = (name: string) => join(shots, name);
 
 /** Every bubble state seen, in order, as [ms, foreground, state]. */
 const states = (changes: string[]) =>
   changes.map((c) => c.split("|")).map(([ms, fg, state]) => ({ ms: Number(ms), fg, state }));
 
-/** loqui's settings file, with the welcome finished (the welcome's own checks are in e2e/screens). */
+/** loqui's settings file, with the welcome finished (the welcome has its own checks in windows-screens.test.ts). */
 function writeSettings(change: Record<string, unknown>) {
   mkdirSync(data, { recursive: true });
   const settings = { shortcut: "Ctrl+Shift+Space", historyRetentionDays: 0, onboarded: true, ...change };
@@ -79,24 +62,6 @@ let watcher: ChildProcess | undefined;
 const stopWatching = join(windowsDir, "target", "e2e-stop-watching");
 const connections = shot("priv-01-connections.jsonl");
 const wav = (name: string) => join(windowsDir, "target", "e2e", `${name}.wav`);
-
-function installedExe() {
-  const exe = [join(localAppData, "loqui", "loqui.exe"), join(localAppData, "Programs", "loqui", "loqui.exe")].find(
-    existsSync,
-  );
-  if (!exe) throw new Error("loqui isn't installed; the WINBASE checks install it first");
-  return exe;
-}
-
-async function modelLoaded() {
-  for (let i = 0; i < 120; i++) {
-    const log = existsSync(voiceLog) ? readFileSync(voiceLog, "utf8") : "";
-    if (/speech model loaded/.test(log)) return;
-    if (/speech model FAILED/.test(log)) throw new Error(log);
-    await sleep(500);
-  }
-  throw new Error("the speech model never loaded");
-}
 
 function dictate(name: string, file: string, extra: Args = {}) {
   dk("clear", { Hwnd: notepad });
@@ -338,8 +303,7 @@ test.runIf(x64)("PRIV-02: Typed keys never reach any loqui file", () => {
 });
 
 test.runIf(x64)("MIC-01: Windows blocking the microphone gets a plain message", () => {
-  const consent =
-    "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged";
+  const consent = MIC_SWITCH;
   dk("clear", { Hwnd: notepad });
   ps(`Set-ItemProperty -Path '${consent}' -Name Value -Value Deny`);
   try {
