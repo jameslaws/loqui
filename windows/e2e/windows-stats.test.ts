@@ -140,6 +140,8 @@ test.runIf(x64)("STAT-08: The window updates while open (on Windows)", async () 
   // check; each look here starts a new PowerShell, which takes longer).
   const shown = desk("window", { ProcessId: pid, Title: STATS, Name: summary(SENTENCE_WORDS), Wait: 3000 });
   expect(shown.texts).toContain(n(t.today + SENTENCE_WORDS));
+  // Back to the top, where the cards are, for the picture.
+  click("Dictation");
   desk("window", { ProcessId: pid, Title: STATS, Shot: shot("c-stats-updated") });
 });
 

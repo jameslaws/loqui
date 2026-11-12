@@ -107,7 +107,7 @@ Checks: SET-01, SET-02, SET-03, SET-04, SET-05, DICTN-01, HIST-01, HIST-02, HIST
 Look at Dictation stats on GitHub's Windows computers, light and dark, opened from the tray menu with the shared sample record moved to today.
 Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
 See: "Dictation" with 40,664 words all-time, 557 dictations and 73 words each; Today 212 and "0 yesterday"; This week and This month with last week and last month; the last 30 days and the last 12 months as bars; Patterns with its eight tiles. The damaged lines in the sample are skipped.
-Shots: built/c-stats-light.png, built/c-stats-dark.png
+Shots: built/c-stats-light.png, built/c-stats-dark.png, built/c-stats-arm-light.png (on Arm)
 Checks: STAT-01, STAT-02, STAT-03, A11Y-02
 
 ## What to do

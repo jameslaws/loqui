@@ -26,17 +26,24 @@ export function Stats() {
   const [problem, setProblem] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const periodButton = useRef<HTMLButtonElement>(null);
+  // The latest period asked for: an answer to an earlier one is dropped, so a
+  // slow answer never replaces a newer one.
+  const latest = useRef(request);
+  latest.current = request;
 
   const load = useCallback(() => {
     backend.stats(request).then(
       (answer) => {
+        if (latest.current !== request) return;
         setStats(answer);
         setProblem(null);
         // A jump lands on a period: keep it as the one to step from and reload.
         if (request.jumpTo !== null)
           setRequest({ grain: answer.period.grain, offset: answer.period.offset, jumpTo: null });
       },
-      (e) => setProblem(why(e)),
+      (e) => {
+        if (latest.current === request) setProblem(why(e));
+      },
     );
   }, [request]);
   useEffect(() => {
@@ -114,7 +121,8 @@ export function Stats() {
             aria-label={`Previous ${unit}`}
             onClick={() => {
               setPicking(false);
-              setRequest({ grain: period.grain, offset: period.offset - 1, jumpTo: null });
+              // From the last step asked for, so quick clicks each count.
+              setRequest((r) => ({ grain: r.grain, offset: r.offset - 1, jumpTo: null }));
             }}
           >
             ‹
@@ -158,7 +166,7 @@ export function Stats() {
             disabled={period.offset >= 0}
             onClick={() => {
               setPicking(false);
-              setRequest({ grain: period.grain, offset: period.offset + 1, jumpTo: null });
+              setRequest((r) => ({ grain: r.grain, offset: Math.min(0, r.offset + 1), jumpTo: null }));
             }}
           >
             ›
