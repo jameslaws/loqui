@@ -15,12 +15,14 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     target: "es2022",
-    // Two pages: the About window and the dictation bubble.
+    // One page per window: About, the dictation bubble, welcome, settings and history.
     rollupOptions: {
-      input: {
-        about: fileURLToPath(new URL("index.html", import.meta.url)),
-        bubble: fileURLToPath(new URL("bubble.html", import.meta.url)),
-      },
+      input: Object.fromEntries(
+        ["about", "bubble", "welcome", "settings", "history"].map((page) => [
+          page,
+          fileURLToPath(new URL(`${page}.html`, import.meta.url)),
+        ]),
+      ),
     },
   },
 });

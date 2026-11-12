@@ -130,6 +130,42 @@ impl Records {
         fs::write(path, body)
     }
 
+    /// Every saved dictation, newest first. Lines that don't parse are skipped.
+    pub fn history(&self) -> Vec<HistoryEntry> {
+        let content = fs::read_to_string(self.history_path()).unwrap_or_default();
+        let mut entries: Vec<(i64, HistoryEntry)> = content
+            .lines()
+            .filter_map(|line| serde_json::from_str::<HistoryEntry>(line).ok())
+            .filter_map(|e| Some((parse_iso8601(&e.at)?, e)))
+            .collect();
+        // Newest first; the same moment keeps the file's later line first.
+        entries.reverse();
+        entries.sort_by_key(|(at, _)| std::cmp::Reverse(*at));
+        entries.into_iter().map(|(_, e)| e).collect()
+    }
+
+    /// Delete every saved copy of this dictation (the Mac deletes by equality too).
+    pub fn delete_history(&self, entry: &HistoryEntry) -> std::io::Result<()> {
+        let path = self.history_path();
+        let Ok(content) = fs::read_to_string(&path) else {
+            return Ok(());
+        };
+        let body: String = content
+            .lines()
+            .filter(|line| serde_json::from_str::<HistoryEntry>(line).ok().as_ref() != Some(entry))
+            .map(|l| format!("{l}\n"))
+            .collect();
+        fs::write(path, body)
+    }
+
+    /// Delete the history file. Stats are kept: they're a separate file.
+    pub fn clear_history(&self) -> std::io::Result<()> {
+        match fs::remove_file(self.history_path()) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        }
+    }
+
     /// A line in the voice key log. Callers never pass what was said.
     pub fn log(&self, message: &str, now: i64) {
         let _ = append_capped(
@@ -155,6 +191,16 @@ impl Records {
         let mark = if healed { "  → HEALED" } else { "" };
         let line = format!("   gap {gap:.2}s before \"{word}\"{mark}\n");
         let _ = append_capped(&self.cleanup_log_path(), &line);
+    }
+}
+
+/// How a dictation shows in the tray menu's Recent list: one line, cut at 48
+/// characters with an ellipsis (the Mac's menu).
+pub fn one_line(text: &str) -> String {
+    let line = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    match line.char_indices().nth(48) {
+        Some((cut, _)) => format!("{}\u{2026}", &line[..cut]),
+        None => line,
     }
 }
 
@@ -271,6 +317,44 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn scratch(name: &str) -> Records {
+        let dir = std::env::temp_dir().join(format!("loqui-records-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        Records::new(dir)
+    }
+
+    #[test]
+    fn history_lists_newest_first_and_deletes_and_clears() {
+        let r = scratch("history");
+        r.record_history("first", 1_000, 0).unwrap();
+        r.record_history("second", 2_000, 0).unwrap();
+        r.record_history("third", 3_000, 0).unwrap();
+        append_line(&r.history_path(), "not json\n").unwrap();
+        r.record_stats(4, Some(2.0), 3_000).unwrap();
+        let texts = |r: &Records| r.history().into_iter().map(|e| e.text).collect::<Vec<_>>();
+        assert_eq!(texts(&r), ["third", "second", "first"]);
+
+        let second = r.history()[1].clone();
+        r.delete_history(&second).unwrap();
+        assert_eq!(texts(&r), ["third", "first"]);
+
+        r.clear_history().unwrap();
+        assert!(r.history().is_empty() && !r.history_path().exists());
+        assert!(r.stats_path().exists());
+        r.clear_history().unwrap();
+        fs::remove_dir_all(r.dir()).unwrap();
+    }
+
+    #[test]
+    fn recent_shows_one_line_cut_at_48_characters() {
+        assert_eq!(one_line("Short one."), "Short one.");
+        assert_eq!(
+            one_line("Thanks for sending the draft over.\nI think the second section works well."),
+            "Thanks for sending the draft over. I think the s\u{2026}"
+        );
+        assert_eq!(one_line(&"é".repeat(48)), "é".repeat(48));
+    }
 
     #[test]
     fn dates_round_trip_like_the_macs() {

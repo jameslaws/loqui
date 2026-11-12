@@ -9,7 +9,7 @@ pub fn show(app: &AppHandle) {
     if screens::focus(app, LABEL) {
         return;
     }
-    let opened = screens::builder(app, LABEL, "index.html")
+    let opened = screens::builder(app, LABEL, "about.html")
         .title("About loqui")
         .inner_size(440.0, 330.0)
         .resizable(false)

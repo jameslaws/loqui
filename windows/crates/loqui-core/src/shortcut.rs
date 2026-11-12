@@ -1,7 +1,7 @@
 //! The dictation shortcut: one key plus the modifiers that must be held with it.
 //!
 //! Stored in `settings.json` as the text people see, such as "Ctrl+Shift+Space",
-//! so it can be edited by hand until step 3 adds the recorder. Keys are Windows
+//! and set in Settings by pressing it (the recorder). Keys are Windows
 //! virtual-key codes. The rules mirror the Mac's `HotShortcut`: Ctrl or Alt with
 //! a key, or a bare function key, so a shortcut can never hijack plain typing.
 
@@ -22,6 +22,9 @@ pub struct Shortcut {
     pub key: u16,
     pub mods: Mods,
 }
+
+/// What the recorder says about a shortcut that would get in the way of typing.
+pub const REFUSED: &str = "Use Ctrl or Alt with a key, or a function key.";
 
 const VK_SPACE: u16 = 0x20;
 const VK_F1: u16 = 0x70;
@@ -61,6 +64,27 @@ impl Shortcut {
         shortcut.is_allowed().then_some(shortcut)
     }
 
+    /// A shortcut someone pressed in the recorder, or why it can't be one.
+    pub fn from_pressed(text: &str) -> Result<Self, &'static str> {
+        Self::parse(text).ok_or(REFUSED)
+    }
+
+    /// The key caps to draw: "Ctrl", "Shift", "Space".
+    pub fn keys(&self) -> Vec<String> {
+        let m = self.mods;
+        [
+            (m.ctrl, "Ctrl"),
+            (m.alt, "Alt"),
+            (m.shift, "Shift"),
+            (m.win, "Win"),
+        ]
+        .into_iter()
+        .filter(|(on, _)| *on)
+        .map(|(_, name)| name.to_string())
+        .chain(Some(key_name(self.key)))
+        .collect()
+    }
+
     /// Ctrl or Alt with a key, or a bare F1 to F24.
     pub fn is_allowed(&self) -> bool {
         self.mods.ctrl || self.mods.alt || (VK_F1..=VK_F24).contains(&self.key)
@@ -76,18 +100,7 @@ impl Shortcut {
 
 impl fmt::Display for Shortcut {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let m = self.mods;
-        for (on, name) in [
-            (m.ctrl, "Ctrl"),
-            (m.alt, "Alt"),
-            (m.shift, "Shift"),
-            (m.win, "Win"),
-        ] {
-            if on {
-                write!(f, "{name}+")?;
-            }
-        }
-        f.write_str(&key_name(self.key))
+        f.write_str(&self.keys().join("+"))
     }
 }
 
@@ -146,6 +159,16 @@ mod tests {
         ] {
             assert_eq!(Shortcut::parse(text), None, "{text}");
         }
+    }
+
+    #[test]
+    fn the_recorder_takes_ctrl_or_alt_with_a_key_or_a_bare_function_key() {
+        assert_eq!(Shortcut::from_pressed("Shift+A"), Err(REFUSED));
+        assert_eq!(Shortcut::from_pressed("A"), Err(REFUSED));
+        let d = Shortcut::from_pressed("Ctrl+Alt+D").unwrap();
+        assert_eq!(d.keys(), ["Ctrl", "Alt", "D"]);
+        assert_eq!(Shortcut::from_pressed("F8").unwrap().keys(), ["F8"]);
+        assert_eq!(Shortcut::default().keys(), ["Ctrl", "Shift", "Space"]);
     }
 
     #[test]

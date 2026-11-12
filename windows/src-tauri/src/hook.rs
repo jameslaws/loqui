@@ -32,6 +32,8 @@ const MASK_KEY: VIRTUAL_KEY = 0xE8;
 
 struct Watch {
     shortcut: Shortcut,
+    /// Settings is recording a new shortcut: every key goes to it untouched.
+    paused: bool,
     filter: KeyFilter,
     events: Sender<Event>,
     clock: Instant,
@@ -43,6 +45,7 @@ static WATCH: OnceLock<Mutex<Watch>> = OnceLock::new();
 pub fn start(shortcut: Shortcut, events: Sender<Event>, clock: Instant) -> std::io::Result<()> {
     let watch = Watch {
         shortcut,
+        paused: false,
         filter: KeyFilter::default(),
         events,
         clock,
@@ -77,6 +80,29 @@ pub fn start(shortcut: Shortcut, events: Sender<Event>, clock: Instant) -> std::
         Ok(true) => Ok(()),
         _ => Err(std::io::Error::last_os_error()),
     }
+}
+
+fn with_watch(change: impl FnOnce(&mut Watch)) {
+    if let Some(Ok(mut w)) = WATCH.get().map(Mutex::lock) {
+        change(&mut w);
+    }
+}
+
+/// Watch for a new shortcut from now on; the old one reaches apps again.
+pub fn set_shortcut(shortcut: Shortcut) {
+    with_watch(|w| {
+        w.shortcut = shortcut;
+        w.filter = KeyFilter::default();
+    });
+}
+
+/// Stop acting on the shortcut while Settings records a new one (the Mac's
+/// suspend), or start again.
+pub fn pause(paused: bool) {
+    with_watch(|w| {
+        w.paused = paused;
+        w.filter = KeyFilter::default();
+    });
 }
 
 fn held(key: VIRTUAL_KEY) -> bool {
@@ -114,6 +140,9 @@ fn consider(key: u16, message: u32) -> bool {
         let Ok(mut w) = watch.lock() else {
             return false;
         };
+        if w.paused {
+            return false;
+        }
         let now = w.clock.elapsed().as_secs_f64();
         let shortcut = w.shortcut;
         let verdict = match message {

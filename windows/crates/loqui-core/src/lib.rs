@@ -6,6 +6,7 @@
 
 mod case_folds;
 pub mod cleanup;
+pub mod commands;
 pub mod config;
 pub mod dictation;
 pub mod records;

@@ -339,8 +339,9 @@ impl Center {
         let retention = Settings::load(&self.data.join("settings.json"))
             .settings
             .history_retention_days;
-        if let Err(e) = self.records.record_history(&text, now, retention) {
-            self.log(&format!("couldn't save the history line: {e}"));
+        match self.records.record_history(&text, now, retention) {
+            Ok(()) => crate::commands::history_changed(&self.app),
+            Err(e) => self.log(&format!("couldn't save the history line: {e}")),
         }
 
         if let Err(e) =

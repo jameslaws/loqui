@@ -18,9 +18,20 @@ export default defineConfig({
       {
         test: {
           name: "e2e",
-          include: ["e2e/**/*.test.ts"],
+          include: ["e2e/dictation.test.ts"],
           testTimeout: 180_000,
           hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
+      // Windows only, after the dictations: the real welcome, settings and
+      // history windows, the tray menu, and their pictures light and dark.
+      {
+        test: {
+          name: "windows-screens",
+          include: ["e2e/windows-screens.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 300_000,
           fileParallelism: false,
         },
       },

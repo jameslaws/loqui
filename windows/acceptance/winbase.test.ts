@@ -56,10 +56,20 @@ async function startsOnThisPc() {
   running = started.pid;
 
   const menu = desk("open-menu", { ProcessId: running, Shot: join(shots, `${label}-menu.png`) });
+  // The full menu (MENU-01 in plans/windows-version): it replaced groundwork's
+  // "loqui is running" line with how to dictate.
   expect(menu.items).toEqual([
-    { name: "loqui is running", enabled: false },
-    { name: "About loqui", enabled: true },
-    { name: "Quit loqui", enabled: true },
+    { name: "Press Ctrl+Shift+Space to dictate", enabled: false },
+    ...[
+      "Dictation stats\u2026",
+      "Dictation history\u2026",
+      "Recent",
+      "Settings\u2026",
+      "Welcome and setup\u2026",
+      "Check for updates\u2026",
+      "About loqui",
+      "Quit loqui",
+    ].map((name) => ({ name, enabled: true })),
   ]);
 
   desk("choose", { Item: "About loqui" });

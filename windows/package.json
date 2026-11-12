@@ -14,8 +14,10 @@
     "check": "biome check . && tsc -p . && vitest run --project contracts && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test -p loqui-core",
     "check:changed": "node scripts/check-changed.mjs",
     "test:contracts": "cargo test -p loqui-core && vitest run --project contracts",
+    "test:screens": "playwright test",
     "test:acceptance": "vitest run --project acceptance",
     "test:e2e": "vitest run --project e2e",
+    "test:windows-screens": "vitest run --project windows-screens --passWithNoTests",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -24,7 +26,9 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@biomejs/biome": "2.6.6",
+    "@playwright/test": "1.65.0",
     "@tauri-apps/cli": "2.12.4",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",

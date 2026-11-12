@@ -30,3 +30,6 @@ windows/src-tauri/gen/
 windows/src-tauri/engine/
 windows/src-tauri/models/
 windows/.speech-cache/
+# The screen tests in a browser (Playwright)
+windows/test-results/
+windows/playwright-report/

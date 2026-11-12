@@ -17,9 +17,9 @@ tauri-build = "=2.7.4"
 
 [dependencies]
 tauri = { version = "=2.12.5", features = ["tray-icon", "image-png"] }
+loqui-core = { path = "../crates/loqui-core" }
 
 [target.'cfg(windows)'.dependencies]
-loqui-core = { path = "../crates/loqui-core" }
 loqui-speech = { path = "../crates/loqui-speech" }
 serde_json = "=1.0.154"
 windows-sys = { version = "=0.61.2", features = [

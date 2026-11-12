@@ -36,3 +36,51 @@ pub fn focus(app: &AppHandle, label: &str) -> bool {
     let _ = window.set_focus();
     true
 }
+
+/// A screen from the tray menu: focus it if open, otherwise open it.
+fn open(app: &AppHandle, label: &str, title: &str, size: (f64, f64), resizable: bool) {
+    if focus(app, label) {
+        return;
+    }
+    let opened = builder(app, label, &format!("{label}.html"))
+        .title(title)
+        .inner_size(size.0, size.1)
+        .resizable(resizable)
+        .maximizable(resizable)
+        .min_inner_size(size.0.min(520.0), size.1.min(420.0))
+        .center()
+        .focused(true)
+        .build();
+    match opened {
+        // Settings may be recording a shortcut when it closes: never leave the
+        // shortcut switched off.
+        Ok(window) if label == SETTINGS => window.on_window_event(|event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                #[cfg(windows)]
+                crate::hook::pause(false);
+            }
+        }),
+        Ok(_) => {}
+        Err(error) => eprintln!("loqui could not open {title}: {error}"),
+    }
+}
+
+const SETTINGS: &str = "settings";
+
+pub fn welcome(app: &AppHandle) {
+    open(app, "welcome", "Welcome to loqui", (520.0, 660.0), false);
+}
+
+pub fn settings(app: &AppHandle) {
+    open(app, SETTINGS, "loqui settings", (640.0, 790.0), false);
+}
+
+pub fn history(app: &AppHandle) {
+    open(
+        app,
+        "history",
+        "loqui dictation history",
+        (680.0, 700.0),
+        true,
+    );
+}

@@ -28,6 +28,10 @@ pub struct CleanupConfig {
     pub audit_log: bool,
 }
 
+/// What the settings screen says when `cleanup.json` is unreadable.
+pub const UNREADABLE: &str =
+    "Your cleanup.json couldn't be read, so defaults are in use. Fix or delete it to save changes here.";
+
 impl Default for CleanupConfig {
     /// The Mac app's shipped defaults (CleanupConfig.defaults in CleanupConfig.swift).
     fn default() -> Self {
@@ -110,6 +114,35 @@ impl CleanupConfig {
             }
             Err(_) => Self::default(),
         }
+    }
+
+    /// Change the settings a screen owns and save them. Every other key in the
+    /// file stays as it was (the sentence-healing words, the pause length,
+    /// anything typed by hand), as the Mac's Settings window keeps them. A file
+    /// that can't be read is left alone and the change is refused.
+    pub fn update(path: &Path, change: impl FnOnce(&mut Self)) -> Result<Self, String> {
+        let mut kept = match std::fs::read_to_string(path) {
+            Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+                Ok(serde_json::Value::Object(map)) if Self::from_json(&text).is_ok() => map,
+                _ => return Err(UNREADABLE.into()),
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => serde_json::Map::new(),
+            Err(_) => return Err(UNREADABLE.into()),
+        };
+        let mut cfg = Self::from_json(&serde_json::Value::Object(kept.clone()).to_string())
+            .unwrap_or_default();
+        change(&mut cfg);
+        if let serde_json::Value::Object(owned) =
+            serde_json::to_value(&cfg).expect("settings always serialize")
+        {
+            kept.extend(owned);
+        }
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        let text = serde_json::to_string_pretty(&kept).expect("settings always serialize");
+        std::fs::write(path, text).map_err(|e| format!("loqui couldn't save cleanup.json: {e}"))?;
+        Ok(cfg)
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
