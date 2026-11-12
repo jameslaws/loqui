@@ -126,6 +126,22 @@ public static class Desk {
     mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
   }
 
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string name);
+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+  [DllImport("user32.dll")] static extern IntPtr WindowFromPoint(POINT p);
+  [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+
+  /// True when the taskbar is showing and nothing covers it, so the desktop is in use.
+  public static bool TaskbarOnTop() {
+    IntPtr bar = FindWindow("Shell_TrayWnd", null);
+    RECT r;
+    if (bar == IntPtr.Zero || !IsWindowVisible(bar) || !GetWindowRect(bar, out r)) return false;
+    var p = new POINT();
+    p.X = (r.Left + r.Right) / 2; p.Y = (r.Top + r.Bottom) / 2;
+    return GetAncestor(WindowFromPoint(p), 2) == bar;   // GA_ROOT
+  }
+
   public static void Enter() {
     keybd_event(0x0D, 0, 0, UIntPtr.Zero);
     keybd_event(0x0D, 0, 2, UIntPtr.Zero);
@@ -223,7 +239,14 @@ function Open-Menu {
   # Windows 11 puts a new program's icon behind the hidden icons arrow. Ask it
   # to show loqui's on the taskbar, as the taskbar settings page would.
   foreach ($entry in Icon-Settings) { Set-ItemProperty $entry.PSPath -Name IsPromoted -Value 1 -Type DWord }
-  $loqui = Wait-Until 3000 { $t = Find-Taskbar; if ($t) { Named $t 'loqui' } }
+  Start-Sleep -Milliseconds 500
+  $shown = Wait-Until 3000 { $i = Find-Icon $ProcessId; if ($i.rect) { $i } }
+  if ($shown) {
+    $r = $shown.rect
+    [Desk]::Click([int](($r.Left + $r.Right) / 2), [int](($r.Top + $r.Bottom) / 2))
+    if (Wait-Until 2000 { Find-Menu }) { return @{ how = 'on the taskbar, where the shell says it is' } }
+  }
+  $loqui = Wait-Until 2000 { $t = Find-Taskbar; if ($t) { Named $t 'loqui' } }
   $how = 'on the taskbar'
 
   if (-not $loqui) {
@@ -259,12 +282,12 @@ function Menu-Items {
 
 # Windows' first sign-in screens (the privacy choices) can still be up on a
 # fresh GitHub machine. Click through them the way a person would.
-function Has-Taskbar { [bool]((Find-Taskbar) -and (Taskbar-Names)) }
+function Has-Taskbar { [Desk]::TaskbarOnTop() }
 
 function Ready-Desktop {
   $did = @()
   foreach ($round in 1..6) {
-    if (Has-Taskbar) { return @{ did = $did; taskbar = $true } }
+    if (Has-Taskbar) { [Desk]::Escape(); return @{ did = $did; taskbar = $true } }   # Escape closes Start if it opened
     $button = $null
     foreach ($label in 'Accept', 'Next', 'Skip', 'Not now', 'Done') {
       $b = Named $UIA::RootElement $label
