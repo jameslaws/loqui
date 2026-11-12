@@ -5,7 +5,8 @@ name: Windows
 # Windows runs never happen on the Mini.
 on:
   push:
-    branches: [main, staging]
+    # windows-version: the one branch the whole Windows version is built on.
+    branches: [main, staging, windows-version]
     paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
   pull_request:
     paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
