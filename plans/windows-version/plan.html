@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="secrets">
+<meta name="plan-touches" content="Windows app: windows/**; Shared rules and figures: shared/**; Mac tests: Tests/**, Package.swift, Sources/loqui/StatsView.swift (test seam only); CI and releases: .github/workflows/**; Download page and update lists: docs/index.html, docs/windows/**, docs/assets/**; Words: README.md, SECURITY.md, ROADMAP.md, CONTRIBUTING.md; Records: PROJECT.md, platform PLACEMENT.md">
+<meta name="plan-size" content="35">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-replaces" content="windows-dictation windows-settings windows-stats windows-release windows-launch">
+<meta name="plan-lands" content="download page: production, https://jameslaws.github.io/loqui/">
+<meta name="plan-one-way" content="The first public Windows version, at the ship">
+<meta name="plan-checkpoint" content="your Windows teammates install loqui from a link and it updates itself">
+<title>Loqui for Windows, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1, rewritten as one plan · November 12, 2026</p>
+  <h1>Loqui for Windows</h1>
+  <p class="lede">Loqui comes to Windows 11: press a shortcut, speak, and clean text lands wherever you're typing, turned into text on the PC itself, exactly as on the Mac.</p>
+  <div class="approve"><p><b>What approving this does.</b> Your yes on the Windows plan stands; this page now holds all of it. Builders make the rest of Loqui for Windows in one go on one branch, in five parts, then it gets one review and one try: your Windows teammates install it from a link, use it, and see it update itself. When you press Ship, the first public Windows version goes out and the download page offers it. It costs nothing: no Microsoft signing for now and no Parallels, as you decided. It accepts every other recommendation below unless you change one.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+<blockquote><cite>November 10, on the six step plans</cite>"How can I review it and refine it if it doesn't show up as a proper plan under my needs you section. The steps and the series don't give me anything to review or comment on."</blockquote>
+<blockquote><cite>November 12, to Aiva</cite>"no more features split into series of plans built over days. The Windows version should be ONE plan, built in one go: its parts listed inside the plan for builders on one feature branch, one review, one try, one ship."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<p><b>What people on Windows get</b></p>
+<ul>
+  <li><b>Loqui on Windows 11,</b> on ordinary Intel and AMD PCs and on the newer Arm laptops.</li>
+  <li><b>The same gesture.</b> Tap Ctrl+Shift+Space to start and again to stop, or hold it while you talk. The Mac's dark bubble with the magenta quote marks shows while it listens, and never takes the cursor away.</li>
+  <li><b>Speech turned into text on the PC.</b> English and 24 other European languages, with punctuation and capitals. Audio never leaves the PC.</li>
+  <li><b>The same cleanup.</b> Filler words removed, your dictionary applied, sentences split by a pause healed.</li>
+  <li><b>Everything the Mac has on screen:</b> a welcome window that helps with the microphone, settings with the shortcut recorder and dictionary, history, the Recent menu, and the stats window with the shaded calendar.</li>
+  <li><b>An installer from a link,</b> with no administrator needed, and automatic updates. It isn't signed by Microsoft for now, so Windows shows a "Windows protected your PC" notice the first time; the release notes say how to get past it.</li>
+  <li><b>The same privacy promise.</b> The only thing loqui sends over the internet is the update check.</li>
+</ul>
+<p><b>What you get</b></p>
+<ul>
+  <li><b>One plan, built in one go.</b> One branch, one review, one try, one ship.</li>
+  <li><b>One product.</b> One project, one issue list, one README, one download page that offers each visitor the right button.</li>
+  <li><b>Two apps that can't drift apart.</b> About 85 cleanup examples and one set of worked stats figures, which the Mac app and the Windows app must both pass on every change.</li>
+  <li><b>Your Windows teammates try it before anyone else,</b> from a link, on the test channel, and every later change reaches them first.</li>
+  <li><b>A safe way out.</b> Only versions you approve reach everyone, and Roll back sends every PC to the last good version.</li>
+  <li><b>The Mac app behaves exactly as today.</b> It only gains tests.</li>
+</ul>
+<p>Who it's for: <b>public</b>. Anyone can download Loqui for Windows, with no account.</p>
+</section>
+
+<section id="parts">
+<h2>The parts, and where each stands</h2>
+<p>Groundwork is done and live. The other five parts are built one after another on one branch; stats and the installer are built side by side. About 35 builder hours in all.</p>
+<ol>
+  <li><b>Groundwork: done.</b> The shared cleanup rules, a Windows app that starts and sits by the clock, the Windows look, and where Loqui runs written down. Live on main.</li>
+  <li><b>Part A, dictation</b> (about 8 hours, being built now). Press the shortcut, speak, and clean text lands at the cursor in any Windows app.</li>
+  <li><b>Part B, settings, history and welcome</b> (about 7 hours). Nothing needs a settings file edited by hand any more.</li>
+  <li><b>Part C, stats</b> (about 7 hours, beside Part D). The Mac's stats window with the calendar picker, with the same figures as the Mac.</li>
+  <li><b>Part D, installer, updates and test channel</b> (about 8 hours, beside Part C). A real installer, updates by themselves, a test channel for your teammates, and Approve and Roll back.</li>
+  <li><b>Part E, launch</b> (about 5 hours). The download page, README, security policy and roadmap cover Windows, and the first public version is readied for your Ship.</li>
+</ol>
+</section>
+
+<section id="testing">
+<h2>How it's tested without a Windows PC here</h2>
+<ul>
+  <li><b>GitHub's Windows computers, for free.</b> Every change is built and started on both kinds of Windows PC GitHub offers, Intel/AMD and Arm. GitHub doesn't charge for this on public projects.</li>
+  <li><b>A real dictation on every change, with no person involved.</b> A virtual sound cable gives the machine a microphone. Notepad opens, a script presses the shortcut, Windows' own voice speaks a sentence into the cable, and loqui types it. The check compares Notepad's text word for word, saves a picture of the screen, and fails if loqui opened any network connection.</li>
+  <li><b>Screens checked here on the Mini.</b> Every window also runs in a browser, so keyboard use and an accessibility scan are checked without Windows. The Windows check then photographs each real window, light and dark.</li>
+  <li><b>Shared examples keep the two apps the same.</b> The cleanup rules and the stats figures are written down once; both apps must pass every example.</li>
+  <li><b>Proved before planning.</b> Three runs on GitHub's Windows computers on November 10: a 44-second recording became text in 5.2 seconds on an ordinary Intel/AMD machine and 2.8 seconds on an Arm one, word for word, with nothing online; German, Spanish and French came out right; a pressed shortcut, the microphone and pasting into Notepad all worked end to end; and the window technology opened no internet connections of its own.</li>
+  <li><b>Your Windows teammates, with their own voices.</b> They install each test version from a link and use it day to day. That's the try before you ship.</li>
+</ul>
+</section>
+
+<section id="shipping">
+<h2>How it's shipped and updated</h2>
+<ul>
+  <li><b>Not signed by Microsoft for now.</b> As you decided. The signing step is built in, behind a switch that stays off. The first time someone runs the installer, Windows shows "Windows protected your PC"; the release notes say to click More info, then Run anyway. A PC with Windows' Smart App Control turned on blocks unsigned apps outright; the release notes say so. Turning signing on later is Microsoft's Artifact Signing at $9.99 a month, set up in about 20 minutes.</li>
+  <li><b>Built by GitHub.</b> Installers are made on GitHub's Windows computers. No release key sits on the Mini or your MacBook.</li>
+  <li><b>The installer.</b> For the person's own account, so no administrator is needed. It includes the speech model, so it's about 500 MB to download once. Loqui appears in Start and in Installed apps. Uninstalling asks whether to also delete history and settings, as the Mac's uninstall does.</li>
+  <li><b>Updates.</b> loqui checks once a day and when you click Check for updates. A new version shows what's new and installs in one click. Updates are about 12 MB because the speech model stays. Every update carries a signature from a Windows update key, and loqui refuses any update that doesn't.</li>
+  <li><b>The test channel is staging.</b> Every change merged into staging becomes a test version within about half an hour, on GitHub's releases page marked as a pre-release and linked from nowhere. That page is the link your teammates install from. A PC with "Get test versions" switched on in Settings gets each new one by itself; everyone else only gets versions you approve. Until launch, every Windows version is numbered 0.0.x.</li>
+  <li><b>Approve and go back.</b> Your Ship publishes the exact test version your teammates tried, unchanged, as the first public version, 0.1.0. If a version turns out bad, Roll back sends every PC to the last good one automatically.</li>
+  <li><b>The Mac is untouched.</b> Windows versions are numbered and listed separately, and GitHub's "latest release" stays the Mac's, so today's Mac links keep working.</li>
+</ul>
+</section>
+
+<section id="where">
+<h2>Where Loqui runs</h2>
+<ul>
+  <li><b>On people's own computers.</b> There is no Loqui server and no account.</li>
+  <li><b>Downloads and update lists on GitHub, free.</b> Installers and the test update list on GitHub's releases page; the download page and the public update list on GitHub's free web hosting, as the Mac's are today; builds and checks on GitHub's Windows computers. Nothing new runs on the Mini or on the jl-platform server.</li>
+  <li><b>On the PC.</b> Settings, history and stats stay in the person's own Windows profile on that PC, as plain text, with the Mac's choices for how long history is kept. Each computer keeps its own stats.</li>
+  <li><b>Written down</b> in Loqui's project file and the platform registry (done with groundwork; Part D and Part E update them).</li>
+</ul>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the real Mac app or the live download page. "After" is the Windows look drawn in a separate page and photographed, except one real screen from GitHub's Windows machine. Loqui for Windows is a desktop app, so it has no phone size; only the download page has one. Click any picture to see it big.</p>
+
+<h3>Part A: listening</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac bubble</figcaption><img src="shots/before-mac-hud.png" alt="The Mac's dictation bubble: two magenta quote marks around a live magenta waveform on a dark pill"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, light</figcaption><img src="shots/after-listening.png" alt="Notepad on a Windows desktop with the cursor ready, the same dark bubble with the waveform at the bottom of the screen, and the loqui icon by the clock in magenta"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-listening-dark.png" alt="The same listening screen in dark mode"></figure>
+</div>
+
+<h3>Part A: pasted</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-pasted.png" alt="Notepad now holding the dictated sentence at the cursor, and the bubble showing a check mark and PASTED"></figure>
+  <figure class="mac"><figcaption><b>Proof</b> · a real Windows run</figcaption><img src="shots/ci-proof-notepad.png" alt="A real screenshot from GitHub's Windows computer: Notepad holding 'Please send the report to Sarah before Friday, and copy the whole team.' typed by the experiment from spoken audio"></figure>
+</div>
+
+<h3>Part B: welcome</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-welcome.png" alt="The Mac welcome window: microphone and speech, accessibility and shortcut rows, each with a tick circle, and Finish later"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-welcome.png" alt="The Windows welcome window: a microphone card with Open microphone settings, a ticked shortcut card showing Ctrl Shift Space, a ticked Start loqui when you sign in switch, and Finish later"></figure>
+</div>
+
+<h3>Part B: settings, General</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-settings-general.png" alt="The Mac General settings: dictation shortcut, remove filler words with nine filler chips, add a filler word, keep history Forever, Clear History"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-settings-general.png" alt="The Windows General settings: shortcut with Ctrl Shift Space key caps and Change, filler word switch and chips, keep history Forever, start loqui when you sign in, and Clear history"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-settings-general-dark.png" alt="The same General tab in dark mode"></figure>
+</div>
+
+<h3>Part B: settings, Dictionary</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac</figcaption><img src="shots/before-mac-settings-dictionary.png" alt="The Mac Dictionary tab: search, add term, four rows of heard words and their spellings"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-settings-dictionary.png" alt="The Windows Dictionary tab: search field, Add term button, four rows of heard word, arrow, spelling and a delete button, and the matching rule underneath"></figure>
+</div>
+
+<h3>Part B: history, and the tray menu with Recent</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac history</figcaption><img src="shots/before-mac-history.png" alt="The Mac history window: search, Clear All, six dictations with time, Copy and delete"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows history</figcaption><img src="shots/after-history.png" alt="The Windows history window: search, Clear all, five dictations in a list with time, Copy and delete"></figure>
+  <figure class="mac"><figcaption><b>After</b> · tray menu</figcaption><img src="shots/after-tray-menu.png" alt="The tray menu: Press Ctrl+Shift+Space to dictate, Dictation stats, Dictation history, Recent with five one-line dictations open beside it, Settings, Welcome and setup, Check for updates, Quit loqui"></figure>
+  <figure class="mac"><figcaption><b>After</b> · tray menu, dark</figcaption><img src="shots/after-tray-menu-dark.png" alt="The same tray menu in dark mode"></figure>
+</div>
+
+<h3>Part C: stats</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac stats</figcaption><img src="shots/before-mac-stats.png" alt="The Mac stats window: all-time summary, Today, This week and This month cards, and bar charts for the last 30 days and by month"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-stats.png" alt="The Windows stats window: all-time summary, Today, This week and This month cards, magenta bar charts for the last 30 days and by month, and the Patterns period buttons"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-stats-dark.png" alt="The same stats window in dark mode"></figure>
+</div>
+
+<h3>Part C: patterns and the calendar picker</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac patterns tiles</figcaption><img src="shots/before-mac-patterns.png" alt="The Mac's Patterns tiles from the download page: time saved, speaking pace, current streak, days active, peak hours, highest volume day, longest dictation and per active day"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows</figcaption><img src="shots/after-stats-picker.png" alt="The Windows Patterns view set to Day with its calendar open: October 2026 with days shaded magenta by words dictated and the 27th outlined, over the by-hour chart and the eight tiles"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-stats-picker-dark.png" alt="The same Patterns view and calendar in dark mode"></figure>
+</div>
+
+<h3>Part D: install and update</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · installing</figcaption><img src="shots/after-installer.png" alt="The loqui setup window: Installing loqui, just for you, no administrator needed, a progress bar copying the speech model, and where it installs"></figure>
+  <figure class="mac"><figcaption><b>After</b> · an update is ready</figcaption><img src="shots/after-update.png" alt="The loqui update window: a new version is ready, 0.2.0 available, you have 0.1.0, about 12 MB, what's new in three bullets, Later and Install and restart loqui"></figure>
+  <figure class="mac"><figcaption><b>After</b> · updates in Settings</figcaption><img src="shots/after-settings-updates.png" alt="Settings with an Updates card: loqui 0.1.0, up to date, Check for updates button, and a Get test versions switch turned off, with a note that the update check is the only thing loqui sends over the internet"></figure>
+</div>
+
+<h3>Part E: the download page</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · MacBook</figcaption><img src="shots/before-download-page-mac.png" alt="The live download page: magenta header with the icon, Talk. It types., Download for macOS and View the source, and macOS 15 and later"></figure>
+  <figure class="mac"><figcaption><b>After</b> · a Windows visitor</figcaption><img src="shots/after-download-page-mac.png" alt="The same page for a Windows visitor: the tagline mentions Mac or Windows PC, the main button says Download for Windows, the line below says Windows 11 on Intel, AMD and Arm with a link for macOS, and the first card says Runs on your computer"></figure>
+  <figure class="phone"><figcaption><b>Before</b> · iPhone</figcaption><img src="shots/before-download-page-phone.png" alt="The live download page on a phone: icon, wordmark, headline and the macOS download button"></figure>
+  <figure class="phone"><figcaption><b>After</b> · iPhone</figcaption><img src="shots/after-download-page-phone.png" alt="The changed page on a phone, with the Windows wording and both buttons stacked"></figure>
+</div>
+
+<h3>Empty, loading, error and no permission</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>No permission</b> · microphone blocked</figcaption><img src="shots/after-mic-blocked.png" alt="The bubble showing a warning: Windows is blocking the microphone; turn on Let desktop apps access your microphone in Settings, then try again"></figure>
+  <figure class="mac"><figcaption><b>Error</b> · paste refused</figcaption><img src="shots/after-on-clipboard.png" alt="An administrator Notepad window and the bubble saying this window won't accept typing from loqui and the text is on the clipboard, press Ctrl+V"></figure>
+  <figure class="mac"><figcaption><b>Empty</b> · history</figcaption><img src="shots/after-history-empty.png" alt="The history window with no dictations: No dictations yet, press Ctrl+Shift+Space anywhere and start talking"></figure>
+  <figure class="mac"><figcaption><b>Empty</b> · stats</figcaption><img src="shots/after-stats-empty.png" alt="The Windows stats window with no dictations: No dictations yet, your words, pace and time saved show up here after your first dictation, press Ctrl+Shift+Space anywhere to start"></figure>
+</div>
+<ul>
+  <li><b>Empty:</b> history and stats each say "No dictations yet" with the shortcut to press; Recent says "No dictations yet"; an empty dictionary says "Add words loqui mishears"; a period with no dictations says "No dictations in March 2026." instead of eight zero tiles; nothing heard means nothing is pasted; no update says "loqui is up to date".</li>
+  <li><b>Loading:</b> the speech model loads in about 2.5 seconds after loqui starts; a press before then still records and the text arrives once it's ready. While the last words are turned into text, the bubble shows a small spinner. Updates show download progress.</li>
+  <li><b>Error:</b> no microphone ("loqui can't find a microphone"); a window that refuses pasted text (above); a shortcut that would get in the way of typing ("Use Ctrl or Alt with a key, or a function key."); an unreadable settings file ("Your settings file couldn't be read, so defaults are in use", and the file is left alone); a damaged line in the stats record is skipped; no internet for the update check (the daily check fails quietly, Check for updates says "Couldn't reach the update server. Try again later."); an update without a good signature ("This update couldn't be verified, so it wasn't installed."); on the download page, a computer that can't be told shows both buttons.</li>
+  <li><b>No permission:</b> Windows' microphone switch for desktop apps, above; the welcome window leads you to it and loqui never changes it itself. Installing and updating need no administrator.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk"><p><b>Risky: secrets.</b> A new Windows update key: whoever held it could push an update every copy would accept. What keeps it safe: the key lives only as a locked GitHub secret, with your backup in 1Password; publishing to everyone needs your approval; and the plan gets one Codex safety review before it reaches staging. No money: Microsoft signing and Parallels are both left out, as you decided. loqui watches the keyboard as the Mac app does, acting only on the shortcut, and a check proves typed keys never reach any loqui file. The first public version can't be taken back, so it goes out only when you press Ship, and Roll back is proved before then.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Your yes on the Windows plan already said yes to these. The first two are the ones you changed since; the rest stand as you approved them.</p>
+
+<div class="decision" id="d-signing">
+  <h3>1. Signing by Microsoft</h3>
+  <ol>
+    <li class="rec"><b>Your choice:</b> no Microsoft signing for now. The signing step is built behind a switch that stays off, and the release notes say how to get past Windows' SmartScreen notice.</li>
+    <li>Microsoft's Artifact Signing service, $9.99 a month: your name as publisher, and fewer warnings.</li>
+  </ol>
+  <p class="why">Why: your teammates can get past the notice in two clicks, and turning signing on later is a switch, with no rebuild.</p>
+</div>
+
+<div class="decision" id="d-tryit">
+  <h3>2. Who tries it on Windows</h3>
+  <ol>
+    <li class="rec"><b>Your choice:</b> your Windows teammates install it from a link and use it. No Parallels.</li>
+    <li>Parallels on your MacBook, about $100 a year.</li>
+  </ol>
+  <p class="why">Why: real people on real Windows PCs, at no cost.</p>
+</div>
+
+<div class="decision" id="d-updatekey">
+  <h3>3. The Windows update key</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> a new key just for Windows updates, kept only as a locked GitHub secret, with a backup you save in 1Password.</li>
+    <li>No separate key; trust the download alone.</li>
+  </ol>
+  <p class="why">Why: it's what stops anyone else pushing an update to every copy, and it costs nothing. With Microsoft signing off, it matters more.</p>
+</div>
+
+<div class="decision" id="d-engine">
+  <h3>4. Which speech engine</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> NVIDIA's open Parakeet model (version 3), run on the PC's own processor.</li>
+    <li>OpenAI's open Whisper model.</li>
+    <li>Windows' own speech recognition.</li>
+  </ol>
+  <p class="why">Why: in the experiment it was word-perfect and eight to sixteen times faster than speaking on ordinary processors. Whisper needs a graphics card to be as quick, and Windows' own dictation sends audio to Microsoft.</p>
+</div>
+
+<div class="decision" id="d-model">
+  <h3>5. The speech model inside a 500 MB installer</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> inside the installer, about 500 MB to download once; loqui never fetches anything but the update check.</li>
+    <li>A small installer that downloads the model from GitHub on first start.</li>
+  </ol>
+  <p class="why">Why: a first-start download would be a second network request and break the README's promise. Updates stay about 12 MB either way, because the model is kept.</p>
+</div>
+
+<div class="decision" id="d-stack">
+  <h3>6. How the Windows app is built</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Tauri: the parts that talk to Windows (keyboard, microphone, pasting) in Rust, and the windows you look at in the same web tools our other apps use. Built that way in groundwork.</li>
+    <li>Microsoft's own C# tools (.NET with WinUI or WPF).</li>
+    <li>Electron, as Slack and VS Code use.</li>
+  </ol>
+  <p class="why">Why: the screens can be built and checked on the Mini with no Windows machine, signed updates come built in, and an open-source dictation app (Handy) already ships this way on Windows.</p>
+</div>
+
+<div class="decision" id="d-repo">
+  <h3>7. Same project or a new one</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> the same project (jameslaws/loqui), in a windows folder beside the Mac code.</li>
+    <li>A separate project, loqui-windows.</li>
+  </ol>
+  <p class="why">Why: one product, one issue list, one README, and the shared examples only stay shared if both apps read the same file.</p>
+</div>
+
+<div class="decision" id="d-versions">
+  <h3>8. Which Windows</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Windows 11 only, on both Intel/AMD and Arm PCs.</li>
+    <li>Also Windows 10.</li>
+  </ol>
+  <p class="why">Why: Windows 10 stopped getting security updates for home users in October 2026. It may well work, but we wouldn't test or promise it.</p>
+</div>
+
+<div class="decision" id="d-shortcut">
+  <h3>9. The default shortcut</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Ctrl+Shift+Space, changeable in Settings.</li>
+    <li>Ctrl+R, the direct match for the Mac's Cmd+R.</li>
+    <li>F9 on its own.</li>
+  </ol>
+  <p class="why">Why: Ctrl+R reloads the page in every Windows browser, and many laptops need Fn for F9. Ctrl+Shift+Space is free in nearly every app.</p>
+</div>
+
+<div class="decision" id="d-clipboard">
+  <h3>10. Your text on the clipboard</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> leave it on the clipboard like the Mac, but keep it out of Windows' clipboard history and its sync to your Microsoft account.</li>
+    <li>Leave it on the clipboard, history and sync included (Windows' default).</li>
+    <li>Put back whatever was on the clipboard before.</li>
+  </ol>
+  <p class="why">Why: Windows can upload clipboard contents to Microsoft for your other devices, which would carry dictated text off the PC.</p>
+</div>
+
+<div class="decision" id="d-signin">
+  <h3>11. Start loqui when you sign in</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> on by default, with a switch in the welcome window and in Settings.</li>
+    <li>Off by default (the Mac has no such setting).</li>
+  </ol>
+  <p class="why">Why: Windows tray apps are expected to start with Windows, and a dictation shortcut is only useful if it's always there.</p>
+</div>
+
+<div class="decision" id="d-testchannel">
+  <h3>12. How a PC gets test versions</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> a "Get test versions" switch in Settings, off by default. Your teammates turn it on.</li>
+    <li>A separate "loqui test" app installed beside the normal one.</li>
+  </ol>
+  <p class="why">Why: one app to look after, and turning it off simply waits for the next approved version.</p>
+</div>
+
+<div class="decision" id="d-page">
+  <h3>13. One download page or two</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> one page that puts the visitor's own computer first.</li>
+    <li>A separate Windows page linked from the current one.</li>
+  </ol>
+  <p class="why">Why: one product, one page; the privacy and feature sections apply to both.</p>
+</div>
+
+<div class="decision" id="d-number">
+  <h3>14. The first Windows version number</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> 0.1.0, counted separately from the Mac.</li>
+    <li>1.0.0.</li>
+    <li>Match the Mac's numbers, releasing both together.</li>
+  </ol>
+  <p class="why">Why: the Mac started at 0.1, and the two apps ship on their own schedules, so tied numbers would force empty releases. Test and practice versions before it are numbered 0.0.x so this number stays free.</p>
+</div>
+
+<div class="decision" id="d-when">
+  <h3>15. When it goes public</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> when your teammates have used the test version daily for about a week with nothing broken. You press Ship.</li>
+    <li>As soon as it's built and checked.</li>
+  </ol>
+  <p class="why">Why: it's the first time anyone outside installs it, and a week of real use catches what the checks can't.</p>
+</div>
+
+<div class="decision" id="d-where">
+  <h3>16. Where Loqui runs</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> on people's own computers, with installers, the download page and update lists on GitHub, and the Windows checks on GitHub's free Windows computers.</li>
+    <li>Host downloads on a Loqui server or jameslaws.com.</li>
+  </ol>
+  <p class="why">Why: it's how the Mac version already ships, it costs nothing, and it keeps "no server" true.</p>
+</div>
+
+<div class="decision" id="d-look">
+  <h3>17. The Windows look</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Windows' own font, corners and settings layout, with magenta as the accent, the quote-mark icon and the Mac's dark dictation bubble, as built in groundwork.</li>
+    <li>Copy the Mac's look exactly, Apple fonts and controls included.</li>
+  </ol>
+  <p class="why">Why: it feels at home on Windows and still reads as Loqui; Mac-style controls look out of place there.</p>
+</div>
+
+<div class="decision" id="d-uninstall">
+  <h3>18. Your data when uninstalling</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> ask whether to also delete history and settings, as the Mac's uninstall does.</li>
+    <li>Always keep them.</li>
+    <li>Always delete them.</li>
+  </ol>
+  <p class="why">Why: the same choice the Mac gives, and nothing is deleted without asking.</p>
+</div>
+
+<div class="decision" id="d-store">
+  <h3>19. The Microsoft Store</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> not now. Consider it after launch as a second way in.</li>
+    <li>Publish in the Store at the same time.</li>
+  </ol>
+  <p class="why">Why: the Store reviews keyboard-watching apps closely and runs its own updates, which would split the testing; the GitHub download comes first.</p>
+</div>
+
+<div class="decision" id="d-charts">
+  <h3>20. How the stats charts are drawn</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> loqui draws its own simple bar charts, matching the Mac's.</li>
+    <li>Use a ready-made chart library.</li>
+  </ol>
+  <p class="why">Why: the charts are only bars with hover labels; drawing them keeps the Mac's look and adds nothing to download or keep updated.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Microsoft signing (built in, switched off) and Parallels.</li>
+  <li>Windows 10, Linux, the Microsoft Store and winget.</li>
+  <li>Announcing it anywhere: newsletter, jameslaws.com, social posts.</li>
+  <li>Any change to how the Mac app behaves, or how it's built, signed or updated.</li>
+  <li>Combining stats from your Mac and your PC; each computer keeps its own.</li>
+  <li>Pasting into programs run as administrator; the text is left on the clipboard instead.</li>
+  <li>Using a graphics card for speech, or choosing between speech models.</li>
+  <li>New features the Mac doesn't have, spoken commands ("new paragraph"), and the Mac's file-only settings (sentence healing words, pause length, cleanup log), which stay in the file on Windows too.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<p>One try, at Ready to ship, once everything is merged into staging. Your teammates do the hands-on items on their own Windows PCs; you read the pictures and their notes.</p>
+<ol class="checkpoints">
+  <li><b>Proved on GitHub's Windows computers</b> (the pull request and the try list's pictures): Notepad holding the spoken sentence for tap, hold and a 60-second dictation; no network connections; every window light and dark with a clean accessibility scan; the Mac and Windows giving the same cleanup and stats figures; the update, test channel, Approve and Roll back runs, all on 0.0.x versions. <span class="ids">DICT-01 to DICT-07, MIC-02, PASTE-01, HUD-01, HUD-02, PRIV-01 to PRIV-03, REC-01, PERF-01, MENU-01, A11Y-01, A11Y-02, STAT-07, SIGN-02, INST-03, UPD-02 to UPD-04, CHAN-02 to CHAN-05</span></li>
+  <li><b>Install from a link</b> (a teammate's Windows PC): open the test version's link from the try list, follow the release notes past "Windows protected your PC", install with no administrator prompt. The welcome window opens; turn Windows' microphone switch off and on and watch the row tick itself. <span class="ids">SIGN-01, INST-01, WELC-01, WELC-02, PERF-01</span></li>
+  <li><b>Dictate</b> (a teammate): in Notepad, tap Ctrl+Shift+Space, say a few sentences with an "um" in them, tap again: clean text lands, filler gone. Hold the shortcut, talk, let go. Turn the microphone switch off and try again: the bubble says what to do. <span class="ids">DICT-01, DICT-02, DICT-05, MIC-01, PASTE-02, HUD-01, HUD-02</span></li>
+  <li><b>Set it up and look back</b> (a teammate): change the shortcut to Ctrl+Alt+D and dictate with it; add "loki" as "Loqui" and say it; search history, copy one, delete one; click one in Recent and paste it; set history to Off and dictate; restart Windows and loqui is by the clock. <span class="ids">SET-01 to SET-05, DICTN-01, HIST-01 to HIST-03, RECENT-01</span></li>
+  <li><b>Stats</b> (a teammate): open Dictation stats; today's words match what was said; pick a day from the shaded calendar; step with the arrows; dictate once with the window open and watch Today change. <span class="ids">STAT-01 to STAT-06, STAT-08</span></li>
+  <li><b>It updates itself</b> (a teammate): turn on Get test versions. When the builder moves the version to 0.1.0, the update window appears within the hour; install it and the dictionary is still there. Then uninstall, choosing to keep history, and install again. <span class="ids">UPD-01, CHAN-01, INST-02</span></li>
+  <li><b>The page and the words</b> (a private preview on the Mini, opened on your MacBook, your phone and a teammate's PC; the pull request): Windows sees "Download for Windows" first; the Mac and the phone see today's page with Windows added; the README, security policy, roadmap and contributing notes read right for Windows. <span class="ids">LAUNCH-01 to LAUNCH-06, A11Y-03</span></li>
+  <li><b>Ship</b> (you press Ship): the tested version is published unchanged as 0.1.0; on a teammate's PC, the live page's Download for Windows installs it and it dictates; on your MacBook, the Mac download still gets the Mac app. <span class="ids">LAUNCH-07 to LAUNCH-09, CHAN-05</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>How this plan is built</summary>
+  <ul>
+    <li><b>One plan, one branch.</b> Every part builds on the feature branch <code>windows-version</code> (made from staging). Each builder works on its own local branch and pushes with <code>git pull --rebase origin windows-version</code> then <code>git push origin HEAD:windows-version</code>; never check out <code>windows-version</code> itself.</li>
+    <li><b>One pull request</b> from <code>windows-version</code> into staging. Part A's builder opens it as a draft; it's marked ready when every part is green. <b>One review</b> of the whole change by a fresh reviewer from the other company's AI, plus the one Codex safety review a risky plan gets (<code>safety review loqui windows-version</code>), before it merges into staging. <b>One try:</b> <code>plans/windows-version/try.md</code> with pictures in <code>plans/windows-version/built/</code>; each part adds its own section and pictures, and Part E's builder makes it one list. <b>One ship.</b></li>
+    <li><b>Groundwork is done</b> (live on main, PR #3 and fix #6): shared cleanup examples, the Windows app shell, the look as tokens, CI on both Windows runners, PROJECT.md and the registry row.</li>
+    <li><b>Order:</b> A, then B, then C and D side by side (two builders), then E. A part starts when the part it needs is green on <code>windows-version</code>.</li>
+    <li><b>Checks:</b> every ID in this folder's <code>checks.md</code>, grouped by part. Groundwork's checks (WINBASE, CLEAN, PLACE-01, LOOK-01) keep passing. The old overview's WIN-01 to WIN-06 are retired.</li>
+    <li><b>Stack:</b> Tauri 2 with Rust pinned, React, Vite and TypeScript, pnpm, Biome, Vitest and Playwright (groundwork); speech through sherpa-onnx with Parakeet TDT 0.6B v3 and the Silero voice activity model, pinned by SHA-256.</li>
+    <li><b>Shared interfaces and owners:</b> <code>shared/cleanup-cases.json</code> (add cases only; changing an existing expected output needs a <code>changes.md</code> entry). <code>windows/design/tokens.json</code> (screens use only these; a new token goes to James through the Lead). <code>%LOCALAPPDATA%\Loqui\settings.json</code> (A creates it; B adds <code>startAtSignIn</code> and <code>onboarded</code>; D adds <code>channel</code>). <code>history.jsonl</code> and <code>dictation-log.jsonl</code> in the Mac's formats (A; read by B and C). <code>loqui-core</code> owns all file reading and writing; screens never touch files.</li>
+    <li><b>Version numbers:</b> the version lives in <code>windows/package.json</code>. Every Windows version before the ship is 0.0.x, test and drill versions included. The number inside the app always equals the number on its release and in the update list, so Promote can copy files unchanged without a PC being offered the version it already has. So every change merged into staging that touches <code>windows/</code> raises the number: CI fails a pull request that touches <code>windows/</code> without a higher version than staging's, and the release workflow refuses a number that already exists. The one pull request merges as 0.0.x. After the teammates have installed it, Part E's builder merges a one-line change moving the version to 0.1.0: that is the update they see arrive, the version they use, and the one Ship publishes. A fix after that makes 0.1.1 the first public number.</li>
+    <li><b>Can't be undone:</b> a published update reaching every PC on its channel; the first public release at the ship.</li>
+    <li><b>Staging and rollback:</b> until Part D lands, staging is the test build attached to each Windows check run. From Part D on, staging is the test channel (pre-releases and the test update list), production is the public update list, with Promote and Roll back. The page is previewed privately on the Mini before merge; going back on the page is a revert; going back on the app is Roll back. Part D and Part E record this in PROJECT.md.</li>
+    <li><b>Experiments (2026-11-10):</b> <a href="https://github.com/jameslaws/loqui/actions/runs/42824603865">speech engine on Intel/AMD and Arm</a>, <a href="https://github.com/jameslaws/loqui/actions/runs/42825237405">shortcut, microphone, engine and paste into Notepad</a>, <a href="https://github.com/jameslaws/loqui/actions/runs/42825640143">a bare Tauri window's network use</a>.</li>
+  </ul>
+</details>
+<details>
+  <summary>Part A: dictation (being built; needs groundwork)</summary>
+  <ul>
+    <li><b>Checks:</b> DICT-01 to DICT-07, MIC-01, MIC-02, PASTE-01, PASTE-02, HUD-01, HUD-02, PRIV-01, PRIV-02, REC-01, PERF-01.</li>
+    <li><b>Owns:</b> <code>windows/crates/loqui-core/src/</code> <code>voice_key.rs</code>, <code>dictation.rs</code>, <code>records.rs</code>, <code>settings.rs</code>, <code>shortcut.rs</code>; <code>windows/crates/loqui-speech/**</code>; <code>windows/src-tauri/src/</code> <code>hook.rs</code>, <code>mic.rs</code>, <code>speech.rs</code>, <code>paste.rs</code>, <code>bubble.rs</code>, <code>dictation.rs</code>; the bubble in <code>windows/ui</code>; <code>windows/e2e/**</code>; <code>windows/scripts/fetch-speech.mjs</code>; <code>shared/fixtures/**</code>; <code>.github/workflows/windows.yml</code> (later parts add steps to it).</li>
+    <li><b>Existing code to reuse:</b> Mac <code>VoiceKeyService.swift</code> (gesture states, 0.35 s hold threshold, exact modifier match on key-down, key-up matched by key code only while a gesture is in flight, autorepeat swallowed, reset on a lost key-up; watchdog 120 s silence and 30 min ceiling; 80 ms pause before paste; bubble timings 0.9 s and 1.8 s; log lines). <code>VoiceTranscriber.swift</code> (timed healing from segment gaps; groundwork's <code>timed_heal.rs</code>). <code>DictationLog.swift</code>, <code>TranscriptionHistory.swift</code>, <code>CleanupAudit.swift</code> for file formats, retention and the 2 MB audit log limit. The experiment code on <code>plan/windows-dictation</code> in <code>plans/windows-dictation/experiment/</code>: hook thread, SendInput, clipboard formats, Notepad readback, VB-CABLE and microphone consent setup.</li>
+    <li><b>Keyboard:</b> <code>WH_KEYBOARD_LL</code> on its own thread with a message loop; the callback only matches and posts to a channel, because Windows silently removes slow hooks. Accept injected key events (the checks rely on them) but tag loqui's own Ctrl+V with a marker in <code>dwExtraInfo</code> and ignore it. Allowed shortcuts mirror the Mac: Ctrl or Alt with a key, or a bare F1 to F24.</li>
+    <li><b>Audio and speech:</b> WASAPI shared mode on the default communications microphone, resampled to 16 kHz mono; rebuild on device change; log starvation over 5 s. sherpa-onnx C API (v2.0.1 shared build) with Parakeet TDT 0.6B v3 int8 and Silero, both pinned by SHA-256. Cut segments at pauses while recording so only the last segment is decoded after release; feed segment gaps to the timed heal. Load the model once at start on a background thread and keep it.</li>
+    <li><b>Paste:</b> clipboard set with Unicode text plus <code>CanIncludeInClipboardHistory</code> and <code>CanUploadToCloudClipboard</code> set to 0 (decision 10). Then SendInput Ctrl+V. If the foreground process runs at a higher integrity level than loqui, skip the paste and show the clipboard message.</li>
+    <li><b>Bubble:</b> a second Tauri window: transparent, always on top, not in the taskbar, never activated, ignores the mouse; bottom centre of the monitor holding the foreground window; tokens only.</li>
+    <li><b>Model files:</b> the test build packs the model from the sherpa-onnx release, checked against its SHA-256 in CI, in the app's <code>models\</code> folder; Part D's installer keeps it across updates. The app never downloads anything.</li>
+    <li><b>Checks on Windows:</b> <code>windows/e2e/</code> drives the run on <code>windows-latest</code> with VB-CABLE (pinned by SHA-256) and the microphone consent keys. The Arm runner has no proven virtual cable driver, so its run uses a test-only file audio source compiled only into test builds (a Cargo feature); CI fails if a release build contains it. Network watch: list TCP connections owned by loqui and its web view processes for the whole run; any non-loopback address fails PRIV-01. Part D extends it for PRIV-03.</li>
+    <li><b>Data and outside services:</b> none at run time. CI downloads the engine, model and VB-CABLE, each pinned by SHA-256.</li>
+  </ul>
+</details>
+<details>
+  <summary>Part B: settings, history and welcome (needs A)</summary>
+  <ul>
+    <li><b>Checks:</b> WELC-01, WELC-02, SET-01 to SET-05, DICTN-01, HIST-01 to HIST-03, RECENT-01, MENU-01, A11Y-01.</li>
+    <li><b>Owns:</b> the welcome, settings and history screens in <code>windows/ui/src/</code>; <code>windows/src-tauri/src/tray.rs</code> (the whole tray menu) and the code that opens each window; the typed command layer between screens and Rust (defined once in <code>loqui-core</code>, exported as TypeScript types); the <code>startAtSignIn</code> and <code>onboarded</code> fields; the screenshot steps it adds to <code>windows.yml</code>.</li>
+    <li><b>Existing code to reuse:</b> Mac <code>Onboarding.swift</code> (rows, 1 s polling so a grant ticks off by itself, Finish only when the microphone is allowed), <code>SettingsView.swift</code> (what General and Dictionary hold; save writes only the fields this window owns and keeps the rest of <code>cleanup.json</code>), <code>Shortcut.swift</code> (acceptable combinations, display text), <code>HistoryView.swift</code>, <code>TranscriptionHistory.swift</code> (retention meanings, prune on launch and on change), <code>LoquiApp.swift</code> (menu items; Recent: last five, one line, 48 characters then an ellipsis, click copies).</li>
+    <li><b>Screens:</b> React in <code>windows/ui</code>, tokens only, one Tauri window per screen opened from the tray (one instance each; reopening focuses it). Screens talk to Rust only through the typed commands; screens never read files.</li>
+    <li><b>Room for C and D:</b> leave the Dictation stats and Check for updates menu items wired to one stub handler each, and a marked place in Settings, General for D's Updates card, so C and D each change only their own handler and file.</li>
+    <li><b>Shortcut recorder:</b> pauses the global hook while recording (as the Mac does) and resumes on save or cancel.</li>
+    <li><b>Microphone check:</b> read Windows' consent state for desktop apps; "Open microphone settings" opens <code>ms-settings:privacy-microphone</code>. loqui never changes the switch itself.</li>
+    <li><b>Start at sign-in:</b> the per-user Run key (<code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>), written and removed by the switch; no administrator.</li>
+    <li><b>Testing without Windows:</b> every screen also runs in a browser against a fake backend, so Vitest and Playwright (with an axe accessibility scan) run on the Mini and on Linux CI. The Windows check then opens each real window on <code>windows-latest</code> and photographs it, light and dark.</li>
+    <li><b>Can't be undone:</b> Clear history deletes the history file, after a confirmation, as on the Mac.</li>
+  </ul>
+</details>
+<details>
+  <summary>Part C: stats (needs A and B; side by side with D)</summary>
+  <ul>
+    <li><b>Checks:</b> STAT-01 to STAT-08, A11Y-02.</li>
+    <li><b>Owns:</b> <code>shared/stats-cases.json</code>; a new stats module in <code>loqui-core</code> and the stats command's result type (exported to TypeScript); the stats screen in <code>windows/ui/src/</code>; the Dictation stats menu handler only; on the Mac, a test seam in <code>Sources/loqui/StatsView.swift</code> (no behaviour change) and stats tests in <code>Tests/loquiTests/</code>.</li>
+    <li><b>Existing code to reuse:</b> Mac <code>StatsView.swift</code> (StatsModel: grains, offsets, period labels, comparisons, streaks, peak hours, time saved against 40 words a minute typing, pace only from entries with seconds, the "No dictations in …" rule, tile retitling under a filter) and <code>PeriodPicker.swift</code> (day and week grids, month grid, year list; shading on an absolute scale against the busiest day or month ever, with a square root so quiet days still show; "Picks the whole week").</li>
+    <li><b>Same numbers:</b> <code>shared/stats-cases.json</code> holds one sample dictation log, a fixed "now", a fixed time zone and first weekday, and the expected figures for every card, chart total and tile at each grain. The Mac tests StatsModel through the seam; Windows computes the figures in <code>loqui-core</code> and tests them there; the screen only draws them.</li>
+    <li><b>Charts:</b> plain SVG bars in React using the tokens; hover and keyboard focus show the Mac's tooltip text; each bar has an accessible label ("Oct 27: 1,412 words").</li>
+    <li><b>Testing without Windows:</b> as Part B; the Windows check photographs the real window light and dark.</li>
+    <li><b>Data:</b> reads <code>dictation-log.jsonl</code> only. No network.</li>
+  </ul>
+</details>
+<details>
+  <summary>Part D: installer, updates and test channel (needs A and B; side by side with C)</summary>
+  <ul>
+    <li><b>Checks:</b> SIGN-01, SIGN-02, INST-01 to INST-03, UPD-01 to UPD-04, CHAN-01 to CHAN-05, PRIV-03.</li>
+    <li><b>Owns:</b> the bundle and updater settings in <code>windows/src-tauri/tauri.conf.json</code> and the installer hooks; the update code in <code>windows/src-tauri</code>; the Updates card in Settings (its own file, in B's marked place) and the Check for updates menu handler only; the <code>channel</code> field; <code>.github/workflows/windows-release.yml</code>, <code>windows-promote.yml</code>, <code>windows-rollback.yml</code>; <code>docs/windows/stable.json</code>; the How it ships lines in PROJECT.md.</li>
+    <li><b>Existing code to reuse:</b> <code>release.sh</code> (publish the release before the update list; the list at a stable address, never "latest", because "latest" skips pre-releases), <code>uninstall.sh</code> (ask before deleting data), the vault note on Loqui hosting and updates (where release keys live; never copy keys anywhere).</li>
+    <li><b>Installer:</b> Tauri's NSIS bundle, <code>installMode: currentUser</code>. Two files per version: the full installer (with the model) for downloads, and an update installer without the model for the update lists. The model lives in its own folder with a version file; installers add it only when missing or changed and the update installer never removes it. The uninstaller asks about <code>%LOCALAPPDATA%\Loqui</code>.</li>
+    <li><b>Signing switch (decision 1):</b> a repository setting, off. When on, the workflow signs the app, its DLLs, both installers and the uninstaller through Azure Artifact Signing with a federated login (no stored secret) and a timestamp, verifies each with <code>signtool verify /pa</code>, and refuses to publish anything unsigned (SIGN-02). When off, it publishes unsigned and puts the SmartScreen steps at the top of the release notes: "Windows protected your PC" → More info → Run anyway, and that Smart App Control blocks unsigned apps (SIGN-01). Nothing claims a publisher while it's off.</li>
+    <li><b>Updates:</b> Tauri's updater plugin with the new public key built in. Checks once a day and on demand. The private key is a GitHub Actions secret in a <code>release</code> environment, generated without being printed, backed up by James in 1Password, then the local copy deleted. That backup is James's only setup task; the builder writes him a short note for it through the Lead.</li>
+    <li><b>Test update list off GitHub Pages:</b> Pages publishes <code>docs/</code> from main, which nothing reaches before the ship, so a test list committed to <code>docs/</code> would never be served while teammates try it. The test list is a file on one fixed GitHub pre-release used only for it (for example tag <code>windows-test-feed</code>, file <code>beta.json</code>), replaced by each test release. The public list stays <code>https://jameslaws.github.io/loqui/windows/stable.json</code>. The Settings switch chooses between them.</li>
+    <li><b>Test channel:</b> <code>windows-release.yml</code> runs on every push to staging that touches <code>windows/</code>: build, (sign if on), publish a GitHub pre-release <code>windows-v0.0.N-test</code> with <code>--latest=false</code>, then replace the test list (release first, list second). </li>
+    <li><b>Promote and Roll back:</b> <code>windows-promote.yml</code> is hand-started behind a GitHub environment that needs James's approval; it copies the tested pre-release's exact files (checksums compared) to a <code>windows-v…</code> release, still <code>--latest=false</code>, and writes <code>stable.json</code>. <code>windows-rollback.yml</code> rebuilds the last good tag's code as the next patch number and promotes it, because installed copies only move forward.</li>
+    <li><b>Drills before the ship:</b> GitHub only lets a workflow be started by hand once it's on main, and nothing reaches main before the ship. So build Promote and Roll back as shared steps, and prove them on <code>windows-version</code> through a drill run (for example started by pushing a drill tag) that uses 0.0.x versions and a drill list, never the public list or the Mac's release. Link the drill runs from the pull request (CHAN-03, CHAN-04).</li>
+    <li><b>Privacy check:</b> PRIV-03 extends Part A's network watch over a full install, start, update check and update: only the update list's host and GitHub's release download hosts appear, and only during checks and downloads.</li>
+    <li><b>Data and outside services:</b> GitHub Releases and Pages. No user data leaves the PC.</li>
+    <li><b>Can't be undone:</b> a published update reaches every PC on that channel; that's why the public list needs James's approval and Roll back exists. Drill releases stay on GitHub's releases page, unlinked.</li>
+  </ul>
+</details>
+<details>
+  <summary>Part E: launch (needs B, C and D)</summary>
+  <ul>
+    <li><b>Checks:</b> LAUNCH-01 to LAUNCH-09, A11Y-03.</li>
+    <li><b>Owns:</b> <code>docs/index.html</code>, <code>docs/assets/**</code>, <code>docs/windows/download.html</code>, README.md, SECURITY.md, ROADMAP.md, CONTRIBUTING.md, the download-page step it adds to <code>windows-promote.yml</code>, the one-line version move to 0.1.0 after the merge (see Version numbers), the launch lines in PROJECT.md and the Loqui row in the platform registry (<code>~/Developer/platform/PLACEMENT.md</code>, its own repo); and assembling the one <code>try.md</code>.</li>
+    <li><b>Existing code to reuse:</b> <code>docs/index.html</code> (its tokens, AA notes and structure; keep its look); the page wording changes are in <code>plans/windows-launch/shoot.mjs</code> on <code>plan/windows-launch</code>; README sections Install, Permissions, Privacy, Security model, Uninstall, Requirements, Development.</li>
+    <li><b>Choosing the button:</b> a few lines of script reading the platform; both buttons in the HTML, so with no script both show. Windows pictures for the page come from Part B's and Part C's Windows check pictures.</li>
+    <li><b>The Windows link:</b> the button points at <code>docs/windows/download.html</code>, a tiny page that forwards to the current public installer; Promote rewrites it with <code>stable.json</code> on every promote. Until the first Promote it says the Windows download is on its way and links to the releases page, so it never points nowhere. GitHub's "latest release" stays the Mac's.</li>
+    <li><b>Words:</b> README, SECURITY.md and the release notes say plainly that the Windows app isn't signed by Microsoft yet and how to get past SmartScreen; they never claim a publisher.</li>
+    <li><b>Staging:</b> the changed page is served as a private workspace preview on the Mini (<code>ws</code>, just James) before merge, because Pages publishes <code>docs/</code> only from main.</li>
+    <li><b>The ship, for the shipper:</b> James presses Ship on the tested staging commit. Merge staging into main, then run Promote on the tested 0.1.0 test version, which James approves; the page's Windows button then reaches it. Check LAUNCH-07 to LAUNCH-09 and CHAN-05 on the live page.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>
