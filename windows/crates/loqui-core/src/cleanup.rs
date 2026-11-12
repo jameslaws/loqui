@@ -6,6 +6,7 @@
 //! The patterns are the Mac's, case-insensitive and Unicode-aware, and must
 //! give the same result on every example in `shared/cleanup-cases.json`.
 
+use crate::case_folds::MULTI_CHAR_FOLDS;
 use crate::CleanupConfig;
 use regex::{Captures, NoExpand, Regex};
 use std::sync::LazyLock;
@@ -57,16 +58,66 @@ pub fn clean(raw: &str, cfg: &CleanupConfig) -> String {
 
 /// Whole-word, any-case replacement; the replacement is used literally.
 fn replace_word(text: &str, phrase: &str, replacement: &str) -> String {
-    let re = pattern(&format!(r"\b{}\b", regex::escape(phrase)));
+    let re = pattern(&format!(r"\b{}\b", any_case(phrase)));
     re.replace_all(text, NoExpand(replacement)).into_owned()
 }
 
 fn alternation(words: &[String]) -> String {
     words
         .iter()
-        .map(|w| regex::escape(w))
+        .map(|w| any_case(w))
         .collect::<Vec<_>>()
         .join("|")
+}
+
+/// A pattern for `phrase` in any case, the way the Mac matches it. The Mac's
+/// matching uses full case folding, so "strasse" also finds "straße" and
+/// "office" finds "oﬃce"; Rust's `(?i)` only folds one character to one
+/// character. So the phrase is folded first, and wherever the folded text could
+/// have come from a single character (ss from ß, ffi from ﬃ), that character
+/// is allowed too.
+fn any_case(phrase: &str) -> String {
+    let folded: Vec<char> = phrase
+        .chars()
+        .flat_map(
+            |c| match MULTI_CHAR_FOLDS.iter().find(|(from, _)| *from == c) {
+                Some((_, to)) => to.chars().collect::<Vec<_>>(),
+                None => c.to_lowercase().collect(),
+            },
+        )
+        .collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < folded.len() {
+        // The longest folded run starting here that a single character folds to.
+        let longest = MULTI_CHAR_FOLDS
+            .iter()
+            .map(|(_, to)| to.chars().count())
+            .filter(|&len| {
+                let run: String = folded[i..].iter().take(len).collect();
+                run.chars().count() == len && MULTI_CHAR_FOLDS.iter().any(|(_, to)| *to == run)
+            })
+            .max();
+        match longest {
+            Some(len) => {
+                let run: String = folded[i..i + len].iter().collect();
+                let mut choices = vec![regex::escape(&run)];
+                choices.extend(
+                    MULTI_CHAR_FOLDS
+                        .iter()
+                        .filter(|(_, to)| *to == run)
+                        .map(|(from, _)| regex::escape(&from.to_string())),
+                );
+                out.push_str(&format!("(?:{})", choices.join("|")));
+                i += len;
+            }
+            None => {
+                out.push_str(&regex::escape(&folded[i].to_string()));
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 fn remove_fillers(text: &str, fillers: &[String]) -> String {

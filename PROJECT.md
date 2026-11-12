@@ -3,11 +3,11 @@ playbook: v5.2.2
 skills: [core, crew, planning, testing, code-standards, checkpoint, shipping, stack-guide, access, accessibility, design-slot, playbook]
 access: public             # anyone downloads it, no account
 design: proposed-in-plan   # Mac: BRAND.md. Windows: windows/design/tokens.json (approved in plans/windows-groundwork)
-staging: https://github.com/jameslaws/loqui/actions/workflows/windows.yml   # each run's test build (Windows, until step 5)
+staging: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Astaging   # each staging run's test build (Windows, until step 5)
 production: https://github.com/jameslaws/loqui/releases/latest
 signed_in_page: /          # no sign-in: Loqui has no server and no accounts
 branches:
-  staging: main
+  staging: staging
   production: main
 ---
 
@@ -30,14 +30,15 @@ Public. Anyone can download Loqui from GitHub with no account, no subscription a
 
 On people's own computers. Nothing runs on the Mini or the droplet.
 
-- **Staging:** Mac: a local build (`./install.sh`). Windows, until step 5: the unsigned test build attached to each run of the Windows check on GitHub, built and started on GitHub's `windows-latest` (Intel/AMD) and `windows-11-arm` computers. Step 5 replaces this with a test channel.
+- **Staging:** the `staging` branch; pull requests merge there. Mac: a local build (`./install.sh`). Windows, until step 5: the unsigned test build attached to each run of the Windows check on `staging`, built and started on GitHub's `windows-latest` (Intel/AMD) and `windows-11-arm` computers. Step 5 replaces this with a test channel.
 - **Production:** Mac: the signed, notarized DMG on GitHub Releases, and the update feed `https://jameslaws.github.io/loqui/appcast.xml` on GitHub Pages from `docs/`. Windows: nothing public until step 6.
 - **Data:** none of ours. Each person's settings, history and logs are local files on their own computer (`cleanup.json` has the same format on both).
 
 ## How it ships
 
+- **Branches:** feature branches merge into `staging`, which is where test builds come from. Releases come from `main`: `staging` is merged into `main` when a version is ready.
 - **Checks on every pull request:** `build.yml` (macOS 26: build, `swift test`, bundle check) and `windows.yml` when `windows/` or `shared/` change (both Windows computers: core tests, test build, install, start, screenshots).
-- **Mac release:** `./release.sh`, run by hand on James's Mac: universal build, sign, notarize, publish to GitHub Releases, then commit `docs/appcast.xml`. Merging to main ships nothing to Mac users.
+- **Mac release:** `./release.sh`, run by hand on James's Mac: universal build, sign, notarize, publish to GitHub Releases, then commit `docs/appcast.xml`. Merging to `staging` or `main` ships nothing to Mac users by itself.
 - **Going back:** Mac: put the previous release's `docs/appcast.xml` back and push; the previous DMG stays on Releases. Windows test builds: download an earlier run's build.
 - **Database changes:** none. There is no database.
 

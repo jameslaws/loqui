@@ -25,6 +25,9 @@
     { "id": "dictionary-07", "rule": "dictionary", "config": { "dictionary": { "o'neil": "O'Neill" } }, "in": "call o'neil today", "out": "Call O'Neill today" },
     { "id": "dictionary-08", "rule": "dictionary", "config": { "dictionary": { "dollar sign": "$1" } }, "in": "it costs five dollar sign", "out": "It costs five $1" },
     { "id": "dictionary-09", "rule": "dictionary", "config": { "dictionary": { "pr": "PR", "pr review": "PR review" } }, "in": "send the pr review and the pr", "out": "Send the PR review and the PR" },
+    { "id": "dictionary-10", "rule": "dictionary", "config": { "dictionary": { "strasse": "street" } }, "in": "die straße", "out": "Die street" },
+    { "id": "dictionary-11", "rule": "dictionary", "config": { "dictionary": { "straße": "street" } }, "in": "the STRASSE sign", "out": "The street sign" },
+    { "id": "dictionary-12", "rule": "dictionary", "config": { "dictionary": { "office": "Office" } }, "in": "the oﬃce is open", "out": "The Office is open" },
 
     { "id": "spoken-formatting-01", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "first point new line second point", "out": "First point\nSecond point" },
     { "id": "spoken-formatting-02", "rule": "spoken-formatting", "config": { "spokenFormatting": true }, "in": "dear team new paragraph thanks for waiting", "out": "Dear team\n\nThanks for waiting" },
