@@ -14,6 +14,16 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      // Windows only, after the acceptance checks: real dictations into Notepad.
+      {
+        test: {
+          name: "e2e",
+          include: ["e2e/**/*.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
     ],
   },
 });

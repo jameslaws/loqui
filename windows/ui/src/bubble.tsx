@@ -90,11 +90,7 @@ export function Bubble() {
             <span className="q" aria-hidden="true">
               “
             </span>
-            {phase === "listening" ? (
-              <Waveform level={level} />
-            ) : (
-              <span className="spinner" aria-hidden="true" />
-            )}
+            {phase === "listening" ? <Waveform level={level} /> : <span className="spinner" aria-hidden="true" />}
             <span className="q" aria-hidden="true">
               ”
             </span>

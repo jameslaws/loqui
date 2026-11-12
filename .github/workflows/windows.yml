@@ -32,7 +32,7 @@ jobs:
             runner: windows-11-arm
             arch: arm64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -81,6 +81,17 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The engine and the 640 MB model come from their pinned sources and are
+      # checked against their SHA-256 (scripts/fetch-speech.mjs); never from git.
+      - name: Speech engine and model, cached between runs
+        uses: actions/cache@v4
+        with:
+          path: windows/.speech-cache
+          key: speech-${{ matrix.arch }}-${{ hashFiles('windows/scripts/fetch-speech.mjs') }}
+
+      - name: Speech engine and model, checked against their SHA-256
+        run: pnpm fetch:speech
+
       - name: Format and lint (TypeScript)
         run: pnpm exec biome ci .
 
@@ -91,22 +102,53 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Lint (Rust)
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo clippy -p loqui --all-targets --features test-audio -- -D warnings
 
-      # CLEAN-03 lists every shared example by id; CLEAN-05 loads the Mac's settings files.
-      - name: "CLEAN-03 and CLEAN-05: the Windows core passes every shared example and reads the Mac's settings"
+      # CLEAN-03 lists every shared example by id; CLEAN-05 loads the Mac's settings
+      # files; REC-01 writes the history and stats lines the Mac's tests decode.
+      - name: "CLEAN-03, CLEAN-05 and REC-01: the Windows core passes every shared example and keeps the Mac's formats"
         run: cargo test -p loqui-core
 
       - name: "CLEAN-01, LOOK-01 and PLACE-01: the examples file, the look and the project record"
         run: pnpm exec vitest run --project contracts
 
-      - name: Build the test installer (unsigned)
+      - name: Build the test installer (unsigned, with the speech model)
         run: pnpm build
+
+      - name: The release build has no test-only audio source
+        run: |
+          $exe = [IO.File]::ReadAllText("$pwd\target\release\loqui.exe", [Text.Encoding]::ASCII)
+          if ($exe.Contains('LOQUI_TEST_AUDIO')) { throw 'the release build contains the test-only audio source' }
+          "Installer: " + [math]::Round((Get-Item target\release\bundle\nsis\*-setup.exe).Length / 1MB) + " MB"
+
+      - name: The test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: loqui-test-build-${{ matrix.arch }}
+          path: windows/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
 
       - name: "WINBASE: install, start, tray menu, About, quit"
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:acceptance
+
+      - name: A microphone for the checks (VB-CABLE, pinned by SHA-256)
+        if: matrix.arch == 'x64'
+        run: ./e2e/setup-runner.ps1
+
+      # GitHub's Arm computers have no virtual sound cable: DICT-07 runs a test
+      # build that plays a file through the normal path instead.
+      - name: The Arm test build with a file for a microphone (never shipped)
+        if: matrix.arch == 'arm64'
+        run: pnpm build:test-audio
+
+      - name: "DICT, MIC, PASTE, HUD, PRIV, REC and PERF: real dictations into Notepad"
+        env:
+          LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
+        run: pnpm test:e2e
 
       - name: Screenshots taken on this computer
         if: always()
@@ -116,9 +158,6 @@ jobs:
           path: windows/target/shots
           if-no-files-found: warn
 
-      - name: The test build
-        uses: actions/upload-artifact@v4
-        with:
-          name: loqui-test-build-${{ matrix.arch }}
-          path: windows/target/release/bundle/nsis/*-setup.exe
-          if-no-files-found: error
+      - name: Leave the speech model out of the build cache
+        if: always()
+        run: Remove-Item -Recurse -Force target\release\engine, target\release\models, target\debug\engine, target\debug\models -ErrorAction SilentlyContinue

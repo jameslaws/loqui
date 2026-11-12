@@ -38,7 +38,7 @@ impl Bubble {
     pub fn create(app: &AppHandle) -> tauri::Result<Self> {
         let window =
             WebviewWindowBuilder::new(app, "bubble", WebviewUrl::App("bubble.html".into()))
-                .title("loqui")
+                .title("loqui hidden")
                 .inner_size(720.0, 200.0)
                 .transparent(true)
                 .decorations(false)
@@ -67,7 +67,7 @@ impl Bubble {
         })
     }
 
-    fn hwnd(&self) -> Option<HWND> {
+    pub fn hwnd(&self) -> Option<HWND> {
         self.window.hwnd().ok().map(|h| h.0 as HWND)
     }
 

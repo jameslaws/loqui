@@ -63,9 +63,10 @@ pub fn start(app: &AppHandle) -> Result<(), String> {
     let (events, inbox) = channel();
     let root = app.path().resource_dir().map_err(|e| e.to_string())?;
     let speech = speech::start(Files::under(&root), events.clone()).map_err(|e| e.to_string())?;
-    let bubble = Bubble::create(app).map_err(|e| e.to_string())?;
+    // The shortcut works from the first moment; presses wait in the queue.
     hook::start(settings.shortcut, events.clone(), clock)
         .map_err(|e| format!("the keyboard hook failed: {e}"))?;
+    let bubble = Bubble::create(app).map_err(|e| e.to_string())?;
     records.log(&format!("listening for {}", settings.shortcut), unix_now());
 
     let center = Center {
@@ -342,7 +343,9 @@ impl Center {
             self.log(&format!("couldn't save the history line: {e}"));
         }
 
-        if let Err(e) = paste::set_clipboard(&text) {
+        if let Err(e) =
+            paste::set_clipboard(&text, self.bubble.hwnd().unwrap_or(std::ptr::null_mut()))
+        {
             self.log(&format!("nothing pasted: {e}"));
             self.bubble.notice(bubble::NO_CLIPBOARD, LONG_NOTICE);
             return;

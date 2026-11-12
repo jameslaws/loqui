@@ -62,13 +62,14 @@ fn put(format: u32, bytes: &[u8]) -> bool {
     true
 }
 
-/// Put `text` on the clipboard, kept out of history and cloud sync.
-pub fn set_clipboard(text: &str) -> Result<(), String> {
+/// Put `text` on the clipboard, kept out of history and cloud sync. `owner`
+/// is one of loqui's windows: Windows wants the clipboard opened by a window.
+pub fn set_clipboard(text: &str, owner: HWND) -> Result<(), String> {
     // Another program may hold the clipboard for a moment.
     let mut open = false;
     for _ in 0..20 {
-        // SAFETY: no pointers; a null owner is allowed.
-        if unsafe { OpenClipboard(std::ptr::null_mut()) } != 0 {
+        // SAFETY: no pointers besides the window handle.
+        if unsafe { OpenClipboard(owner) } != 0 {
             open = true;
             break;
         }

@@ -1,18 +1,21 @@
 {
   "name": "loqui-windows",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "tauri dev --config src-tauri/tauri.speech.json",
     "start": "node scripts/start.mjs",
-    "build": "tauri build --bundles nsis",
+    "build": "tauri build --bundles nsis --config src-tauri/tauri.speech.json",
     "ui:dev": "vite ui",
     "ui:build": "vite build ui",
+    "fetch:speech": "node scripts/fetch-speech.mjs",
+    "build:test-audio": "tauri build --no-bundle --features test-audio --config src-tauri/tauri.speech.json",
     "check": "biome check . && tsc -p . && vitest run --project contracts && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test -p loqui-core",
     "check:changed": "node scripts/check-changed.mjs",
     "test:contracts": "cargo test -p loqui-core && vitest run --project contracts",
     "test:acceptance": "vitest run --project acceptance",
+    "test:e2e": "vitest run --project e2e",
     "tauri": "tauri"
   },
   "dependencies": {
