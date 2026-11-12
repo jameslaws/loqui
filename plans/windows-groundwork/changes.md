@@ -16,6 +16,14 @@ Format:
 
 ---
 
+### Known difference: partial ligatures in dictionary words
+
+- **Kind:** Behind it (Lead decided after the review: log it, follow up in issue #5)
+- **Before:** the plan promises the Windows rules match the Mac's on every shared example.
+- **After:** they do, on all 78. One case outside them still differs: with a dictionary entry "office", the Mac also replaces "oﬀice" and "ofﬁce" (a ligature covering part of the word); Windows doesn't. "straße" and "strasse" match on both.
+- **Why it doesn't block:** speech engines don't write ligature characters, so dictated text never contains them. The fix is ready on branch windows-fold-ligatures for its own review (https://github.com/jameslaws/loqui/issues/5).
+- **Checks affected:** none (CLEAN-03 passes).
+
 ### The About window says version 0.0.1, not 0.1.0
 
 - **Kind:** Visible (decided in the approved series plan: "every Windows version before launch, test and stable ... is 0.0.x")
