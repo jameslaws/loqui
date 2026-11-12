@@ -87,15 +87,25 @@ fn alternation(words: &[String]) -> String {
 fn any_case(phrase: &str) -> String {
     let folded: Vec<char> = phrase
         .chars()
-        .flat_map(|c| match MULTI_CHAR_FOLDS.iter().find(|(from, _)| *from == c) {
-            Some((_, to)) => to.chars().collect::<Vec<_>>(),
-            None => c.to_lowercase().collect(),
-        })
+        .flat_map(
+            |c| match MULTI_CHAR_FOLDS.iter().find(|(from, _)| *from == c) {
+                Some((_, to)) => to.chars().collect::<Vec<_>>(),
+                None => c.to_lowercase().collect(),
+            },
+        )
         .collect();
     // Each fold point doubles the pattern at most; a phrase with dozens of
     // them is not a real phrase, so keep its plain form.
     let fold_points = (0..folded.len())
-        .filter(|&i| MULTI_CHAR_FOLDS.iter().any(|(_, to)| folded[i..].iter().copied().take(to.chars().count()).eq(to.chars())))
+        .filter(|&i| {
+            MULTI_CHAR_FOLDS.iter().any(|(_, to)| {
+                folded[i..]
+                    .iter()
+                    .copied()
+                    .take(to.chars().count())
+                    .eq(to.chars())
+            })
+        })
         .count();
     if fold_points > 16 {
         return regex::escape(phrase);
@@ -110,14 +120,27 @@ fn folded_pattern(folded: &[char]) -> String {
     let plain = regex::escape(&first.to_string()) + &folded_pattern(&folded[1..]);
     let mut choices: Vec<String> = MULTI_CHAR_FOLDS
         .iter()
-        .filter(|(_, to)| folded.iter().copied().take(to.chars().count()).eq(to.chars()))
-        .map(|(from, to)| regex::escape(&from.to_string()) + &folded_pattern(&folded[to.chars().count()..]))
+        .filter(|(_, to)| {
+            folded
+                .iter()
+                .copied()
+                .take(to.chars().count())
+                .eq(to.chars())
+        })
+        .map(|(from, to)| {
+            regex::escape(&from.to_string()) + &folded_pattern(&folded[to.chars().count()..])
+        })
         .collect();
     if choices.is_empty() {
         return plain;
     }
     choices.insert(0, plain);
     format!("(?:{})", choices.join("|"))
+}
+
+fn remove_fillers(text: &str, fillers: &[String]) -> String {
+    let re = pattern(&format!(r"\b(?:{})\b,?", alternation(fillers)));
+    re.replace_all(text, "").into_owned()
 }
 
 /// Collapse runs of spaces, drop space before punctuation and before a line
