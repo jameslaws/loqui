@@ -10,68 +10,34 @@
 // at, its update checks run, it updates itself to the next version, that is
 // uninstalled keeping your data, this version is installed again and the next
 // one's full installer run over it, and finally it is uninstalled with your data.
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { type ChildProcess, spawn } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { data, desk, dk, localAppData, ps, windowsDir } from "../e2e/drive";
 import { feed } from "../scripts/release/feed.mjs";
+import {
+  arch,
+  checkByHand as check,
+  closeUpdateWindow as closeUpdate,
+  type Facts,
+  facts,
+  inst,
+  installFromPrompt,
+  type Manifest,
+  manifestIn,
+  quitLoqui,
+  shot,
+  shots,
+  startLoqui,
+  waitFor,
+  yours,
+} from "./helpers";
 
 const onWindows = process.platform === "win32";
-const arch = process.arch === "arm64" ? "arm64" : "x64";
-const shots = process.env.LOQUI_SHOTS ?? join(windowsDir, "target", "shots");
-const shot = (name: string) => join(shots, `${name}.png`);
 const lists = join(windowsDir, "target", "update-lists");
 const LIST = "http://127.0.0.1:8719/";
-
-type Manifest = {
-  version: string;
-  arch: string;
-  setup: { file: string; size: number; sha256: string };
-  update: { file: string; size: number; sha256: string; signature: string };
-};
-type Facts = {
-  exe: boolean;
-  folder: boolean;
-  appInDataFolder: boolean;
-  installed: { name: string; version: string; uninstall: string; location: string } | null;
-  run: string | null;
-  startMenu: string[];
-  processes: { pid: number; path: string }[];
-  model: { version: string | null; encoder: string | null; vad: string | null };
-  engine: string[];
-  data: { name: string; sha256: string }[];
-};
-
-function manifestIn(folder: string): Manifest {
-  const dir = join(windowsDir, "target", folder);
-  const name = readdirSync(dir).find((f) => f.endsWith(`-${arch}.json`));
-  if (!name) throw new Error(`no installers in ${dir}: windows.yml builds them first`);
-  return JSON.parse(readFileSync(join(dir, name), "utf8"));
-}
-
-/** One action from installer.ps1. */
-function inst(verb: string, args: Record<string, string | boolean> = {}, timeout = 300_000) {
-  const argv = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", join(import.meta.dirname, "installer.ps1"), verb];
-  for (const [key, value] of Object.entries(args)) {
-    if (value === true) argv.push(`-${key}`);
-    else if (value !== false) argv.push(`-${key}`, value);
-  }
-  let out: string;
-  try {
-    out = execFileSync("powershell.exe", argv, { encoding: "utf8", timeout, maxBuffer: 1 << 24 });
-  } catch (error) {
-    const { stdout, stderr } = error as { stdout?: string; stderr?: string };
-    throw new Error(`installer.ps1 ${verb} failed: ${stdout ?? ""} ${stderr ?? ""}`);
-  }
-  return JSON.parse(out.trim().split(/\r?\n/).at(-1) ?? "");
-}
-const facts = (): Facts => inst("facts");
-
-/** Your four files: settings, dictionary, history and stats, with their checksums. */
-const YOURS = ["settings.json", "cleanup.json", "history.jsonl", "dictation-log.jsonl"];
-const yours = (f: Facts) => f.data.filter((d) => YOURS.includes(d.name)).sort((a, b) => a.name.localeCompare(b.name));
 
 // The update lists on this computer, and what loqui asked for.
 let server: ChildProcess | undefined;
@@ -107,33 +73,11 @@ let current: Manifest;
 let next: Manifest;
 let pid = 0;
 
-async function waitFor<T>(what: string, ms: number, probe: () => T | undefined | false | null) {
-  const until = Date.now() + ms;
-  for (;;) {
-    const found = probe();
-    if (found) return found;
-    if (Date.now() > until) throw new Error(`waited ${ms / 1000} s for ${what}`);
-    await sleep(500);
-  }
-}
-
-/** Start the installed loqui; it checks its update list as it starts. */
-async function start(name: string) {
-  ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
-  await sleep(1000);
-  pid = desk("start", { Exe: join(localAppData, "Programs", "loqui", "loqui.exe"), Shot: shot(name) }).pid;
-}
-
-/** The tray menu's Check for updates, and the update window saying `expected`. */
-function checkByHand(expected: string, name: string) {
-  desk("open-menu", { ProcessId: pid });
-  desk("choose", { Item: "Check for updates…" });
-  return desk("window", { ProcessId: pid, Title: "loqui update", Name: expected, Wait: 60_000, Shot: shot(name) });
-}
-
-function closeUpdateWindow() {
-  desk("close-window", { ProcessId: pid, Title: "loqui update" });
-}
+const start = async (name: string) => {
+  pid = await startLoqui(name);
+};
+const checkByHand = (expected: string, name: string) => check(pid, expected, name);
+const closeUpdateWindow = () => closeUpdate(pid);
 
 /** The settings file, as a person who finished the welcome has it. */
 function settings(change: Record<string, unknown>) {
@@ -149,7 +93,7 @@ beforeAll(() => {
   next = manifestIn("next-installers");
   rmSync(lists, { recursive: true, force: true });
   mkdirSync(lists, { recursive: true });
-  ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+  quitLoqui();
   desk("ready-desktop");
   // Your data, as someone who has used loqui has it: settings, a dictionary,
   // history and stats (the dictation checks wrote some; these are kept as they are).
@@ -296,13 +240,8 @@ test.runIf(onWindows)(
     expect(said).toContain(`loqui ${next.version} is available. You have ${current.version}.`);
     expect(said).toContain(`Version ${next.version}, made by the Windows check`);
     expect(said).toContain(`The download is about ${Math.max(1, Math.round(next.update.size / 1048576))} MB`);
-    desk("click", { ProcessId: pid, Title: "loqui update", Name: "Install and restart loqui" });
-
     // loqui closes, the update installs, and the new version starts by itself.
-    const after = await waitFor("loqui to restart as the new version", 180_000, () => {
-      const f = facts();
-      return f.installed?.version === next.version && f.processes.some((p) => p.pid !== pid) && f;
-    });
+    const after = await installFromPrompt(pid, next.version);
     pid = after.processes.find((p) => p.pid !== pid)?.pid ?? 0;
     desk("screenshot", { Shot: shot("upd-01-restarted") });
     expect(after.processes[0].path.toLowerCase()).toBe(
@@ -326,7 +265,7 @@ test.runIf(onWindows)(
   "INST-02: Uninstall asks about your data (Keep)",
   async () => {
     // Closed first, as a person would; a running loqui makes the uninstaller ask to close it.
-    ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+    quitLoqui();
     await sleep(1000);
     const before = facts();
     const r = inst("uninstall", { Shot: shot("inst-02-keep") });
@@ -351,7 +290,7 @@ test.runIf(onWindows)(
     expect(older.exitCode).toBe(0);
     expect(older.facts.installed.version).toBe(current.version);
     const before: Facts = older.facts;
-    ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+    quitLoqui();
 
     const newer = inst("install", { Installer: join(windowsDir, "target", "next-installers", next.setup.file) });
     expect(newer.exitCode).toBe(0);
@@ -368,7 +307,7 @@ test.runIf(onWindows)(
 test.runIf(onWindows)(
   "INST-02: Uninstall asks about your data (Delete)",
   () => {
-    ps("Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
+    quitLoqui();
     const r = inst("uninstall", { Delete: true, Shot: shot("inst-02-delete") });
     expect(r.boxWhenUninstalled).toBe("On");
     const f: Facts = r.facts;

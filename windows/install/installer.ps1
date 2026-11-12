@@ -10,6 +10,8 @@ param(
   [string]$Installer,
   [string]$Shot,
   [switch]$Delete,
+  [string]$Out,
+  [string]$StopFile,
   [int]$Wait = 120000
 )
 
@@ -136,6 +138,42 @@ switch ($Verb) {
     [void](Wait-Until 10000 { -not (Find-Uninstaller) })
     Start-Sleep -Milliseconds 500
     Out-Json @{ boxAtFirst = $before; boxWhenUninstalled = $asked; facts = (Facts) }
+  }
+  'net-watch' {
+    # Every 200 ms until $StopFile appears: each new TCP connection owned by
+    # any loqui (they change as it updates) or the web views it started, one
+    # JSON line each, with when it was first seen.
+    $seen = @{}
+    while (-not (Test-Path $StopFile)) {
+      $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name
+      $ids = @($all | Where-Object { $_.Name -eq 'loqui.exe' } | ForEach-Object { $_.ProcessId })
+      $grew = $true
+      while ($grew) {
+        $grew = $false
+        foreach ($p in $all) {
+          if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true }
+        }
+      }
+      foreach ($c in Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess }) {
+        $key = "$($c.LocalAddress):$($c.LocalPort)>$($c.RemoteAddress):$($c.RemotePort)"
+        if (-not $seen[$key]) {
+          $seen[$key] = 1
+          $name = ($all | Where-Object { $_.ProcessId -eq $c.OwningProcess } | Select-Object -First 1).Name
+          @{ at = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); remote = "$($c.RemoteAddress)"; port = $c.RemotePort; process = $name } |
+            ConvertTo-Json -Compress | Add-Content -Path $Out
+        }
+      }
+      Start-Sleep -Milliseconds 200
+    }
+    Out-Json @{ connections = $seen.Count }
+  }
+  'names' {
+    # The names Windows looked up, for each address: which hosts the connections went to.
+    $names = @{}
+    foreach ($r in Get-DnsClientCache -ErrorAction SilentlyContinue) {
+      if ($r.Data) { $names["$($r.Data)"] = @(@($names["$($r.Data)"]) + "$($r.Entry)" | Where-Object { $_ } | Select-Object -Unique) }
+    }
+    Out-Json $names
   }
   default { Fail "unknown verb $Verb" }
 }

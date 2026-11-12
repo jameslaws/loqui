@@ -1,0 +1,250 @@
+name: Windows drill
+
+# Proves the test channel, Promote and Roll back before the first public
+# version, which they can't touch: GitHub only starts hand-run workflows from
+# main, and nothing reaches main before the ship. Pushing a tag
+# windows-drill-<n> runs the real steps (windows-release, windows-promote,
+# windows-rollback) with drill versions numbered 0.0.x, tags windows-drill-v…,
+# and drill update lists on the fixed pre-release windows-drill-feed, never the
+# public list or the test list. A Windows PC (one of GitHub's) installs drill
+# version A from GitHub, updates to B when B is promoted, and to the roll back
+# when that is promoted, with every network connection listed (PRIV-03).
+#
+# A tag windows-drill-signing-<n> instead proves SIGN-02: with the signing
+# switch on and no signing account connected, the release stops before
+# anything is published. That run fails, as it should.
+on:
+  push:
+    tags: ["windows-drill-*"]
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+
+env:
+  LISTS: https://github.com/${{ github.repository }}/releases/download/windows-drill-feed
+
+jobs:
+  numbers:
+    name: Drill versions
+    runs-on: ubuntu-latest
+    outputs:
+      a: ${{ steps.n.outputs.a }}
+      b: ${{ steps.n.outputs.b }}
+      signing: ${{ steps.n.outputs.signing }}
+      stable: ${{ steps.n.outputs.stable }}
+      test: ${{ steps.n.outputs.test }}
+    steps:
+      - id: n
+        env:
+          RUN: ${{ github.run_number }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # 0.0.x, well above the real test versions and below 0.1.0.
+          a=$((10000 + RUN * 10))
+          echo "a=0.0.$a" >> "$GITHUB_OUTPUT"
+          echo "b=0.0.$((a + 1))" >> "$GITHUB_OUTPUT"
+          echo "stable=$LISTS/stable.json" >> "$GITHUB_OUTPUT"
+          echo "test=$LISTS/beta.json" >> "$GITHUB_OUTPUT"
+          case "$TAG" in windows-drill-signing-*) echo "signing=on" ;; *) echo "signing=off" ;; esac >> "$GITHUB_OUTPUT"
+          echo "Drill versions: A 0.0.$a, B 0.0.$((a + 1)); the roll back comes after B."
+
+  # SIGN-02: the signing switch on, no signing account: stops before publishing.
+  sign-02:
+    name: "SIGN-02: signing on with no account stops the release"
+    needs: numbers
+    if: needs.numbers.outputs.signing == 'on'
+    uses: ./.github/workflows/windows-release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.numbers.outputs.a }}
+      prefix: windows-drill-v
+      list-tag: windows-drill-feed
+      stable-feed: ${{ needs.numbers.outputs.stable }}
+      test-feed: ${{ needs.numbers.outputs.test }}
+      signing: "on"
+
+  release-a:
+    name: Test version A
+    needs: numbers
+    if: needs.numbers.outputs.signing == 'off'
+    uses: ./.github/workflows/windows-release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.numbers.outputs.a }}
+      prefix: windows-drill-v
+      list-tag: windows-drill-feed
+      stable-feed: ${{ needs.numbers.outputs.stable }}
+      test-feed: ${{ needs.numbers.outputs.test }}
+
+  release-b:
+    name: Test version B
+    needs: [numbers, release-a]
+    uses: ./.github/workflows/windows-release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.numbers.outputs.b }}
+      prefix: windows-drill-v
+      list-tag: windows-drill-feed
+      stable-feed: ${{ needs.numbers.outputs.stable }}
+      test-feed: ${{ needs.numbers.outputs.test }}
+
+  # CHAN-01's second half: a version that exists is refused before anything is published.
+  refused-again:
+    name: "CHAN-01: releasing A again is refused"
+    needs: [numbers, release-a]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: windows-drill-v${{ needs.numbers.outputs.a }}-test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          if windows/scripts/release/tag-free.sh "$TAG"; then
+            echo "::error::$TAG exists, but releasing it again wasn't refused"
+            exit 1
+          fi
+          echo "Refused, as it should be."
+
+  promote-a:
+    name: Promote A
+    needs: [numbers, release-a]
+    uses: ./.github/workflows/windows-promote.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.numbers.outputs.a }}
+      prefix: windows-drill-v
+      list: windows-drill-feed
+      environment: windows-drill
+      prerelease: true
+
+  promote-b:
+    name: Promote B
+    needs: [numbers, release-b, promote-a]
+    uses: ./.github/workflows/windows-promote.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.numbers.outputs.b }}
+      prefix: windows-drill-v
+      list: windows-drill-feed
+      environment: windows-drill
+      prerelease: true
+
+  # The roll back waits until the PC has moved to B, so the PC really goes A, B, then back.
+  pc-on-b:
+    name: The PC is on B
+    needs: [numbers, promote-b]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          for i in $(seq 1 120); do
+            if gh release view windows-drill-feed --repo "$GITHUB_REPOSITORY" --json assets \
+                 --jq '.assets[].name' | grep -qx "pc-on-${{ needs.numbers.outputs.b }}.txt"; then
+              echo "The PC is on B."; exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::the PC never reached B"; exit 1
+
+  roll-back:
+    name: Roll back to A
+    needs: [numbers, pc-on-b]
+    uses: ./.github/workflows/windows-rollback.yml
+    secrets: inherit
+    with:
+      good: ${{ needs.numbers.outputs.a }}
+      prefix: windows-drill-v
+      test-list: windows-drill-feed
+      stable-list: windows-drill-feed
+      stable-feed: ${{ needs.numbers.outputs.stable }}
+      test-feed: ${{ needs.numbers.outputs.test }}
+      environment: windows-drill
+      prerelease: true
+
+  pc:
+    name: A PC on the drill lists (PRIV-03, CHAN-03, CHAN-04)
+    needs: [numbers, promote-a]
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DRILL_A: ${{ needs.numbers.outputs.a }}
+      DRILL_B: ${{ needs.numbers.outputs.b }}
+      DRILL_LIST: ${{ needs.numbers.outputs.stable }}
+      LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: windows/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: windows/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: A microphone (VB-CABLE, pinned by SHA-256)
+        run: ./e2e/setup-runner.ps1
+      - name: "Install A from GitHub, update to B, then to the roll back, every connection listed"
+        run: pnpm exec vitest run --project drill
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drill-pc
+          path: windows/target/shots
+          if-no-files-found: warn
+
+  checks:
+    name: "CHAN-03, CHAN-04 and CHAN-05: what the drill left"
+    needs: [numbers, roll-back, pc]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      A: ${{ needs.numbers.outputs.a }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: CHAN-04, the roll back is A's code under a higher number
+        run: |
+          git fetch --tags --quiet origin
+          a_commit=$(git rev-list -n 1 "refs/tags/windows-drill-v$A-test")
+          c=$(git tag -l 'windows-drill-v*' | sed -E 's/^windows-drill-v//; s/-test$//' | sort -V | tail -1)
+          c_commit=$(git rev-list -n 1 "refs/tags/windows-drill-v$c")
+          echo "A $A at $a_commit; the roll back $c at $c_commit"
+          [ "$a_commit" = "$c_commit" ] || { echo "::error::the roll back wasn't built from A's code"; exit 1; }
+          gh release view "windows-drill-v$c" --repo "$GITHUB_REPOSITORY" --json body --jq .body | grep -q "Rolls back to version $A's code"
+      - name: CHAN-05, the Mac's download is untouched
+        run: |
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
+          echo "Latest release: $latest"
+          case "$latest" in windows-*) echo "::error::a Windows release became latest"; exit 1 ;; esac
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.assets[].name' | grep -q '\.dmg$'
+          # The Mac's live update feed is still exactly main's file.
+          curl -sf https://jameslaws.github.io/loqui/appcast.xml -o live-appcast.xml
+          git show origin/main:docs/appcast.xml | diff - live-appcast.xml
+          echo "The Mac's appcast is as on main."
+      - name: CHAN-03, nothing public yet
+        run: |
+          public=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep -E '^windows-v' | sed -E 's/^windows-v//; s/-test$//' || true)
+          for v in $public; do
+            if [ "$(printf '%s\n0.1.0\n' "$v" | sort -V | tail -1)" = "$v" ]; then
+              echo "::error::windows-v$v exists before the ship"; exit 1
+            fi
+          done
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://jameslaws.github.io/loqui/windows/stable.json)
+          echo "The public list answers $code."
+          [ "$code" = 404 ] || { echo "::error::the public list exists before the ship"; exit 1; }

@@ -24,12 +24,12 @@ use tauri_plugin_updater::{Error, Update, UpdaterExt};
 /// Windows checks and the release drill build loqui with their own.
 const FEEDS: Feeds<'static> = Feeds {
     stable: match option_env!("LOQUI_STABLE_FEED") {
-        Some(url) => url,
-        None => STABLE_FEED,
+        Some(url) if !url.is_empty() => url,
+        _ => STABLE_FEED,
     },
     test: match option_env!("LOQUI_TEST_FEED") {
-        Some(url) => url,
-        None => TEST_FEED,
+        Some(url) if !url.is_empty() => url,
+        _ => TEST_FEED,
     },
 };
 

@@ -40,11 +40,22 @@ export default defineConfig({
       {
         test: {
           name: "install",
-          include: ["install/**/*.test.ts"],
+          include: ["install/install.test.ts"],
           testTimeout: 300_000,
           hookTimeout: 300_000,
           fileParallelism: false,
           sequence: { concurrent: false },
+        },
+      },
+      // Windows only, in the release drill (windows-drill.yml): a PC on the
+      // drill's lists, installed from GitHub and updated twice.
+      {
+        test: {
+          name: "drill",
+          include: ["install/drill.test.ts"],
+          testTimeout: 600_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
         },
       },
     ],
