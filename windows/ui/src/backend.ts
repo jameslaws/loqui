@@ -1,4 +1,4 @@
-import type { General, HistoryItem, ShortcutView, Stats, StatsRequest, Term, Welcome } from "./bindings";
+import type { General, HistoryItem, ShortcutView, Stats, StatsRequest, Term, Updates, Welcome } from "./bindings";
 import { events } from "./bindings";
 
 /**
@@ -32,6 +32,14 @@ export interface Backend {
   onSettingsChanged(then: () => void): () => void;
   /** A dictation was counted for stats. */
   onStatsChanged(then: () => void): () => void;
+  /** The Updates card and the update window. */
+  updates(): Promise<Updates>;
+  /** Check now; resolves when the check is done. */
+  checkForUpdates(): Promise<Updates>;
+  /** Download, verify and install the offered update; loqui then restarts. */
+  installUpdate(): Promise<void>;
+  setTestVersions(on: boolean): Promise<Updates>;
+  onUpdatesChanged(then: () => void): () => void;
 }
 
 async function tauriBackend(): Promise<Backend> {
@@ -65,6 +73,11 @@ async function tauriBackend(): Promise<Backend> {
     onHistoryChanged: on(events.historyChanged),
     onSettingsChanged: on(events.settingsChanged),
     onStatsChanged: on(events.statsChanged),
+    updates: () => invoke("updates"),
+    checkForUpdates: () => invoke("check_for_updates"),
+    installUpdate: () => invoke("install_update"),
+    setTestVersions: (on) => invoke("set_test_versions", { on }),
+    onUpdatesChanged: on(events.updatesChanged),
   };
 }
 

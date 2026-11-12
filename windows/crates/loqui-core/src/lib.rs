@@ -14,6 +14,7 @@ pub mod settings;
 pub mod shortcut;
 pub mod stats;
 pub mod timed_heal;
+pub mod updates;
 pub mod voice_key;
 
 pub use cleanup::clean;

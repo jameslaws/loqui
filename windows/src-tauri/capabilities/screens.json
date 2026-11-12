@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "screens",
   "description": "loqui's windows hear when history or settings change. Everything else they do goes through loqui's own commands.",
-  "windows": ["about", "welcome", "settings", "history", "stats"],
+  "windows": ["about", "welcome", "settings", "history", "stats", "update"],
   "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

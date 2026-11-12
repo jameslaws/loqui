@@ -23,8 +23,21 @@
     "copyright": "James Laws. Free software under the GNU GPL v3.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
     "windows": {
-      "webviewInstallMode": { "type": "skip" },
-      "nsis": { "installMode": "currentUser" }
+      "webviewInstallMode": {
+        "type": "skip"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "template": "installer/installer.nsi"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ5NUY3REM2REUwQTg5MTQKUldRVWlRcmV4bjFmMlpldmJjN3JvWFVUYjRVL0NGdjVCbTdaZU9mUzJWYUwwYUpCbWh6RjRoNVgK",
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

@@ -1,0 +1,121 @@
+name: Windows roll back
+
+# Sends every PC back to a good version. Installed copies only ever move
+# forward, so this builds the good version's code again as a new version,
+# numbered above every Windows version so far, and publishes it the usual
+# way: a test version (so test PCs get it too), then promoted to everyone.
+# Signed, like any release, when the signing switch is on.
+#
+# The Lead starts it from main once James has said so; only the repository's
+# owner can. The drill runs the same steps (workflow_call) with its own tags
+# and lists.
+on:
+  workflow_dispatch:
+    inputs:
+      good:
+        description: The last good version, such as 0.1.0
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      good:
+        type: string
+        required: true
+      prefix:
+        type: string
+        default: windows-v
+      test-list:
+        type: string
+        default: windows-test-feed
+      stable-list:
+        description: "pages, or the fixed pre-release that holds the public list"
+        type: string
+        default: pages
+      stable-feed:
+        type: string
+        default: ""
+      test-feed:
+        type: string
+        default: ""
+      environment:
+        type: string
+        default: windows-promote
+      prerelease:
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+
+jobs:
+  plan:
+    name: The good version's code, and the next number
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      commit: ${{ steps.plan.outputs.commit }}
+      version: ${{ steps.plan.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GOOD: ${{ inputs.good }}
+      PREFIX: ${{ inputs.prefix || 'windows-v' }}
+    steps:
+      - name: Started by the repository's owner, from main
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "$GITHUB_ACTOR" != "$GITHUB_REPOSITORY_OWNER" ]; then
+            echo "::error::Only $GITHUB_REPOSITORY_OWNER can roll Windows back; $GITHUB_ACTOR started this."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Roll back runs from main, not $GITHUB_REF."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Plan
+        id: plan
+        run: |
+          git fetch --tags --quiet origin
+          commit=$(git rev-list -n 1 "refs/tags/$PREFIX$GOOD-test") || {
+            echo "::error::There is no test version $PREFIX$GOOD-test to go back to."
+            exit 1
+          }
+          # Above every version released under this prefix, test or public.
+          highest=$(git tag -l "$PREFIX*" | sed -E "s/^$PREFIX//; s/-test$//" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          version=$(cd windows && node -e 'import("./scripts/release/version.mjs").then((v) => console.log(v.next(process.argv[1])))' "$highest")
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Rolling back to $GOOD's code ($commit) as $version, above $highest." | tee -a "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Build it as a test version
+    needs: plan
+    uses: ./.github/workflows/windows-release.yml
+    secrets: inherit
+    with:
+      ref: ${{ needs.plan.outputs.commit }}
+      version: ${{ needs.plan.outputs.version }}
+      prefix: ${{ inputs.prefix || 'windows-v' }}
+      list-tag: ${{ inputs.test-list || 'windows-test-feed' }}
+      stable-feed: ${{ inputs.stable-feed }}
+      test-feed: ${{ inputs.test-feed }}
+      why: Rolls back to version ${{ inputs.good }}'s code.
+
+  promote:
+    name: Promote it to everyone
+    needs: [plan, release]
+    uses: ./.github/workflows/windows-promote.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      prefix: ${{ inputs.prefix || 'windows-v' }}
+      list: ${{ inputs.stable-list || 'pages' }}
+      environment: ${{ inputs.environment || 'windows-promote' }}
+      prerelease: ${{ inputs.prerelease || false }}

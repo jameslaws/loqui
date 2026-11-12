@@ -1,0 +1,354 @@
+name: Windows release
+
+# The test channel. Every merge into staging that changes the Windows app
+# becomes a test version: a GitHub pre-release windows-v<version>-test (never
+# "latest", so the Mac's download links stay the Mac's) with both kinds of PC's
+# full and update installers, and then the test update list, beta.json on the
+# fixed pre-release windows-test-feed, points at it. Release first, list second.
+#
+# Roll back and the drill run these same steps (workflow_call) with their own
+# version, code, tags and lists.
+on:
+  push:
+    branches: [staging]
+    paths: ["windows/**"]
+  workflow_call:
+    inputs:
+      ref:
+        description: The code to build (a commit); this run's commit when empty
+        type: string
+        default: ""
+      version:
+        description: The version to build it as; windows/package.json's when empty
+        type: string
+        default: ""
+      prefix:
+        description: Tags are <prefix><version>-test
+        type: string
+        default: windows-v
+      list-tag:
+        description: The fixed pre-release that holds the test update list
+        type: string
+        default: windows-test-feed
+      list-name:
+        type: string
+        default: beta.json
+      stable-feed:
+        description: The public update list built into the app; the real one when empty
+        type: string
+        default: ""
+      test-feed:
+        description: The test update list built into the app; the real one when empty
+        type: string
+        default: ""
+      signing:
+        description: on or off; the WINDOWS_SIGNING repository variable when empty
+        type: string
+        default: ""
+      why:
+        description: A line put first under What's new (Roll back says what it rolls back to)
+        type: string
+        default: ""
+    outputs:
+      version:
+        value: ${{ jobs.prepare.outputs.version }}
+      tag:
+        value: ${{ jobs.prepare.outputs.tag }}
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Version, notes and signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
+      signing: ${{ steps.signing.outputs.signing }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The version, and that it hasn't been released
+        id: version
+        env:
+          SET: ${{ inputs.version }}
+          PREFIX: ${{ inputs.prefix || 'windows-v' }}
+        run: |
+          version="${SET:-$(node -p 'require("./windows/package.json").version')}"
+          tag="${PREFIX}${version}-test"
+          windows/scripts/release/tag-free.sh "$tag"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Releasing loqui for Windows $version as $tag, from $(git rev-parse --short HEAD)."
+
+      - name: What's new since the last test version
+        env:
+          PREFIX: ${{ inputs.prefix || 'windows-v' }}
+          WHY: ${{ inputs.why }}
+        run: |
+          git fetch --tags --quiet origin
+          since="$(git tag -l "${PREFIX}*-test" --sort=-v:refname | head -1)"
+          echo "Changes since: ${since:-the beginning}"
+          {
+            if [ -n "$WHY" ]; then echo "- $WHY"; fi
+            cd windows && node scripts/release/notes.mjs changes "$since"
+          } > changes.md
+          cat changes.md
+
+      - name: Signing by Microsoft
+        id: signing
+        env:
+          SET: ${{ inputs.signing }}
+          SWITCH: ${{ vars.WINDOWS_SIGNING }}
+        run: |
+          signing="${SET:-${SWITCH:-off}}"
+          echo "signing=$signing" >> "$GITHUB_OUTPUT"
+          if [ "$signing" = on ]; then
+            echo "Signing is on: every file is signed through Artifact Signing and checked, and nothing unsigned is published."
+          else
+            echo "Signing is off: this version isn't signed by Microsoft, and its release notes say how to get past SmartScreen."
+          fi | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: changes
+          path: changes.md
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: prepare
+    # loqui's Windows update key lives only here, as this environment's secret.
+    environment: windows-release
+    strategy:
+      matrix:
+        include:
+          - name: Intel/AMD
+            runner: windows-latest
+            arch: x64
+          - name: Arm
+            runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+    env:
+      # Only a drill builds loqui with other update lists; empty means the public ones.
+      LOQUI_STABLE_FEED: ${{ inputs.stable-feed }}
+      LOQUI_TEST_FEED: ${{ inputs.test-feed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+
+      - name: Built as ${{ needs.prepare.outputs.version }}
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          $p = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($p.version -ne $env:VERSION) {
+            (Get-Content package.json -Raw) -replace '"version": "[^"]+"', "`"version`": `"$env:VERSION`"" | Set-Content -NoNewline package.json
+          }
+          (Get-Content package.json -Raw | ConvertFrom-Json).version
+
+      - name: Rust, pinned in rust-toolchain.toml
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+            Invoke-WebRequest "https://static.rust-lang.org/rustup/dist/$target/rustup-init.exe" -OutFile "$env:RUNNER_TEMP\rustup-init.exe"
+            & "$env:RUNNER_TEMP\rustup-init.exe" -y --default-toolchain none --profile minimal --no-modify-path
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            "$env:USERPROFILE\.cargo\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+            $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+          }
+          rustup toolchain install
+          rustc --version
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: windows/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: windows/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Speech engine and model, cached between runs
+        uses: actions/cache@v4
+        with:
+          path: windows/.speech-cache
+          key: speech-${{ matrix.arch }}-${{ hashFiles('windows/scripts/fetch-speech.mjs') }}
+
+      - name: Speech engine and model, checked against their SHA-256
+        run: pnpm fetch:speech
+
+      # With the switch on: a federated login to Artifact Signing (no stored
+      # secret), the engine's DLLs signed first, and Tauri signing the app, the
+      # uninstaller and both installers through scripts/release/sign.mjs. With
+      # no signing account connected, sign.mjs stops the release here, naming
+      # the file (SIGN-02).
+      - name: Sign in to Artifact Signing
+        if: needs.prepare.outputs.signing == 'on' && vars.AZURE_CLIENT_ID != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Signing set up, and the engine's DLLs signed
+        if: needs.prepare.outputs.signing == 'on'
+        env:
+          ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          New-Item -ItemType Directory -Force target\sign | Out-Null
+          if ($env:ENDPOINT -and $env:ACCOUNT -and $env:PROFILE) {
+            nuget install Microsoft.ArtifactSigning.Client -OutputDirectory target\sign -NonInteractive | Out-Null
+            $dlib = Get-ChildItem target\sign -Recurse -Filter Azure.CodeSigning.Dlib.dll | Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+            @{ Endpoint = $env:ENDPOINT; CodeSigningAccountName = $env:ACCOUNT; CertificateProfileName = $env:PROFILE } |
+              ConvertTo-Json | Set-Content -Encoding utf8 target\sign\metadata.json
+            "LOQUI_SIGNING_DLIB=$($dlib.FullName)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+            "LOQUI_SIGNING_METADATA=$pwd\target\sign\metadata.json" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+            $env:LOQUI_SIGNING_DLIB = $dlib.FullName
+            $env:LOQUI_SIGNING_METADATA = "$pwd\target\sign\metadata.json"
+          }
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          "LOQUI_SIGNTOOL=$($signtool.FullName)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $env:LOQUI_SIGNTOOL = $signtool.FullName
+          foreach ($dll in Get-ChildItem src-tauri\engine\*.dll) {
+            node scripts/release/sign.mjs $dll.FullName
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          $sign = @{ bundle = @{ windows = @{ signCommand = @{ cmd = 'node'; args = @("$pwd\scripts\release\sign.mjs", '%1') } } } }
+          $sign | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 target\sign\tauri.sign.json
+
+      - name: Build both installers, the update one signed with loqui's update key
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          SIGNING: ${{ needs.prepare.outputs.signing }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw "loqui's update key isn't available to this run (the windows-release environment's secret)" }
+          $extra = if ($env:SIGNING -eq 'on') { @('--config', 'target\sign\tauri.sign.json') } else { @() }
+          node scripts/release/build.mjs @extra
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: A release build, reading the right update lists
+        env:
+          STABLE: ${{ inputs.stable-feed || 'https://jameslaws.github.io/loqui/windows/stable.json' }}
+        run: |
+          $exe = [IO.File]::ReadAllText("$pwd\target\release\loqui.exe", [Text.Encoding]::ASCII)
+          if ($exe.Contains('LOQUI_TEST_AUDIO')) { throw 'the release build contains the test-only audio source' }
+          if ($exe.Contains('127.0.0.1:8719')) { throw 'the release build reads the Windows checks'' update lists' }
+          if (-not $exe.Contains($env:STABLE)) { throw "the release build doesn't read $env:STABLE" }
+          $m = Get-Content target\installers\loqui-*.json -Raw | ConvertFrom-Json
+          if (-not $m.update.signature) { throw 'the update installer has no update-key signature' }
+          "Full installer: $([math]::Round($m.setup.size / 1MB)) MB; update installer: $([math]::Round($m.update.size / 1MB)) MB"
+
+      - name: Nothing unsigned is published with signing on
+        if: needs.prepare.outputs.signing == 'on'
+        run: |
+          $files = @(Get-ChildItem target\installers\*.exe) + @(Get-Item target\release\loqui.exe) + @(Get-ChildItem src-tauri\engine\*.dll)
+          foreach ($f in $files) {
+            & $env:LOQUI_SIGNTOOL verify /pa $f.FullName | Out-Null
+            if ($LASTEXITCODE) { throw "$($f.Name) isn't signed, so nothing is published" }
+          }
+          "All $($files.Count) files are signed."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.arch }}
+          path: |
+            windows/target/installers/*.exe
+            windows/target/installers/*.json
+          if-no-files-found: error
+
+  publish:
+    name: Publish ${{ needs.prepare.outputs.tag }}, then the list
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One release at a time per list, so the list always ends on the newest.
+    concurrency:
+      group: windows-publish-${{ inputs.list-tag || 'windows-test-feed' }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      SHA: ${{ needs.prepare.outputs.sha }}
+      SIGNING: ${{ needs.prepare.outputs.signing }}
+      LIST_TAG: ${{ inputs.list-tag || 'windows-test-feed' }}
+      LIST_NAME: ${{ inputs.list-name || 'beta.json' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: The files are the ones the builds described
+        run: |
+          ls -l dist
+          node -e '
+            const fs = require("fs"), crypto = require("crypto");
+            const sums = [];
+            for (const m of fs.readdirSync("dist").filter((f) => f.endsWith(".json")).map((f) => JSON.parse(fs.readFileSync(`dist/${f}`)))) {
+              if (m.version !== process.env.VERSION) throw new Error(`${m.arch} was built as ${m.version}`);
+              for (const f of [m.setup, m.update]) {
+                const hash = crypto.createHash("sha256").update(fs.readFileSync(`dist/${f.file}`)).digest("hex");
+                if (hash !== f.sha256) throw new Error(`${f.file} changed after it was built`);
+                sums.push(`${hash}  ${f.file}`);
+              }
+            }
+            if (sums.length !== 4) throw new Error(`expected 4 installers, got ${sums.length}`);
+            fs.writeFileSync("dist/SHA256SUMS.txt", sums.join("\n") + "\n");
+          '
+          cat dist/SHA256SUMS.txt
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: changes
+
+      - name: Publish the test version (not latest)
+        run: |
+          windows/scripts/release/tag-free.sh "$TAG"
+          signed=$([ "$SIGNING" = on ] && echo signed || echo unsigned)
+          node windows/scripts/release/notes.mjs page "$VERSION" test "$signed" changes.md > page.md
+          gh release create "$TAG" dist/*.exe dist/*.json dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease --latest=false \
+            --title "loqui for Windows $VERSION (test version)" --notes-file page.md
+          echo "Published https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Then point the test update list at it
+        run: |
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/"
+          mkdir -p list
+          node windows/scripts/release/feed.mjs "$base" changes.md dist/loqui-*.json > "list/$LIST_NAME"
+          node windows/scripts/release/list.mjs replace "$LIST_TAG" "list/$LIST_NAME" "$SHA"
+          echo "The list https://github.com/$GITHUB_REPOSITORY/releases/download/$LIST_TAG/$LIST_NAME now offers $VERSION." | tee -a "$GITHUB_STEP_SUMMARY"

@@ -1,5 +1,6 @@
 import type { Backend } from "./backend";
 import type { General, HistoryItem, Term } from "./bindings";
+import { fakeUpdates } from "./fake-updates";
 import { defaultFillers, sampleDictionary, sampleHistory } from "./sample";
 
 /**
@@ -167,5 +168,6 @@ export function fakeBackend(): Backend {
     onHistoryChanged: subscribe("history"),
     onSettingsChanged: subscribe("settings"),
     onStatsChanged: subscribe("stats"),
+    ...fakeUpdates(ask),
   };
 }

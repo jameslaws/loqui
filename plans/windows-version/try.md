@@ -2,7 +2,7 @@
 
 One list for the one try. Each part adds its own section; Part E makes it one list. The pictures come from GitHub's Windows computers, taken by the Windows check with no person involved. The items marked "a teammate" are for someone on their own Windows 11 PC.
 
-Until Part D adds the installer link, a teammate gets loqui like this: open the latest Windows check on the `windows-version` branch, download "loqui-test-build-x64" (or "loqui-test-build-arm64" on an Arm laptop), unzip it and run the installer. Windows warns about an unknown publisher because loqui isn't signed by Microsoft: choose "More info", then "Run anyway". No administrator is needed.
+A teammate installs loqui from the test versions page once the plan is merged into staging: https://github.com/jameslaws/loqui/releases?q=windows-v&expanded=true. Open the newest "loqui for Windows … (test version)" and download `loqui-setup-…-x64.exe` (most PCs) or `loqui-setup-…-arm64.exe` (Arm laptops). Windows shows "Windows protected your PC" because loqui isn't signed by Microsoft yet: click "More info", then "Run anyway". No administrator is needed. Then turn on Settings, "Get test versions", to get every later test version by itself.
 
 ## Part A: dictation
 
@@ -128,3 +128,44 @@ A teammate: after a few days of dictating, open Dictation stats from the tray me
 Where: the Windows PC with the test build
 See: Today matches your words; the calendar's darker days are the busy ones and a click shows that day; the right arrow stops at today; Today goes up by your words without reopening the window. A month with nothing in it says "No dictations in" that month.
 Checks: STAT-01, STAT-02, STAT-03, STAT-04, STAT-05, STAT-06, STAT-08
+
+## Part D: installer, updates and test channel
+
+## What to do
+Open the newest test version on GitHub's releases page and read the top of its notes.
+Where: https://github.com/jameslaws/loqui/releases?q=windows-v&expanded=true
+See: the notes open with "loqui isn't signed by Microsoft yet", then "Windows protected your PC", More info, Run anyway, and that Smart App Control blocks it; then which of the two files to download. Nothing on the page names a publisher.
+Checks: SIGN-01, CHAN-01
+
+## What to do
+A teammate: download the setup file from that page and run it, choosing the defaults.
+Where: a Windows 11 PC
+See: "Windows protected your PC" first (More info, Run anyway), then no administrator prompt. loqui appears in Start and in Settings, Apps, Installed apps; the welcome window opens; a dictation works.
+Checks: SIGN-01, INST-01
+
+## What to do
+Look at the pictures of loqui updating itself on GitHub's Windows computer.
+Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
+See: the update window naming both versions, the size and what's new; then the new version running, with settings, dictionary, history and the model as they were. A file signed with the wrong key is refused with "This update couldn't be verified, so it wasn't installed."; with no network, Check for updates says "Couldn't reach the update server. Try again later."
+Shots: built/upd-01-prompt.png, built/upd-02-refused.png, built/upd-03-offline.png
+Checks: UPD-01, UPD-02, UPD-03, UPD-04
+
+## What to do
+A teammate: in loqui's Settings, turn on "Get test versions". When the next test version is published (the builder moves the version to 0.1.0 after you install), wait for the update window, or choose Check for updates in loqui's menu by the clock, then Install and restart loqui.
+Where: the Windows PC with loqui installed
+See: the update window with both version numbers and what's new; loqui closes for a moment and comes back as 0.1.0; your dictionary and history are still there.
+Shots: built/chan-02-switch-on.png
+Checks: UPD-01, CHAN-01, CHAN-02
+
+## What to do
+A teammate: uninstall loqui from Settings, Apps, Installed apps, leaving "Also delete my dictation history, dictionary, settings and stats" unticked. Install it again from the same setup file.
+Where: the Windows PC
+See: the uninstaller asks about your data; after reinstalling, your history and dictionary are back as they were. Ticking the box instead removes them too.
+Shots: built/inst-02-keep.png, built/inst-02-delete.png
+Checks: INST-02, INST-03
+
+## What to do
+Look at the release drill: test versions A and B published, A then B promoted to the drill's own public list, and a roll back to A's code under a higher number, with a PC on GitHub's computers updating A, B, then the roll back, every connection it made listed.
+Where: https://github.com/jameslaws/loqui/actions/workflows/windows-drill.yml
+See: every job green except the separate signing proof, which stops before publishing because no signing account is connected (as it should); the PC's connections all went to GitHub, only while checking or downloading; GitHub's "latest release" is still the Mac's.
+Checks: SIGN-02, CHAN-03, CHAN-04, CHAN-05, PRIV-03

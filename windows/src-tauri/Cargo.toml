@@ -20,10 +20,14 @@ tauri = { version = "=2.12.5", features = ["tray-icon", "image-png"] }
 loqui-core = { path = "../crates/loqui-core" }
 # The time now in the PC's own time zone, for stats (the version loqui-core uses).
 chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
+# Updates signed with loqui's Windows update key, checked before installing.
+# Tauri's own; its signature check and NSIS hand-over can't be a few lines.
+tauri-plugin-updater = "=2.14.1"
+# Plugin settings in tauri.conf.json reach the app as JSON.
+serde_json = "=1.0.154"
 
 [target.'cfg(windows)'.dependencies]
 loqui-speech = { path = "../crates/loqui-speech" }
-serde_json = "=1.0.154"
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",
   "Win32_Globalization",

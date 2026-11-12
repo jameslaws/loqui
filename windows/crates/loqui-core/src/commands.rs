@@ -7,6 +7,7 @@
 use crate::records::{self, HistoryEntry, Records};
 use crate::settings::{Loaded, Settings};
 use crate::shortcut::Shortcut;
+use crate::updates::{Channel, UpdateStatus, Updates};
 use crate::CleanupConfig;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -75,6 +76,8 @@ pub mod events {
     pub const SETTINGS_CHANGED: &str = "settings-changed";
     /// A dictation was counted for stats.
     pub const STATS_CHANGED: &str = "stats-changed";
+    /// An update check started, finished, or an update is downloading.
+    pub const UPDATES_CHANGED: &str = "updates-changed";
 }
 
 /// Reads and writes loqui's files for the screens.
@@ -174,6 +177,11 @@ impl Store {
         self.update(|s| s.start_at_sign_in = on)
     }
 
+    /// "Get test versions": on reads the test update list, off the public one.
+    pub fn set_test_versions(&self, on: bool) -> Result<Settings, String> {
+        self.update(|s| s.channel = if on { Channel::Test } else { Channel::Stable })
+    }
+
     /// The welcome was finished: it won't open by itself again.
     pub fn finish_welcome(&self) -> Result<(), String> {
         self.update(|s| s.onboarded = true).map(drop)
@@ -266,6 +274,8 @@ pub fn typescript() -> String {
         Term::decl(&cfg),
         HistoryItem::decl(&cfg),
         Welcome::decl(&cfg),
+        UpdateStatus::decl(&cfg),
+        Updates::decl(&cfg),
     ];
     let decls = decls
         .into_iter()
@@ -280,10 +290,11 @@ pub fn typescript() -> String {
         out.push_str("\n\n");
     }
     out.push_str(&format!(
-        "export const events = {{ historyChanged: \"{}\", settingsChanged: \"{}\", statsChanged: \"{}\" }} as const;\n",
+        "export const events = {{ historyChanged: \"{}\", settingsChanged: \"{}\", statsChanged: \"{}\", updatesChanged: \"{}\" }} as const;\n",
         events::HISTORY_CHANGED,
         events::SETTINGS_CHANGED,
-        events::STATS_CHANGED
+        events::STATS_CHANGED,
+        events::UPDATES_CHANGED
     ));
     out
 }

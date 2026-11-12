@@ -16,10 +16,10 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     target: "es2022",
-    // One page per window: About, the dictation bubble, welcome, settings, history and stats.
+    // One page per window: About, the dictation bubble, welcome, settings, history, stats and update.
     rollupOptions: {
       input: Object.fromEntries(
-        ["about", "bubble", "welcome", "settings", "history", "stats"].map((page) => [
+        ["about", "bubble", "welcome", "settings", "history", "stats", "update"].map((page) => [
           page,
           fileURLToPath(new URL(`${page}.html`, import.meta.url)),
         ]),

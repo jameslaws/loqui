@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tauri dev --config src-tauri/tauri.speech.json",
     "start": "node scripts/start.mjs",
-    "build": "tauri build --bundles nsis --config src-tauri/tauri.speech.json",
+    "build": "node scripts/release/build.mjs",
     "ui:dev": "vite ui",
     "ui:build": "vite build ui",
     "fetch:speech": "node scripts/fetch-speech.mjs",
@@ -19,6 +19,7 @@
     "test:e2e": "vitest run --project e2e",
     "test:windows-screens": "vitest run --project windows-screens",
     "test:windows-stats": "vitest run --project windows-stats",
+    "test:install": "vitest run --project install",
     "tauri": "tauri"
   },
   "dependencies": {

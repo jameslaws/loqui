@@ -21,6 +21,7 @@
     "tests",
     "acceptance",
     "e2e",
+    "install",
     "scripts",
     "screens",
     "vitest.config.ts",
