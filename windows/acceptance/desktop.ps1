@@ -535,6 +535,11 @@ switch ($Verb) {
     [Desk]::Front([IntPtr]$win.Current.NativeWindowHandle)
     $el = Wait-Until $Wait { Clickable $win $Name }
     if (-not $el) { Fail "'$Title' has no '$Name'. It shows: $((Window-Contents $win).texts -join ' | ')" }
+    # Scrolled into view first, as a person would scroll to it.
+    try {
+      $el.GetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern).ScrollIntoView()
+      Start-Sleep -Milliseconds 300
+    } catch {}
     Click-Element $el
     Start-Sleep -Milliseconds 400
     Out-Json @{ clicked = $Name }
