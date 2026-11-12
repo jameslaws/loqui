@@ -289,6 +289,18 @@ function Window-Owners {
   (Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName): $($_.MainWindowTitle)" }) -join ' | '
 }
 
+function Process-Tree([int]$root) {
+  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name
+  $ids = @($root); $grew = $true
+  while ($grew) {
+    $grew = $false
+    foreach ($p in $all) {
+      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true }
+    }
+  }
+  return ,@($all | Where-Object { $ids -contains $_.ProcessId } | ForEach-Object { @{ pid = $_.ProcessId; name = $_.Name } })
+}
+
 switch ($Verb) {
   'install' {
     $sw = [Diagnostics.Stopwatch]::StartNew()
