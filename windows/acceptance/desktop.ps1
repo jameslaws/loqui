@@ -126,6 +126,11 @@ public static class Desk {
     mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
   }
 
+  public static void Enter() {
+    keybd_event(0x0D, 0, 0, UIntPtr.Zero);
+    keybd_event(0x0D, 0, 2, UIntPtr.Zero);
+  }
+
   public static void Escape() {
     keybd_event(0x1B, 0, 0, UIntPtr.Zero);
     keybd_event(0x1B, 0, 2, UIntPtr.Zero);
@@ -254,32 +259,34 @@ function Menu-Items {
 
 # Windows' first sign-in screens (the privacy choices) can still be up on a
 # fresh GitHub machine. Click through them the way a person would.
+function Has-Taskbar { [bool]((Find-Taskbar) -and (Taskbar-Names)) }
+
 function Ready-Desktop {
-  $clicked = @()
-  foreach ($round in 1..8) {
-    $taskbar = Find-Taskbar
-    if ($taskbar -and (Taskbar-Names)) { return @{ clicked = $clicked; taskbar = $true } }
+  $did = @()
+  foreach ($round in 1..6) {
+    if (Has-Taskbar) { return @{ did = $did; taskbar = $true } }
+    $button = $null
     foreach ($label in 'Accept', 'Next', 'Skip', 'Not now', 'Done') {
-      $button = Named $UIA::RootElement $label
-      if ($button -and $button.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button) {
-        Click-Element $button; $clicked += $label; Start-Sleep -Milliseconds 1500; break
-      }
+      $b = Named $UIA::RootElement $label
+      if ($b -and $b.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button) { $button = $b; break }
     }
-    Start-Sleep -Milliseconds 1000
+    if ($button) { Click-Element $button; $did += "clicked $($button.Current.Name)" }
+    else { [Desk]::Enter(); $did += 'pressed Enter' }   # the screen's main button has focus
+    Start-Sleep -Milliseconds 2500
   }
-  return @{ clicked = $clicked; taskbar = [bool]((Find-Taskbar) -and (Taskbar-Names)) }
+  if (Has-Taskbar) { return @{ did = $did; taskbar = $true } }
+
+  # Still on the first sign-in screens: close them and start the desktop.
+  $setup = Get-Process -Name WWAHost, CloudExperienceHostBroker, CloudExperienceHost -ErrorAction SilentlyContinue
+  $setup | Stop-Process -Force -ErrorAction SilentlyContinue
+  $did += "closed $(@($setup).Count) setup processes"
+  if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe; $did += 'started explorer' }
+  [void](Wait-Until 15000 { Has-Taskbar })
+  return @{ did = $did; taskbar = (Has-Taskbar) }
 }
 
-function Process-Tree([int]$root) {
-  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name
-  $ids = @($root); $grew = $true
-  while ($grew) {
-    $grew = $false
-    foreach ($p in $all) {
-      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true }
-    }
-  }
-  return ,@($all | Where-Object { $ids -contains $_.ProcessId } | ForEach-Object { @{ pid = $_.ProcessId; name = $_.Name } })
+function Window-Owners {
+  (Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName): $($_.MainWindowTitle)" }) -join ' | '
 }
 
 switch ($Verb) {
@@ -335,7 +342,9 @@ switch ($Verb) {
   'ready-desktop' {
     $result = Ready-Desktop
     if ($Shot) { [Desk]::Screenshot($Shot) }
-    if (-not $result.taskbar) { Fail "the desktop has no taskbar after clicking: $($result.clicked -join ', ')" }
+    if (-not $result.taskbar) {
+      Fail "the desktop has no taskbar after: $($result.did -join ', '). Explorer running: $([bool](Get-Process explorer -ErrorAction SilentlyContinue)). Windows: $(Window-Owners)"
+    }
     Out-Json $result
   }
   'screenshot' {
