@@ -12,9 +12,10 @@
 // The update installer needs loqui's update key to sign it
 // (TAURI_SIGNING_PRIVATE_KEY); without one only the full installer is made.
 // Extra Tauri settings pass through: pnpm build --config <json or file>.
-// --out <folder> puts the files somewhere other than target/installers.
+// --full-config adds settings to the full installer only; --out <folder> puts
+// the files somewhere other than target/installers.
 //
-// Usage: node scripts/release/build.mjs [--config <json or file>]... [--out <folder>]
+// Usage: node scripts/release/build.mjs [--config <json or file>]... [--full-config <json or file>] [--out <folder>]
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -39,8 +40,10 @@ let out = join(windowsDir, "target", "installers");
 const arch = process.arch === "arm64" ? "arm64" : "x64";
 
 const passed = [];
+const fullOnly = [];
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--config" && process.argv[i + 1]) passed.push("--config", process.argv[++i]);
+  else if (process.argv[i] === "--full-config" && process.argv[i + 1]) fullOnly.push("--config", process.argv[++i]);
   else if (process.argv[i] === "--out" && process.argv[i + 1]) out = resolve(process.argv[++i]);
   else if (process.argv[i] !== "--") throw new Error(`build.mjs doesn't know ${process.argv[i]}`);
 }
@@ -73,13 +76,17 @@ const modelVersion = createHash("sha256").update(each.join("\n")).digest("hex");
 writeFileSync(join(models, "version.nsh"), `!define LOQUI_MODEL_VERSION "${modelVersion}"\n`);
 
 /** Build one installer with these settings and move it to `name`; returns its path. */
-function build(config, name) {
+function build(config, name, extra = []) {
   rmSync(bundle, { recursive: true, force: true });
-  execFileSync("pnpm", ["exec", "tauri", "build", "--bundles", "nsis", "--config", join(tauriDir, config), ...passed], {
-    cwd: windowsDir,
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
+  execFileSync(
+    "pnpm",
+    ["exec", "tauri", "build", "--bundles", "nsis", "--config", join(tauriDir, config), ...passed, ...extra],
+    {
+      cwd: windowsDir,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    },
+  );
   const made = readdirSync(bundle).find((f) => f.endsWith("-setup.exe"));
   if (!made) throw new Error(`Tauri made no installer in ${bundle}`);
   // Tauri names it loqui_<version>_<arch>-setup.exe.
@@ -96,7 +103,7 @@ async function facts(file) {
 }
 
 rmSync(out, { recursive: true, force: true });
-const full = build("tauri.full.json", (v) => `loqui-setup-${v}-${arch}.exe`);
+const full = build("tauri.full.json", (v) => `loqui-setup-${v}-${arch}.exe`, fullOnly);
 const manifest = { version: full.version, arch, modelVersion, setup: await facts(full.file) };
 
 if (process.env.TAURI_SIGNING_PRIVATE_KEY) {

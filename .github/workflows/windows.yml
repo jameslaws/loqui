@@ -239,7 +239,8 @@ jobs:
         run: pnpm test:windows-screens
 
       # The next version, numbered one higher, as the update and install-over
-      # checks need. Its full installer is left uncompressed: only the checks use it.
+      # checks need. Its full installer is left uncompressed (only the checks use
+      # it); its update installer is made exactly as a release's.
       - name: The next version, for the update and install checks
         if: (success() || failure()) && steps.build.outcome == 'success'
         run: |
@@ -248,9 +249,10 @@ jobs:
           Start-Sleep -Seconds 2
           $v = (Get-Content package.json -Raw | ConvertFrom-Json).version.Split('.')
           $next = "$($v[0]).$($v[1]).$([int]$v[2] + 1)"
-          @{ version = $next; bundle = @{ windows = @{ nsis = @{ compression = 'none' } } } } |
-            ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 target\check\next.json
-          node scripts/release/build.mjs --out target\next-installers --config target\check\tauri.check.json --config target\check\next.json
+          @{ version = $next } | ConvertTo-Json | Set-Content -Encoding utf8 target\check\next.json
+          @{ bundle = @{ windows = @{ nsis = @{ compression = 'none' } } } } |
+            ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 target\check\uncompressed.json
+          node scripts/release/build.mjs --out target\next-installers --config target\check\tauri.check.json --config target\check\next.json --full-config target\check\uncompressed.json
 
       - name: "INST, UPD and CHAN-02: install, update itself, and uninstall"
         if: (success() || failure()) && steps.build.outcome == 'success'

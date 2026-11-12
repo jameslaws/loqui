@@ -17,6 +17,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class Win {
+  [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  public static void Click(int x, int y) {
+    SetCursorPos(x, y);
+    System.Threading.Thread.Sleep(80);
+    mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+    mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+  }
+}
+'@
+[void][Win]::SetProcessDPIAware()
 $UIA = [System.Windows.Automation.AutomationElement]
 $Tree = [System.Windows.Automation.TreeScope]
 
@@ -81,7 +99,7 @@ function Facts {
     startMenu = $links
     processes = $procs
     model = @{
-      version = if (Test-Path "$Programs\models\version.txt") { (Get-Content "$Programs\models\version.txt" -Raw) } else { $null }
+      version = if (Test-Path "$Programs\models\version.txt") { [IO.File]::ReadAllText("$Programs\models\version.txt") } else { $null }
       encoder = (Modified "$Programs\models\parakeet\encoder.int8.onnx")
       vad = (Modified "$Programs\models\silero_vad.onnx")
     }
@@ -103,8 +121,14 @@ function Named($root, [string]$name) {
   $cond = New-Object System.Windows.Automation.PropertyCondition($UIA::NameProperty, $name)
   return $root.FindFirst($Tree::Descendants, $cond)
 }
+# A click in the middle of the element, as a person would.
 function Press($el) {
-  $el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+  $r = $el.Current.BoundingRectangle
+  [Win]::Click([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+}
+# A Windows tick box's state, asked of the box itself: On or Off.
+function Ticked($el) {
+  if ([int][Win]::SendMessage([IntPtr]$el.Current.NativeWindowHandle, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero) -eq 1) { 'On' } else { 'Off' }
 }
 
 switch ($Verb) {
@@ -133,10 +157,11 @@ switch ($Verb) {
     if (-not $win) { Fail "no loqui Uninstall window appeared. Windows: $(Top-Windows)" }
     $box = Wait-Until 10000 { Named $win 'Also delete my dictation history, dictionary, settings and stats' }
     if (-not $box) { Fail 'the uninstaller does not ask about your data' }
-    $toggle = $box.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
-    $before = "$($toggle.Current.ToggleState)"
-    if ($Delete) { $toggle.Toggle() }
-    $asked = "$($toggle.Current.ToggleState)"
+    [void][Win]::SetForegroundWindow([IntPtr]$win.Current.NativeWindowHandle)
+    Start-Sleep -Milliseconds 300
+    $before = Ticked $box
+    if ($Delete) { Press $box; Start-Sleep -Milliseconds 300 }
+    $asked = Ticked $box
     if ($Shot) { Screenshot $Shot }
     Press (Named $win 'Uninstall')
     $close = Wait-Until $Wait {
