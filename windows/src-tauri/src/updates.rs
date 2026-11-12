@@ -227,18 +227,18 @@ fn platforms() -> [&'static str; 2] {
 /// Download the offered update, check its signature, and hand over to its
 /// installer, which closes loqui and starts the new version.
 async fn install(app: &AppHandle) {
+    // Taken and marked as downloading in one step, so a second click can't start a second download.
     let offer = {
         let checker = app.state::<Checker>();
-        let inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
-        if busy(inner.status.as_ref()) {
+        let mut inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
+        if busy(inner.status.as_ref()) || inner.offer.is_none() {
             return;
         }
+        inner.status = Some(UpdateStatus::Downloading { percent: None });
         inner.offer.clone()
     };
     let Some(update) = offer else { return };
-    set(app, |i| {
-        i.status = Some(UpdateStatus::Downloading { percent: None })
-    });
+    let _ = app.emit(events::UPDATES_CHANGED, ());
     let mut got = 0u64;
     let mut shown = None;
     let progress = app.clone();
