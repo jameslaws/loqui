@@ -49,7 +49,7 @@ async function startsOnThisPc() {
   expect(installed.exe?.toLowerCase().startsWith(localAppData.toLowerCase())).toBe(true);
   expect(installed.running).toBe(0);
 
-  const started = desk("start", { Exe: installed.exe });
+  const started = desk("start", { Exe: installed.exe, Shot: join(shots, `${label}-start.png`) });
   expect(started.ms).toBeLessThanOrEqual(2000);
   running = started.pid;
 

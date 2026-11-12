@@ -105,21 +105,45 @@ function Wait-Until([int]$ms, [scriptblock]$probe) {
   return $null
 }
 
-# The shell's answer for loqui's icon: its window, its id and where it is.
+# Windows' own record of loqui's tray icon: Explorer adds an entry under
+# NotifyIconSettings for each program's icon as soon as it is shown.
+function Icon-Settings {
+  Get-ChildItem 'HKCU:\Control Panel\NotifyIconSettings' -ErrorAction SilentlyContinue |
+    Where-Object { (Get-ItemProperty $_.PSPath).ExecutablePath -like '*\loqui.exe' }
+}
+
+# The shell's answer for loqui's icon. Where it is, when the shell will say
+# (on the taskbar, or the hidden icons arrow), and whether Windows has it at all.
 function Find-Icon([int]$procId) {
   $hwnd = [Desk]::TrayWindow($procId)
   if ($hwnd -eq [IntPtr]::Zero) { return $null }
   foreach ($uid in 0..8) {
     $rect = New-Object Desk+RECT
     if ([Desk]::IconRect($hwnd, $uid, [ref]$rect)) {
-      return @{ hwnd = $hwnd.ToInt64(); uid = $uid; rect = $rect }
+      return @{ how = 'shell position'; rect = $rect }
     }
   }
+  if (Icon-Settings) { return @{ how = 'shell record'; rect = $null } }
   return $null
 }
 
+# What the taskbar shows, for failure messages.
+function Taskbar-Names {
+  $taskbar = Find-Taskbar
+  if (-not $taskbar) { return 'no taskbar found' }
+  $names = $taskbar.FindAll($Tree::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    ForEach-Object { $_.Current.Name } | Where-Object { $_ }
+  return ($names -join ' | ')
+}
+
+function Find-Taskbar {
+  $UIA::RootElement.FindFirst($Tree::Children,
+    (New-Object System.Windows.Automation.PropertyCondition($Prop::ClassNameProperty, 'Shell_TrayWnd')))
+}
+
 function Named($root, [string]$name) {
-  $cond = New-Object System.Windows.Automation.PropertyCondition($Prop::NameProperty, $name)
+  $cond = New-Object System.Windows.Automation.PropertyCondition($Prop::NameProperty, $name,
+    [System.Windows.Automation.PropertyConditionFlags]::IgnoreCase)
   return $root.FindFirst($Tree::Descendants, $cond)
 }
 
@@ -129,32 +153,31 @@ function Click-Element($el) {
 }
 
 function Open-Menu {
-  $existing = Find-Menu
-  if ($existing) { return @{ how = 'already open' } }
-
-  # Prefer the icon itself, where the shell says it is.
+  if (Find-Menu) { return @{ how = 'already open' } }
   $icon = Find-Icon $ProcessId
-  if (-not $icon) { Fail 'loqui has no icon in the notification area' }
-  $r = $icon.rect
-  $x = [int](($r.Left + $r.Right) / 2); $y = [int](($r.Top + $r.Bottom) / 2)
-  $at = $UIA::FromPoint((New-Object System.Windows.Point($x, $y)))
-  if ($at -and $at.Current.Name -eq 'loqui') {
-    [Desk]::Click($x, $y)
-    if (Wait-Until 3000 { Find-Menu }) { return @{ how = 'icon on the taskbar' } }
-  }
+  if (-not $icon) { Fail "loqui has no icon in the notification area. Taskbar: $(Taskbar-Names)" }
 
-  # A new icon may sit behind "Show hidden icons".
-  $taskbar = $UIA::RootElement.FindFirst($Tree::Children,
-    (New-Object System.Windows.Automation.PropertyCondition($Prop::ClassNameProperty, 'Shell_TrayWnd')))
-  $loqui = if ($taskbar) { Named $taskbar 'loqui' }
+  # Windows 11 puts a new program's icon behind the hidden icons arrow. Ask it
+  # to show loqui's on the taskbar, as the taskbar settings page would.
+  foreach ($entry in Icon-Settings) { Set-ItemProperty $entry.PSPath -Name IsPromoted -Value 1 -Type DWord }
+  $loqui = Wait-Until 3000 { $t = Find-Taskbar; if ($t) { Named $t 'loqui' } }
+  $how = 'on the taskbar'
+
   if (-not $loqui) {
-    $chevron = if ($taskbar) { Named $taskbar 'Show hidden icons' }
-    if (-not $chevron) { Fail "can't find loqui's icon or the hidden icons button (icon rect $($r.Left),$($r.Top),$($r.Right),$($r.Bottom); element there: '$($at.Current.Name)')" }
-    Click-Element $chevron
+    # Still hidden: open the hidden icons and pick loqui there.
+    $taskbar = Find-Taskbar
+    $arrow = if ($taskbar) { Named $taskbar 'Show hidden icons' }
+    if ($arrow) { Click-Element $arrow }
+    elseif ($icon.rect) {
+      # The shell reports a hidden icon's position as the arrow's.
+      $r = $icon.rect
+      [Desk]::Click([int](($r.Left + $r.Right) / 2), [int](($r.Top + $r.Bottom) / 2))
+    }
+    else { Fail "can't find loqui's icon or the hidden icons arrow. Taskbar: $(Taskbar-Names)" }
     $loqui = Wait-Until 8000 { Named $UIA::RootElement 'loqui' }
-    if (-not $loqui) { Fail 'opened the hidden icons, but loqui is not among them' }
-    $how = 'hidden icons'
-  } else { $how = 'icon found by name' }
+    if (-not $loqui) { Fail "opened the hidden icons, but loqui is not among them. Taskbar: $(Taskbar-Names)" }
+    $how = 'in the hidden icons'
+  }
   Click-Element $loqui
   if (-not (Wait-Until 3000 { Find-Menu })) { Fail "clicked loqui's icon ($how) but no menu opened" }
   return @{ how = $how }
@@ -200,8 +223,11 @@ switch ($Verb) {
     $p = Start-Process -FilePath $Exe -PassThru
     $icon = Wait-Until 10000 { Find-Icon $p.Id }
     $ms = $sw.ElapsedMilliseconds
-    if (-not $icon) { Fail "no icon in the notification area 10 seconds after starting (pid $($p.Id))" }
-    Out-Json @{ pid = $p.Id; ms = $ms; uid = $icon.uid }
+    if (-not $icon) {
+      $tray = [Desk]::TrayWindow($p.Id) -ne [IntPtr]::Zero
+      Fail "no icon in the notification area 10 seconds after starting (pid $($p.Id), tray window: $tray, running: $(-not $p.HasExited)). Taskbar: $(Taskbar-Names)"
+    }
+    Out-Json @{ pid = $p.Id; ms = $ms; how = $icon.how }
   }
   'open-menu' {
     $how = Open-Menu
@@ -247,8 +273,7 @@ switch ($Verb) {
   'after-quit' {
     $ids = $Pids -split ',' | ForEach-Object { [int]$_ }
     $alive = @(Get-Process -Id $ids -ErrorAction SilentlyContinue | ForEach-Object { @{ pid = $_.Id; name = $_.ProcessName } })
-    $taskbar = $UIA::RootElement.FindFirst($Tree::Children,
-      (New-Object System.Windows.Automation.PropertyCondition($Prop::ClassNameProperty, 'Shell_TrayWnd')))
+    $taskbar = Find-Taskbar
     $iconOnTaskbar = [bool]($taskbar -and (Named $taskbar 'loqui'))
     $trayWindow = ([Desk]::TrayWindow($ProcessId) -ne [IntPtr]::Zero)
     if ($Shot) { [Desk]::Screenshot($Shot) }
