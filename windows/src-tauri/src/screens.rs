@@ -68,11 +68,11 @@ fn open(app: &AppHandle, label: &str, title: &str, size: (f64, f64), resizable: 
 const SETTINGS: &str = "settings";
 
 pub fn welcome(app: &AppHandle) {
-    open(app, "welcome", "Welcome to loqui", (520.0, 660.0), false);
+    open(app, "welcome", "Welcome to loqui", (520.0, 640.0), false);
 }
 
 pub fn settings(app: &AppHandle) {
-    open(app, SETTINGS, "loqui settings", (640.0, 790.0), false);
+    open(app, SETTINGS, "loqui settings", (640.0, 700.0), false);
 }
 
 pub fn history(app: &AppHandle) {
