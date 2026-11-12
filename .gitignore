@@ -25,3 +25,4 @@ build/
 windows/target/
 windows/node_modules/
 windows/ui/dist/
+windows/src-tauri/gen/

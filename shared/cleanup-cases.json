@@ -132,6 +132,10 @@
       { "text": "We stopped.", "start": 0.0, "end": 1.0 },
       { "text": "Then we left.", "start": 1.25, "end": 2.0 },
       { "text": "And that was it.", "start": 2.25, "end": 3.0 }
-    ], "out": "We stopped then we left. And that was it." }
+    ], "out": "We stopped then we left. And that was it." },
+    { "id": "timed-heal-15", "rule": "timed-heal", "segments": [
+      { "text": "We were late.", "start": 0.0, "end": 1.5 },
+      { "text": "So we ran.", "start": 2.5, "end": 3.0 }
+    ], "out": "We were late. So we ran." }
   ]
 }

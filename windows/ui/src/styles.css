@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-text);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  font-weight: var(--type-body-weight);
+  cursor: default;
+  user-select: none;
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-s3) var(--space-s6) var(--space-s6);
+}
+
+.about-icon {
+  display: block;
+}
+
+.about-name {
+  margin: var(--space-s3) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-line);
+  font-weight: var(--type-title-weight);
+}
+
+.about-version {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.about-tagline {
+  margin: var(--space-s5) 0 var(--space-s1);
+}
+
+.about-note {
+  margin: 0;
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-muted);
+}

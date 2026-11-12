@@ -1,0 +1,124 @@
+name: Windows
+
+# Builds and checks Loqui for Windows on GitHub's own Windows computers, both
+# the usual Intel/AMD kind and Arm. The repo is public, so these are free; full
+# Windows runs never happen on the Mini.
+on:
+  push:
+    branches: [main]
+    paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
+  pull_request:
+    paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (Intel/AMD)
+            runner: windows-latest
+            arch: x64
+          - name: Windows (Arm)
+            runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: This computer
+        run: |
+          [Environment]::OSVersion.VersionString
+          (Get-CimInstance Win32_OperatingSystem).Caption
+          "Architecture: $env:PROCESSOR_ARCHITECTURE"
+          $wv = Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' -ErrorAction SilentlyContinue | Select-Object -First 1
+          "WebView2 runtime: $($wv.pv)"
+
+      - name: Rust, pinned in rust-toolchain.toml
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+            Invoke-WebRequest "https://static.rust-lang.org/rustup/dist/$target/rustup-init.exe" -OutFile "$env:RUNNER_TEMP\rustup-init.exe"
+            & "$env:RUNNER_TEMP\rustup-init.exe" -y --default-toolchain none --profile minimal --no-modify-path
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            "$env:USERPROFILE\.cargo\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+            $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+          }
+          rustup toolchain install
+          rustc --version
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: windows/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: windows/pnpm-lock.yaml
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format and lint (TypeScript)
+        run: pnpm exec biome ci .
+
+      - name: Types
+        run: pnpm exec tsc -p .
+
+      - name: Format (Rust)
+        run: cargo fmt --all --check
+
+      - name: Lint (Rust)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # CLEAN-03 lists every shared example by id; CLEAN-05 loads the Mac's settings files.
+      - name: "CLEAN-03 and CLEAN-05: the Windows core passes every shared example and reads the Mac's settings"
+        run: cargo test -p loqui-core
+
+      - name: "CLEAN-01, LOOK-01 and PLACE-01: the examples file, the look and the project record"
+        run: pnpm exec vitest run --project contracts
+
+      - name: Build the test installer (unsigned)
+        run: pnpm build
+
+      - name: "WINBASE: install, start, tray menu, About, quit"
+        env:
+          LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
+        run: pnpm test:acceptance
+
+      - name: Screenshots taken on this computer
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.arch }}
+          path: windows/target/shots
+          if-no-files-found: warn
+
+      - name: The test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: loqui-test-build-${{ matrix.arch }}
+          path: windows/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
