@@ -9,7 +9,7 @@ Until Part D adds the installer link, a teammate gets loqui like this: open the 
 ## What to do
 Open the latest Windows check and look at the pictures taken while dictating into Notepad and just after.
 Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
-See: the dark bubble at the bottom of the screen while it listens; then Notepad holding "Please send the report to Sarah before Friday, and copy the whole team." word for word, with the bubble saying PASTED.
+See: the dark bubble at the bottom of the screen while it listens; then Notepad holding "Please send the report to Sarah before Friday, and copy the whole team." word for word.
 Shots: built/dict-01-listening.png, built/dict-01-pasted.png
 Checks: DICT-01, DICT-02, DICT-03, HUD-01, PASTE-01
 
