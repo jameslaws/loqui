@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Loqui for Windows: the proposed look</title>
+<link rel="stylesheet" href="win.css">
+<style>
+  body { background: var(--bg); }
+  .sheet { width: 1440px; height: 900px; padding: 48px 64px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 12px; letter-spacing: 0.02em; }
+  .sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .sw div { border-radius: 8px; border: 1px solid var(--stroke); overflow: hidden; background: var(--card); }
+  .sw span { display: block; height: 56px; }
+  .sw p { margin: 0; padding: 8px 10px; font-size: 12px; line-height: 16px; }
+  .sw p b { display: block; font-weight: 600; }
+  .type > * { margin: 0 0 10px; }
+  .demo { padding: 20px; display: grid; gap: 14px; }
+  .line { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .head { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  .head img { width: 64px; height: 64px; }
+  .word { font-size: 34px; line-height: 40px; font-weight: 600; letter-spacing: 0.01em; }
+</style></head>
+<body><div class="sheet">
+  <div>
+    <div class="head"><img src="icon-256.png" alt=""><div><div class="word">loqui</div><div class="muted">for Windows · the proposed look</div></div></div>
+    <h2>Colours</h2>
+    <div class="sw">
+      <div><span style="background:#E91E63"></span><p><b>Magenta</b>icon, HUD, charts</p></div>
+      <div><span style="background:var(--accent)"></span><p><b>Accent</b>switches, main buttons</p></div>
+      <div><span style="background:var(--accent-text)"></span><p><b>Accent text</b>links, selected tab</p></div>
+      <div><span style="background:var(--text)"></span><p><b>Ink</b>text</p></div>
+      <div><span style="background:var(--muted)"></span><p><b>Muted</b>secondary text</p></div>
+      <div><span style="background:var(--bg)"></span><p><b>Window</b>background</p></div>
+      <div><span style="background:var(--card)"></span><p><b>Card</b>settings rows</p></div>
+      <div><span style="background:var(--stroke)"></span><p><b>Line</b>borders, dividers</p></div>
+    </div>
+    <h2>Type: Segoe UI Variable, the Windows system font</h2>
+    <div class="type">
+      <p class="title">Dictation</p>
+      <p class="subtitle">Settings</p>
+      <p>Body text sits at 14 pixels, like every Windows 11 app.</p>
+      <p class="caption">Captions and hints at 12 pixels.</p>
+    </div>
+  </div>
+  <div>
+    <h2>Controls</h2>
+    <div class="card demo">
+      <div class="line"><span class="btn primary">Finish setup</span><span class="btn">Open Windows settings</span><span class="btn quiet">Cancel</span></div>
+      <div class="line"><div class="field" style="width:260px">sarah k</div><span class="muted">→</span><div class="field" style="width:200px">Sara K.</div></div>
+      <div class="line"><span class="toggle on"></span> On <span style="width:24px"></span><span class="toggle"></span> Off <span style="width:24px"></span><span class="select" style="width:160px">Forever <span class="muted">⌄</span></span></div>
+      <div class="line"><span class="keycap">Ctrl</span><span class="keycap">Shift</span><span class="keycap">Space</span><span class="chip">um <b>×</b></span><span class="chip">uh <b>×</b></span></div>
+    </div>
+    <h2 style="margin-top:28px">Corners and spacing</h2>
+    <p class="muted" style="margin:0 0 28px">Controls 4 px, cards and windows 8 px. Spacing in steps of 4, 8, 12, 16, 24 and 32 px. Windows draws the title bar and the window shadow.</p>
+    <h2>The dictation bubble keeps the Mac's look</h2>
+    <div style="position:relative;height:90px;background:linear-gradient(160deg,var(--wall-1),var(--wall-2));border-radius:8px">
+      <div class="hud" style="top:18px"><span class="q">“</span><span class="bars"></span><span class="q">”</span></div>
+    </div>
+  </div>
+</div>
+<script src="scene.js"></script>
+</body></html>

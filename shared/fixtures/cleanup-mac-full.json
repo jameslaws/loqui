@@ -1,0 +1,31 @@
+{
+  "auditLog" : false,
+  "continuationWords" : [
+    "or",
+    "nor",
+    "which",
+    "whose",
+    "whom",
+    "than",
+    "because"
+  ],
+  "dictionary" : {
+    "and slash or" : "and\/or",
+    "loki" : "loqui",
+    "sarah k" : "Sara K.",
+    "zoe" : "Zoë"
+  },
+  "fillers" : [
+    "um",
+    "uh",
+    "like"
+  ],
+  "healSentenceSplits" : true,
+  "maxPauseSeconds" : 0.6,
+  "removeFillers" : true,
+  "spokenFormatting" : true,
+  "timedHealWords" : [
+    "and",
+    "but"
+  ]
+}

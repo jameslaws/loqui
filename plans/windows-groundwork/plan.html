@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="plan-look" content="1">
+<meta name="plan-draft" content="1">
+<meta name="plan-risk" content="none">
+<meta name="plan-touches" content="Windows app: windows/**; Shared rules: shared/**; Mac tests: Tests/**, Package.swift, Sources/loqui/VoiceTranscriber.swift; CI: .github/workflows/**; Records: PROJECT.md, platform PLACEMENT.md">
+<meta name="plan-size" content="7">
+<meta name="plan-idea" content="yes">
+<meta name="plan-idea-from" content="idea-d714fcb4">
+<meta name="plan-series" content="Loqui for Windows">
+<meta name="plan-step" content="1">
+<meta name="plan-series-short" content="Windows">
+<meta name="plan-needs" content="none">
+<meta name="plan-lands" content="Windows test build: GitHub checks, https://github.com/jameslaws/loqui/actions">
+<meta name="plan-checkpoint" content="a Windows test build that starts, and one set of cleanup rules both apps pass">
+<title>Windows groundwork, draft 1</title>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Loqui · Plan · Draft 1 · November 10, 2026</p>
+  <h1>Loqui for Windows, step 1: groundwork</h1>
+  <p class="lede">Loqui gets a Windows version that starts and sits by the clock, and one shared set of cleanup rules that the Mac app and the Windows app must both pass.</p>
+  <div class="approve"><p><b>What approving this does.</b> A builder sets up the Windows app inside the Loqui project, writes the cleanup rules down as shared examples, and records where Loqui runs. It accepts my recommendations below unless you change one. Nothing is downloadable by the public yet; that is step 6.</p></div>
+</header>
+
+<section id="words">
+<h2>Your words</h2>
+<blockquote><cite>November 10, to Aiva</cite>"I need you to have it spin up a plan to create a Windows version of this product."</blockquote>
+</section>
+
+<section id="changes">
+<h2>What changes</h2>
+<p>This is the first of six steps that make Loqui for Windows: the same product, with the same promise that your voice never leaves your computer. This step lays the ground the other five stand on.</p>
+<ul>
+  <li><b>One set of cleanup rules for both apps.</b> Filler words, capitals, punctuation, your spelling dictionary and sentence healing are written down once as about 60 example sentences, each with what goes in and what must come out. The Mac app is checked against them on every change, and the Windows app must pass the very same list. If one app's rules drift, its check fails.</li>
+  <li><b>A Windows app that starts.</b> It installs, starts, and puts the loqui icon by the Windows clock with About and Quit. No dictation yet; that is step 2.</li>
+  <li><b>Checked on real Windows computers, for free.</b> Every change is built and started on GitHub's Windows computers, both the usual Intel and AMD kind and the newer Arm laptops. GitHub doesn't charge for this on public projects. You see the result as a picture taken on that Windows machine.</li>
+  <li><b>Your settings file works on both.</b> A cleanup settings file from the Mac loads unchanged on Windows, so your dictionary can move between them.</li>
+  <li><b>Where Loqui runs is written down.</b> On people's own computers, downloaded from GitHub. The platform registry and the project file say so.</li>
+  <li><b>The Windows look.</b> Proposed below for you to approve: Windows' own font and shapes, carrying Loqui's magenta, cream and the quote mark.</li>
+</ul>
+<p>Who it's for: <b>public</b>. Anyone can download Loqui, with no account. This step's build is a test build on the GitHub check page only.</p>
+</section>
+
+<section id="how">
+<h2>The series, and what was proved first</h2>
+<p>Six steps, each about a day for one builder, each leaving something you can see working:</p>
+<ol>
+  <li><b>Groundwork</b> (this plan): shared rules, a Windows app that starts, where it runs.</li>
+  <li><b>Dictation</b>: press the shortcut, speak, and clean text lands at the cursor in any Windows app.</li>
+  <li><b>Settings, history and welcome</b>: the shortcut recorder, dictionary, filler words, history and the Recent menu.</li>
+  <li><b>Stats</b>: the dictation stats window with the calendar period picker.</li>
+  <li><b>Signed installer, updates and a test channel</b>: no Windows warnings, automatic updates, a way to go back.</li>
+  <li><b>Launch</b>: Windows on the download page and in the README, and the first public Windows version.</li>
+</ol>
+<p>Before promising any of this, I ran a short experiment on GitHub's Windows computers (three runs, about 20 minutes). What it showed:</p>
+<ul>
+  <li><b>On-device speech works on Windows, fast.</b> A 44-second recording became text in 5.2 seconds on an ordinary 2-core Intel/AMD machine and 2.8 seconds on an Arm one, with punctuation and capitals, word for word. Nothing went online. German, Spanish and French also came out right.</li>
+  <li><b>The whole loop works.</b> A pressed shortcut was caught and kept away from the app underneath, a spoken sentence went in through the normal microphone path, and the text appeared in Notepad exactly as heard. Picture in step 2.</li>
+  <li><b>Windows can block the microphone</b> for desktop apps with a privacy switch. The experiment hit this, so step 2 shows a plain message about it and step 3's welcome window leads you to the switch.</li>
+  <li><b>The window technology makes no calls of its own.</b> A bare test window ran for a minute and opened no internet connections, so the screens can be built the modern way without breaking the privacy promise.</li>
+</ul>
+</section>
+
+<section id="screens">
+<h2>Screens, before and after</h2>
+<p>"Before" is the real Mac app today, drawn from its own code with sample data. "After" is the Windows look drawn in a separate page and photographed. Loqui for Windows is a desktop app, so there is no phone size. Click any picture to see it big.</p>
+<h3>The look</h3>
+<div class="pair">
+  <figure class="mac"><figcaption><b>Before</b> · Mac settings</figcaption><img src="shots/before-mac-look.png" alt="The Mac app's settings window: shortcut, filler words as removable chips, history retention, in macOS's grouped style"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, light</figcaption><img src="shots/after-look.png" alt="The proposed Windows look: the loqui icon, eight colour swatches led by magenta, Segoe type sizes, buttons, fields, switches, key caps and the dark dictation bubble"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-look-dark.png" alt="The same look sheet in dark mode, with a lighter pink accent for contrast"></figure>
+</div>
+<h3>loqui by the clock</h3>
+<p class="muted">The Mac's menu-bar menu is not pictured: it lists real recent dictations.</p>
+<div class="pair">
+  <figure class="mac"><figcaption><b>After</b> · Windows, light</figcaption><img src="shots/after-tray.png" alt="A Windows desktop with the loqui microphone icon by the clock, its menu open showing loqui is running, About loqui and Quit loqui, and the About window with version 0.1.0"></figure>
+  <figure class="mac"><figcaption><b>After</b> · Windows, dark</figcaption><img src="shots/after-tray-dark.png" alt="The same tray menu and About window in dark mode"></figure>
+</div>
+<h3>Empty, loading, error and no permission</h3>
+<ul>
+  <li><b>Empty:</b> nothing to show yet; the menu holds About and Quit.</li>
+  <li><b>Loading:</b> the icon appears within 2 seconds of starting.</li>
+  <li><b>Error:</b> if Windows is missing its built-in web view (very rare on Windows 11), loqui shows one message with a link to Microsoft's page for it, instead of downloading anything itself.</li>
+  <li><b>No permission:</b> nothing needed in this step. Installing needs no administrator.</li>
+</ul>
+</section>
+
+<section id="risk">
+<h2>Risk</h2>
+<div class="risk none"><p><b>Not risky.</b> Why: no one's data is touched, nothing is sent, no money or keys. The Mac app only gains tests; how it behaves doesn't change.</p></div>
+</section>
+
+<section id="decisions">
+<h2>Decisions, with my recommendation</h2>
+<p>Approving this draft says yes to each recommendation unless you change one.</p>
+<div class="decision" id="d-where">
+  <h3>1. Where Loqui runs</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> on people's own computers. Installers live on GitHub's release pages, the download page and update lists on GitHub's free web hosting (as the Mac's do today), and the Windows checks on GitHub's free Windows computers.</li>
+    <li>Host downloads on a Loqui server or jameslaws.com.</li>
+  </ol>
+  <p class="why">Why: it's how the Mac version already ships, costs nothing, and keeps "no server" true.</p>
+</div>
+<div class="decision" id="d-stack">
+  <h3>2. How the Windows app is built</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Tauri: the parts that talk to Windows (keyboard, microphone, pasting) in Rust, the windows you look at in the same web tools our other apps use, and an open on-device speech engine.</li>
+    <li>Microsoft's own C# tools (.NET with WinUI or WPF).</li>
+    <li>Electron, as Slack and VS Code use.</li>
+  </ol>
+  <p class="why">Why: the screens can be built and checked here on the Mini with no Windows machine, signed automatic updates come built in, and an open-source dictation app (Handy) already ships this way on Windows. The playbook has no Windows default, so this is my pick on those grounds.</p>
+</div>
+<div class="decision" id="d-repo">
+  <h3>3. Same project or a new one</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> the same project (jameslaws/loqui), in a <code>windows</code> folder beside the Mac code.</li>
+    <li>A separate project, loqui-windows.</li>
+  </ol>
+  <p class="why">Why: one product, one issue list, one README, and the shared cleanup examples can only stay shared if both apps read the same file.</p>
+</div>
+<div class="decision" id="d-versions">
+  <h3>4. Which Windows</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> Windows 11, on both Intel/AMD and Arm PCs.</li>
+    <li>Also Windows 10.</li>
+  </ol>
+  <p class="why">Why: Windows 10 stopped getting security updates for home users in October 2026. It may well work, but we wouldn't test it or promise it.</p>
+</div>
+<div class="decision" id="d-look">
+  <h3>5. The Windows look</h3>
+  <ol>
+    <li class="rec"><b>Recommended:</b> as drawn above: Windows' own font, corners and settings layout, with magenta as the accent, the quote-mark icon, and the Mac's dark dictation bubble.</li>
+    <li>Copy the Mac's look exactly, Apple fonts and controls included.</li>
+  </ol>
+  <p class="why">Why: it feels at home on Windows and still reads as Loqui; Mac-style controls look out of place there.</p>
+</div>
+</section>
+
+<section id="out">
+<h2>Not in this plan</h2>
+<ul>
+  <li>Dictation itself (step 2); settings, history and welcome (step 3); stats (step 4); signing, installer and updates (step 5); the download page (step 6).</li>
+  <li>Any change to how the Mac app behaves. It only gains tests.</li>
+  <li>Linux, and the Microsoft Store.</li>
+</ul>
+</section>
+
+<section id="checkpoints">
+<h2>Checkpoints</h2>
+<ol class="checkpoints">
+  <li><b>A Windows build that starts</b> (GitHub, on your MacBook): open the pull request's checks. Both Windows checks are green, and each has a picture taken on that Windows machine showing loqui's icon by the clock with its menu open and the About window. <span class="ids">WINBASE-01 to WINBASE-03</span></li>
+  <li><b>One set of rules</b> (GitHub): the Mac check and both Windows checks each list the same cleanup examples as passed. <span class="ids">CLEAN-01 to CLEAN-05</span></li>
+  <li><b>Written down</b>: PROJECT.md and the platform registry say where Loqui runs, what staging and production mean, and how to go back. <span class="ids">PLACE-01, LOOK-01</span></li>
+</ol>
+</section>
+
+<section id="agents">
+<h2>For the agents</h2>
+<details>
+  <summary>Build notes</summary>
+  <ul>
+    <li><b>Checks to turn green:</b> WINBASE-01 to 03, CLEAN-01 to 05, PLACE-01, LOOK-01 (checks.md). No existing tests change; the Mac app has none today.</li>
+    <li><b>Existing code to reuse:</b> <code>Sources/loqui/TextCleanup.swift</code> and <code>CleanupConfig.swift</code> are the rules and the settings file format (keys, defaults, per-key fallback, a bad file left untouched). The timed heal decision lives in <code>VoiceTranscriber.bankTimed</code>: move only that decision into a small pure function (<code>TimedHeal</code>) so it can be tested, with no change in behaviour. <code>Brand.swift</code> and <code>BRAND.md</code> for colours. The probe in <code>plans/windows-dictation/experiment/</code> (step 2's branch) shows the Windows calls that were proved.</li>
+    <li><b>Layout:</b> <code>shared/cleanup-cases.json</code> (examples: id, rule, optional config overrides, in, out; plus timed cases: segments with start and end seconds, out). <code>Tests/loquiTests/</code> with <code>@testable import loqui</code> reads it. <code>windows/</code> holds <code>crates/loqui-core</code> (pure Rust: cleanup, settings file, later the gesture machine; builds and tests on any OS, including the Mini), <code>src-tauri</code> (the app), <code>ui</code> (React, Vite, TypeScript), <code>design/tokens.json</code>.</li>
+    <li><b>Stack:</b> Tauri 2, Rust stable pinned in <code>rust-toolchain.toml</code>, React and Vite with TypeScript, pnpm, Biome, Vitest, Playwright, exact versions and committed lockfiles (stack guide rules 2 and 3). The <code>windows/package.json</code> has the standard scripts: dev, check, check:changed, test:acceptance, test:contracts, start.</li>
+    <li><b>Rules engine:</b> Rust's <code>regex</code> crate, case-insensitive and Unicode-aware, matching the Mac's NSRegularExpression results on every shared example (include accented words and apostrophes). Settings file: same JSON keys and defaults; Windows reads <code>%LOCALAPPDATA%\Loqui\cleanup.json</code>, never the roaming profile.</li>
+    <li><b>Shared interfaces and owners:</b> <code>shared/cleanup-cases.json</code> is owned by this step's builder; later steps add cases, never edit an existing case's expected output without a <code>changes.md</code> entry. <code>windows/design/tokens.json</code> (light and dark, the pairs in the look sheet) is owned here; screens in steps 3 and 4 use only these tokens.</li>
+    <li><b>CI:</b> keep <code>build.yml</code> for the Mac and add <code>swift test</code>. Add <code>windows.yml</code>: <code>windows-latest</code> and <code>windows-11-arm</code>, path-filtered to <code>windows/**</code> and <code>shared/**</code> (the Mac job also runs on <code>shared/**</code>). It runs the core tests, builds the app with no installer signing, starts it, screenshots the tray menu and About window, and uploads the pictures. Public repo, so GitHub's Windows runners are free; nothing runs on the Mini's runner (it refuses public repos).</li>
+    <li><b>Data and outside services:</b> none. No network calls in the app. Web view install mode: skip (Windows 11 includes it); show a message if it's missing.</li>
+    <li><b>Records:</b> fill in <code>PROJECT.md</code> (what it is, public, stack, where it runs, how it ships, commands). In <code>~/Developer/platform/PLACEMENT.md</code>, move Loqui out of "New, not placed yet" into Personal sites and apps: runs on users' own computers; installers on GitHub Releases; download page and update feeds on GitHub Pages from <code>docs/</code>; CI on GitHub-hosted runners because the repo is public. Commit that in the platform repo.</li>
+    <li><b>Staging and production, as recorded in PROJECT.md:</b> until step 5, staging is the unsigned test build attached to each check run; production is unchanged (Mac only, by <code>release.sh</code>). Step 5 replaces this with the test channel and the stable channel.</li>
+    <li><b>Can't be undone:</b> nothing.</li>
+    <li><b>Experiments:</b> three GitHub Actions runs on 2026-11-10 on a throwaway branch: <a href="https://github.com/jameslaws/loqui/actions/runs/42824603865">speech engine on x64 and Arm</a>, <a href="https://github.com/jameslaws/loqui/actions/runs/42825237405">shortcut, microphone, engine and paste into Notepad</a>, <a href="https://github.com/jameslaws/loqui/actions/runs/42825640143">a bare Tauri window's network use</a>. Results are summarised above and in step 2.</li>
+  </ul>
+</details>
+</section>
+
+</main>
+</body>
+</html>

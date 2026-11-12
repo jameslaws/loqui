@@ -49,5 +49,12 @@ let package = Package(
                 ], .when(platforms: [.macOS])),
             ]
         ),
+        // Runs shared/cleanup-cases.json against the real cleanup rules. The
+        // Windows core runs the same file, so the two apps can't drift apart.
+        .testTarget(
+            name: "loquiTests",
+            dependencies: ["loqui"],
+            path: "Tests/loquiTests"
+        ),
     ]
 )

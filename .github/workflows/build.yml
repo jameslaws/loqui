@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
   workflow_dispatch:
 
@@ -27,6 +27,11 @@ jobs:
 
       - name: Build (release)
         run: swift build -c release
+
+      # CLEAN-02: every example in shared/cleanup-cases.json, listed by id.
+      # The Windows check runs the same file, so the two apps can't drift.
+      - name: "CLEAN-02: The Mac app passes every shared example"
+        run: swift test
 
       # Assembles and ad-hoc signs exactly the way install.sh does, so a broken
       # source-install path fails here rather than on a contributor's machine.

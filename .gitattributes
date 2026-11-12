@@ -1,0 +1,4 @@
+# Keep plain (LF) line endings on Windows checkouts too, so the format checks
+# and the shared examples read the same on every computer.
+windows/** text=auto eol=lf
+shared/** text=auto eol=lf
