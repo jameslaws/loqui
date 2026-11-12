@@ -18,12 +18,16 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use windows::core::HRESULT;
 use windows::Win32::Media::Audio::{
     eCapture, eCommunications, IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator,
-    MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
-    AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, WAVEFORMATEX,
+    MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_SILENT,
+    AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
+    AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, WAVEFORMATEX,
 };
 use windows::Win32::System::Com::{
     CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL,
     COINIT_MULTITHREADED,
+};
+use windows_sys::Win32::System::Threading::{
+    AvRevertMmThreadCharacteristics, AvSetMmThreadCharacteristicsW,
 };
 
 /// Why the microphone couldn't open.
@@ -41,6 +45,13 @@ const E_NOTFOUND: HRESULT = HRESULT(0x8007_0490_u32 as i32);
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
 /// 20 ms at 16 kHz: how often the level is measured and audio passed on.
 const BLOCK: usize = 320;
+/// How much sound Windows holds for loqui between reads, in 100 ns units: one
+/// second, so a moment's delay on a busy PC loses nothing.
+const BUFFER: i64 = 10_000_000;
+
+fn wide(text: &str) -> Vec<u16> {
+    text.encode_utf16().chain(Some(0)).collect()
+}
 
 impl std::fmt::Display for MicError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -136,6 +147,12 @@ pub fn start(out: Outlets) -> Result<Capture, MicError> {
                 let _ = opened.send(Err(MicError::from(e)));
                 return;
             }
+            // Windows' audio priority for this thread, so a busy PC doesn't
+            // leave the microphone unread long enough to drop sound.
+            let task = wide("Audio");
+            let mut index = 0u32;
+            // SAFETY: the name is null-terminated; the handle is reverted below.
+            let priority = unsafe { AvSetMmThreadCharacteristicsW(task.as_ptr(), &mut index) };
             match Stream::open() {
                 Ok(stream) => {
                     let _ = opened.send(Ok(()));
@@ -144,6 +161,10 @@ pub fn start(out: Outlets) -> Result<Capture, MicError> {
                 Err(e) => {
                     let _ = opened.send(Err(e));
                 }
+            }
+            if !priority.is_null() {
+                // SAFETY: the handle came from AvSetMmThreadCharacteristicsW on this thread.
+                unsafe { AvRevertMmThreadCharacteristics(priority) };
             }
             // SAFETY: matches the CoInitializeEx above; every COM object is gone.
             unsafe { CoUninitialize() };
@@ -201,7 +222,7 @@ impl Stream {
             client.Initialize(
                 AUDCLNT_SHAREMODE_SHARED,
                 AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-                2_000_000, // 200 ms of buffer, in 100 ns units
+                BUFFER,
                 0,
                 &format,
                 None,
@@ -227,8 +248,10 @@ impl Stream {
         .is_ok_and(|device| device_id(&device) == self.device)
     }
 
-    /// Everything captured since the last read.
-    fn read(&self, into: &mut Vec<f32>) -> windows::core::Result<()> {
+    /// Everything captured since the last read, and how many gaps Windows
+    /// reported in it (sound it had to drop).
+    fn read(&self, into: &mut Vec<f32>) -> windows::core::Result<u32> {
+        let mut gaps = 0;
         // SAFETY: each buffer is read within the frame count Windows gives,
         // then released.
         unsafe {
@@ -237,6 +260,9 @@ impl Stream {
                 let (mut frames, mut flags) = (0u32, 0u32);
                 self.capture
                     .GetBuffer(&mut data, &mut frames, &mut flags, None, None)?;
+                if flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 != 0 {
+                    gaps += 1;
+                }
                 if flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0 || data.is_null() {
                     into.extend(std::iter::repeat_n(0.0, frames as usize));
                 } else {
@@ -248,16 +274,19 @@ impl Stream {
                 self.capture.ReleaseBuffer(frames)?;
             }
         }
-        Ok(())
+        Ok(gaps)
     }
 
     fn run(mut self, out: &Outlets, stop: &AtomicBool) {
         let mut pending = Vec::with_capacity(BLOCK * 4);
         let mut checked = Instant::now();
         let mut broken = false;
+        let mut gaps = 0;
         loop {
             let stopping = stop.load(Ordering::SeqCst);
-            let failed = self.read(&mut pending).is_err();
+            let read = self.read(&mut pending);
+            let failed = read.is_err();
+            gaps += read.unwrap_or(0);
             while pending.len() >= BLOCK {
                 let mut block: Vec<f32> = pending.drain(..BLOCK).collect();
                 out.pass(&mut block);
@@ -265,6 +294,11 @@ impl Stream {
             if stopping {
                 if !pending.is_empty() {
                     out.pass(&mut pending);
+                }
+                if gaps > 0 {
+                    out.log(&format!(
+                        "WARNING: Windows dropped sound {gaps} times during this dictation"
+                    ));
                 }
                 break;
             }

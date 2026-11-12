@@ -180,8 +180,9 @@ jobs:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:e2e
 
+      # Runs even when a dictation check failed, so one run reports on both parts.
       - name: "WELC, SET, HIST, RECENT and MENU on Windows: the real windows, light and dark"
-        if: matrix.arch == 'x64'
+        if: (success() || failure()) && matrix.arch == 'x64'
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:windows-screens
