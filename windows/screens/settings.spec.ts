@@ -11,7 +11,9 @@ test("SET-01: Change the shortcut by pressing it", async ({ page }) => {
   // While recording, loqui's own shortcut is off, so pressing it can't start a dictation.
   expect((await fake(page)).hookPaused).toBe(true);
   await page.keyboard.press("Shift+A");
-  await expect(page.getByRole("status")).toHaveText(REFUSED);
+  // The shortcut card's own status line (the Updates card has one too).
+  const shortcutCard = page.locator(".card", { hasText: "Dictation shortcut" });
+  await expect(shortcutCard.getByRole("status")).toHaveText(REFUSED);
   await page.keyboard.press("Control+Alt+D");
   await expect(page.getByRole("img", { name: "Current shortcut: Ctrl+Alt+D" })).toBeVisible();
   for (const key of ["Ctrl", "Alt", "D"]) await expect(page.locator(".keycap", { hasText: key })).toBeVisible();

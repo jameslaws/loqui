@@ -8,7 +8,7 @@
 //     prints the version one patch above windows/package.json's
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const windowsDir = join(import.meta.dirname, "..", "..");
 
@@ -33,7 +33,8 @@ export const next = (version) => {
 
 const own = () => JSON.parse(readFileSync(join(windowsDir, "package.json"), "utf8")).version;
 
-const [command, ref] = process.argv.slice(2);
+const [command, ref] =
+  process.argv[1] && import.meta.filename === resolve(process.argv[1]) ? process.argv.slice(2) : [];
 if (command === "next") console.log(next(own()));
 else if (command === "higher-than" && ref) {
   const theirs = JSON.parse(
@@ -46,7 +47,7 @@ else if (command === "higher-than" && ref) {
     process.exit(1);
   }
   console.log(`${own()} is above ${theirs} on ${ref}.`);
-} else if (command) {
+} else if (process.argv[1] && import.meta.filename === resolve(process.argv[1])) {
   console.error("Usage: node scripts/release/version.mjs next | higher-than <git ref>");
   process.exit(1);
 }
