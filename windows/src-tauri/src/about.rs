@@ -1,17 +1,15 @@
 //! The About window, opened from the tray menu. Only one is ever open.
 
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use crate::screens;
+use tauri::AppHandle;
 
 const LABEL: &str = "about";
 
 pub fn show(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(LABEL) {
-        let _ = window.unminimize();
-        let _ = window.show();
-        let _ = window.set_focus();
+    if screens::focus(app, LABEL) {
         return;
     }
-    let opened = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html".into()))
+    let opened = screens::builder(app, LABEL, "index.html")
         .title("About loqui")
         .inner_size(440.0, 330.0)
         .resizable(false)

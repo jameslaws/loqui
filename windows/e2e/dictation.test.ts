@@ -5,7 +5,7 @@
 // Intel/AMD computer, against the installed build; on Arm, DICT-07 runs a test
 // build that plays a file instead of the microphone (`pnpm build:test-audio`).
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -138,13 +138,21 @@ beforeAll(async () => {
   notepad = dk("notepad").hwnd;
 }, 600_000);
 
+/** Turns the virtual sound cable, and so the only microphone, off or on. */
+const cable = (verb: "Enable" | "Disable") =>
+  `Get-PnpDevice -Class MEDIA, AudioEndpoint -ErrorAction SilentlyContinue | Where-Object FriendlyName -like '*CABLE*' | ${verb}-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue; exit 0`;
+
 afterAll(() => {
   if (!onWindows) return;
   writeFileSync(stopWatching, "");
-  // Put the microphone back for anything that runs after.
-  ps(
-    "Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Where-Object FriendlyName -like '*CABLE Output*' | Enable-PnpDevice -Confirm:$false -ErrorAction SilentlyContinue",
+  // loqui's logs and the names behind any addresses, kept with the run's pictures.
+  if (existsSync(join(data, "logs"))) cpSync(join(data, "logs"), join(shots, "loqui-logs"), { recursive: true });
+  writeFileSync(
+    join(shots, "dns-cache.txt"),
+    ps("Get-DnsClientCache | Format-Table -AutoSize Entry, Data | Out-String -Width 200"),
   );
+  // Put the microphone back for anything that runs after (there is none on Arm).
+  if (x64) ps(cable("Enable"));
 });
 
 test.runIf(x64)("DICT-01: Tap to start, tap to stop, text lands at the cursor", () => {
@@ -233,15 +241,18 @@ test.runIf(x64)("DICT-03: The shortcut never reaches the app, other keys do", ()
   expect(stopped.text).toBe("");
   expect(states(stopped.changes).at(-1)?.state).toBe("loqui hidden");
 
+  // Other shortcuts aren't loqui's: they reach Notepad, which may type a space
+  // for Ctrl+Alt+Shift+Space (Ctrl+Alt is AltGr on many keyboards).
   expect(dk("keys", { Hwnd: notepad, ProcessId: pid, Spec: "ctrl+space" }).bubble).not.toBe("loqui listening");
-  expect(dk("keys", { Hwnd: notepad, ProcessId: pid, Spec: "ctrl+alt+shift+space" }).bubble).not.toBe(
-    "loqui listening",
-  );
-  expect(dk("type", { Hwnd: notepad, Text: "abc" }).text).toBe("abc");
+  const others = dk("keys", { Hwnd: notepad, ProcessId: pid, Spec: "ctrl+alt+shift+space" });
+  expect(others.bubble).not.toBe("loqui listening");
+  expect(others.text.trim()).toBe("");
+  const typed = dk("type", { Hwnd: notepad, Text: "abc" }).text;
+  expect(typed).toBe(`${others.text}abc`);
 
   // Held for 2 s, the shortcut repeats, and not one space gets through.
   const held = dk("keys", { Hwnd: notepad, ProcessId: pid, HoldMs: 2000 });
-  expect(held.text).toBe("abc");
+  expect(held.text).toBe(typed);
 });
 
 test.runIf(x64)("DICT-05: Cleanup and the dictionary apply", () => {
@@ -396,10 +407,13 @@ test.runIf(x64)(
   300_000,
 );
 
-test.runIf(x64)("MIC-02: No microphone gets a plain message", () => {
-  ps(
-    "Get-PnpDevice -Class AudioEndpoint | Where-Object FriendlyName -like '*CABLE Output*' | Disable-PnpDevice -Confirm:$false",
-  );
+test.runIf(x64)("MIC-02: No microphone gets a plain message", async () => {
+  ps(cable("Disable"));
+  // Wait until Windows no longer lists a working microphone.
+  const present =
+    "@(Get-PnpDevice -Class AudioEndpoint -PresentOnly -Status OK -ErrorAction SilentlyContinue | Where-Object FriendlyName -like '*CABLE Output*').Count";
+  for (let i = 0; i < 40 && ps(present).trim() !== "0"; i++) await sleep(250);
+  expect(ps(present).trim()).toBe("0");
   const r = dk("tap-watch", { Hwnd: notepad, ProcessId: pid, Ms: 3000, Shot: shot("mic-02-no-microphone") });
   expect(states(r.changes).map((s) => s.state)).toContain(NO_MIC);
   expect(loquiAlive()).toBe(true);

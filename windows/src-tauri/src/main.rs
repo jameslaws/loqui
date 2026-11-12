@@ -16,6 +16,7 @@ mod hook;
 mod mic;
 #[cfg(windows)]
 mod paste;
+mod screens;
 #[cfg(windows)]
 mod speech;
 mod tray;

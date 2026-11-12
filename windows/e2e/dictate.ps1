@@ -101,8 +101,15 @@ public static class Dk {
   }
 
   // ---- Windows ----
+  /// Brings a window to the front. Windows only lets the process that sent the
+  /// last input do that, so an unassigned key is pressed under Alt first. A bare
+  /// Alt tap would also work, but it opens Notepad's menu bar, which then eats
+  /// the next key or paste.
   public static void Focus(IntPtr h) {
-    Tap(new ushort[] { 0x12 });   // an Alt tap lets this process hand over the foreground
+    if (GetForegroundWindow() == h) return;
+    var l = new List<INPUT>();
+    l.Add(Key(0x12, 0, 0)); l.Add(Key(0xE8, 0, 0)); l.Add(Key(0xE8, 0, 2)); l.Add(Key(0x12, 0, 2));
+    Send(l);
     ShowWindow(h, 5);
     SetForegroundWindow(h);
     Thread.Sleep(300);
@@ -225,7 +232,8 @@ public static class Dk {
         var c = bmp.GetPixel(x, y);
         if (c.R > 100 && c.R - c.G > 60 && c.B - c.G > 20) n += c.R - c.G;
       }
-      if (save != null) bmp.Save(save, ImageFormat.Png);
+      // PowerShell passes $null as "" to a string parameter.
+      if (!string.IsNullOrEmpty(save)) bmp.Save(save, ImageFormat.Png);
     }
     return n;
   }

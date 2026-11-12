@@ -6,8 +6,9 @@
 //! page needs no access to loqui at all. The window's title names the phase
 //! too ("loqui listening"), which is how the Windows check watches it.
 
+use crate::screens;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, WebviewWindow};
 use windows_sys::Win32::Foundation::{HWND, RECT};
 use windows_sys::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
@@ -36,20 +37,19 @@ pub struct Bubble {
 impl Bubble {
     /// Made hidden when loqui starts, so it's ready the first time it's needed.
     pub fn create(app: &AppHandle) -> tauri::Result<Self> {
-        let window =
-            WebviewWindowBuilder::new(app, "bubble", WebviewUrl::App("bubble.html".into()))
-                .title("loqui hidden")
-                .inner_size(720.0, 200.0)
-                .transparent(true)
-                .decorations(false)
-                .shadow(false)
-                .resizable(false)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .focused(false)
-                .focusable(false)
-                .visible(false)
-                .build()?;
+        let window = screens::builder(app, "bubble", "bubble.html")
+            .title("loqui hidden")
+            .inner_size(720.0, 200.0)
+            .transparent(true)
+            .decorations(false)
+            .shadow(false)
+            .resizable(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(false)
+            .focusable(false)
+            .visible(false)
+            .build()?;
         window.set_ignore_cursor_events(true)?;
         let hwnd = window.hwnd()?.0 as HWND;
         // SAFETY: the window is ours and alive.
