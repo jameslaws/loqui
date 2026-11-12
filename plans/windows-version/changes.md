@@ -16,6 +16,32 @@ Format:
 
 ---
 
+Found while building Parts A and B (2026-11-12).
+
+### About loqui stays in the tray menu
+
+- **Kind:** Behind it (the Lead settled it on the board, 2026-11-12: tray apps normally have it)
+- **Before:** the plan's tray menu picture has no About item.
+- **After:** "About loqui" sits just above Quit, as groundwork built it.
+- **Why:** groundwork's WINBASE-01 opens About from the menu and must keep passing.
+- **Checks affected:** none (MENU-01 and WINBASE-01 both list it).
+
+### loqui reads Windows' microphone switches before every dictation
+
+- **Kind:** Behind it
+- **Before:** the plan said a blocked microphone gets the message; it didn't say how loqui knows.
+- **After:** loqui reads the three switches (the PC's, "Let apps access" and "Let desktop apps access") before opening the microphone, the same reading the welcome window uses, because Windows can hand a desktop app silence instead of refusing it.
+- **Why:** with the switch off, GitHub's Windows computer recorded silence and no message appeared.
+- **Checks affected:** none (MIC-01 as written).
+
+### An unreadable settings file isn't saved over
+
+- **Kind:** Behind it
+- **Before:** the plan says an unreadable settings file shows "Your settings file couldn't be read, so defaults are in use" and is left alone.
+- **After:** Settings shows that message, and a change made meanwhile is refused with it rather than writing over the file. The same holds for an unreadable cleanup.json.
+- **Why:** saving would have replaced the very file the plan says to leave alone.
+- **Checks affected:** none.
+
 Rewritten as one plan (2026-11-12).
 
 ### The Windows series became one plan, built in parts

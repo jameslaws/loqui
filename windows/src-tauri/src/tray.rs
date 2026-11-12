@@ -145,13 +145,16 @@ fn copy_recent(app: &AppHandle, n: usize) {
 
 fn show_status(app: &AppHandle, change: impl FnOnce(&mut State)) {
     let Some(live) = live(app) else { return };
-    let Ok(mut state) = live.state.lock() else {
-        return;
+    // The text is worked out under the lock and set after it's released: setting
+    // it waits for the main thread, which may itself be waiting for this lock.
+    let text = {
+        let Ok(mut state) = live.state.lock() else {
+            return;
+        };
+        change(&mut state);
+        status_line(&state.shortcut, state.listening)
     };
-    change(&mut state);
-    let _ = live
-        .status
-        .set_text(status_line(&state.shortcut, state.listening));
+    let _ = live.status.set_text(text);
 }
 
 /// The shortcut changed in Settings.
