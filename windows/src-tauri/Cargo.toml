@@ -6,11 +6,48 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# Test builds only: a WAV file named by LOQUI_TEST_AUDIO stands in for the
+# microphone, for GitHub's Arm computers, which have no virtual sound cable.
+# Release builds never have it; the Windows check fails if one does.
+test-audio = []
+
 [build-dependencies]
 tauri-build = "=2.7.4"
 
 [dependencies]
 tauri = { version = "=2.12.5", features = ["tray-icon", "image-png"] }
+loqui-core = { path = "../crates/loqui-core" }
+# The time now in the PC's own time zone, for stats (the version loqui-core uses).
+chrono = { version = "=0.4.45", default-features = false, features = ["clock"] }
+# Updates signed with loqui's Windows update key, checked before installing.
+# Tauri's own; its signature check and NSIS hand-over can't be a few lines.
+tauri-plugin-updater = "=2.14.1"
+# Plugin settings in tauri.conf.json reach the app as JSON.
+serde_json = "=1.0.154"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.61.2", features = ["Win32_System_Registry", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_Foundation"] }
+loqui-speech = { path = "../crates/loqui-speech" }
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Globalization",
+  "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_System_DataExchange",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_Ole",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+# The microphone (WASAPI) is COM, which this crate wraps safely. The version
+# Tauri already uses, so nothing new is downloaded or built.
+windows = { version = "=0.62.2", features = [
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+] }

@@ -16,6 +16,9 @@
     { "id": "fillers-08", "rule": "fillers", "in": "um, café au lait please", "out": "Café au lait please" },
     { "id": "fillers-09", "rule": "fillers", "in": "um, uh, okay", "out": "Okay" },
     {"id": "fillers-10", "rule": "fillers", "config": {"fillers": ["first class assistant staff office postmaster"]}, "in": "the first class assistant staff office postmaster report is here", "out": "The report is here"},
+    { "id": "fillers-11", "rule": "fillers", "config": { "fillers": ["um", "umm", "uh", "uhh", "uhm", "er", "erm", "hmm", "mhm", "like"] }, "in": "I like, um, the plan", "out": "I the plan" },
+    { "id": "fillers-12", "rule": "fillers", "in": "I like, um, the plan", "out": "I like, the plan" },
+    { "id": "fillers-13", "rule": "fillers", "config": { "removeFillers": false }, "in": "I like, um, the plan", "out": "I like, um, the plan" },
 
     { "id": "dictionary-01", "rule": "dictionary", "config": { "dictionary": { "loki": "loqui" } }, "in": "i use loki every day", "out": "I use loqui every day" },
     { "id": "dictionary-02", "rule": "dictionary", "config": { "dictionary": { "sarah k": "Sara K.", "sarah": "Sarah" } }, "in": "sarah and sarah k", "out": "Sarah and Sara K." },

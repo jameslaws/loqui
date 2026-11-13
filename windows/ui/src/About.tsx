@@ -9,7 +9,7 @@ export function About() {
       <p className="about-version">{`Version ${__APP_VERSION__} (test build)`}</p>
       <p className="about-tagline">Talk, and it’s text.</p>
       <p className="about-note">
-        Dictation arrives in the next step. This build proves loqui installs, starts and sits in the tray.
+        Press Ctrl+Shift+Space, speak, and press it again. Your words land where you're typing.
       </p>
     </main>
   );

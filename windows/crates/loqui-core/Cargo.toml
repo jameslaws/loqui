@@ -7,15 +7,26 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+# Stats count days, weeks and months in the PC's own time zone, clock changes
+# included. Already built for Tauri, so nothing new is downloaded.
+chrono = { version = "=0.4.45", default-features = false, features = ["clock", "std"] }
 regex = "=1.13.1"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
+# The screens' types, exported to TypeScript from the Rust that defines them.
+ts-rs = { version = "=12.0.1", default-features = false, features = ["serde-compat"] }
 
 [[test]]
 name = "shared_cases"
 harness = false
 
+[[test]]
+name = "shared_stats"
+harness = false
+
 [dev-dependencies]
+# The shared stats examples name a real time zone (with its clock changes).
+chrono-tz = "=0.10.4"
 libtest-mimic = "=0.8.2"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"

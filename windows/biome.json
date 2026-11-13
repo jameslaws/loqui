@@ -1,6 +1,17 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "files": { "includes": ["**", "!target", "!ui/dist", "!src-tauri/gen"] },
+  "files": {
+    "includes": [
+      "**",
+      "!target",
+      "!ui/dist",
+      "!src-tauri/gen",
+      "!.speech-cache",
+      "!src-tauri/engine",
+      "!src-tauri/models",
+      "!ui/src/bindings.ts"
+    ]
+  },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
   "linter": { "enabled": true, "rules": { "preset": "recommended" } },
   "assist": { "actions": { "source": { "organizeImports": "on" } } }

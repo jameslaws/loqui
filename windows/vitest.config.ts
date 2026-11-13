@@ -14,6 +14,71 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      // Windows only, after the acceptance checks: real dictations into Notepad.
+      {
+        test: {
+          name: "e2e",
+          include: ["e2e/dictation.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
+      // Windows only, after the dictations: the real welcome, settings and
+      // history windows, the tray menu, and their pictures light and dark.
+      {
+        test: {
+          name: "windows-screens",
+          include: ["e2e/windows-screens.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 300_000,
+          fileParallelism: false,
+        },
+      },
+      // Windows only, last: the real stats window, light and dark (both Windows computers).
+      {
+        test: {
+          name: "windows-stats",
+          include: ["e2e/windows-stats.test.ts"],
+          testTimeout: 180_000,
+          hookTimeout: 300_000,
+          fileParallelism: false,
+        },
+      },
+      // Windows only, last: install, update and uninstall, with this version
+      // and the next one built as check builds (see install/install.test.ts).
+      {
+        test: {
+          name: "install",
+          include: ["install/install.test.ts"],
+          testTimeout: 300_000,
+          hookTimeout: 300_000,
+          fileParallelism: false,
+          sequence: { concurrent: false },
+        },
+      },
+      // Windows only, in windows-channel.yml: a teammate's PC on the real test
+      // channel, installed from the teammate link and updated by it.
+      {
+        test: {
+          name: "channel",
+          include: ["install/channel.test.ts"],
+          testTimeout: 600_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
+      // Windows only, in the release drill (windows-drill.yml): a PC on the
+      // drill's lists, installed from GitHub and updated twice.
+      {
+        test: {
+          name: "drill",
+          include: ["install/drill.test.ts"],
+          testTimeout: 600_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
     ],
   },
 });

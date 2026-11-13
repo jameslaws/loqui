@@ -21,7 +21,13 @@ export function tokenCss(): string {
     `--type-${key}-line: ${t.$value.lineHeight};`,
     `--type-${key}-weight: ${t.$value.fontWeight};`,
   ]);
-  const shared = [...fonts, ...type, ...px("space", tokens.space), ...px("radius", tokens.radius)].join(" ");
+  const shared = [
+    ...fonts,
+    ...type,
+    ...px("space", tokens.space),
+    ...px("radius", tokens.radius),
+    `--hud-opacity: ${tokens.hudOpacity.$value};`,
+  ].join(" ");
   return `:root { ${shared} ${colours("light")} }
 @media (prefers-color-scheme: dark) { :root { ${colours("dark")} } }`;
 }

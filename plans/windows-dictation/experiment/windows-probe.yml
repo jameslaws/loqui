@@ -1,0 +1,152 @@
+# Throwaway experiment for the Loqui for Windows plan (branch experiment/windows-probe only).
+# Proves the uncertain parts before the plan promises them; deleted once the results are recorded.
+name: Windows probe
+
+on:
+  push:
+    branches: [experiment/windows-probe]
+
+jobs:
+  engine:
+    if: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Machine
+        run: |
+          Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors | Format-List
+          [Environment]::OSVersion
+          (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' -ErrorAction SilentlyContinue).pv | ForEach-Object { "WebView2 runtime: $_" }
+      - name: Download engine and model
+        run: |
+          $v = "v2.0.1"
+          curl.exe -sSL -o sherpa.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/$v/sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts.tar.bz2"
+          tar -xf sherpa.tar.bz2
+          curl.exe -sSL -o model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2"
+          tar -xf model.tar.bz2
+          Get-ChildItem sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8 -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+          "Model folder MB: " + [math]::Round(((Get-ChildItem sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8 -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)
+          "Engine folder MB: " + [math]::Round(((Get-ChildItem "sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts" -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)
+      - name: Make a 60-second English test recording with Windows' own voice
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $fmt = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+          $s.SetOutputToWaveFile("$pwd\long.wav", $fmt)
+          $t = "Thanks for sending the draft over this morning. I read it on the train, and I think the second section works well, but the opening is too long. Could we cut the first two paragraphs and start with the story about the customer who called on a Sunday? That is the moment readers will remember. I would also move the pricing table to the end, because nobody wants numbers before they care about the problem. Let me know if Thursday still works for a call. If not, Friday afternoon is fine, and I can send notes before then so we do not waste the time. One more thing: the headline should say what changes for the reader, not what we built. Talk soon."
+          $s.Speak($t)
+          $s.Dispose()
+          "long.wav bytes: " + (Get-Item long.wav).Length
+      - name: Transcribe the samples and the long recording
+        run: |
+          $v = "v2.0.1"
+          $bin = "sherpa-onnx-$v-win-${{ matrix.arch }}-shared-MT-Release-no-tts\bin\sherpa-onnx-offline.exe"
+          $m = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
+          $wavs = @(Get-ChildItem "$m\test_wavs\*.wav" | ForEach-Object FullName) + "$pwd\long.wav"
+          foreach ($w in $wavs) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            & $bin --tokens="$m\tokens.txt" --encoder="$m\encoder.int8.onnx" --decoder="$m\decoder.int8.onnx" --joiner="$m\joiner.int8.onnx" --model-type=nemo_transducer --num-threads=4 $w 2>&1 | Select-String -Pattern '"text"|RTF|Elapsed|Real time' | ForEach-Object { $_.Line }
+            "== $([IO.Path]::GetFileName($w)) wall clock incl. model load: $($sw.ElapsedMilliseconds) ms"
+          }
+
+  desktop:
+    if: false
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install a virtual sound cable (VB-CABLE), so a "microphone" exists
+        run: |
+          git clone --depth 1 https://github.com/LABSN/sound-ci-helpers.git helpers
+          & powershell -ExecutionPolicy Bypass -File helpers\windows\setup_sound.ps1
+          Start-Sleep 5
+          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table -AutoSize
+      - name: Download engine and model
+        run: |
+          $v = "v2.0.1"
+          curl.exe -sSL -o sherpa.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/$v/sherpa-onnx-$v-win-x64-shared-MT-Release-no-tts.tar.bz2"
+          tar -xf sherpa.tar.bz2
+          curl.exe -sSL -o model.tar.bz2 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2"
+          tar -xf model.tar.bz2
+      - name: Turn on Windows' "let desktop apps use the microphone" privacy switch
+        run: |
+          foreach ($root in 'HKLM:', 'HKCU:') {
+            $k = "$root\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone"
+            "before $root : " + (Get-ItemProperty $k -ErrorAction SilentlyContinue).Value
+            New-Item -Path $k -Force | Out-Null
+            Set-ItemProperty -Path $k -Name Value -Value Allow
+            New-Item -Path "$k\NonPackaged" -Force | Out-Null
+            Set-ItemProperty -Path "$k\NonPackaged" -Name Value -Value Allow
+          }
+      - name: Make a short spoken sentence with Windows' own voice
+        run: |
+          Add-Type -AssemblyName System.Speech
+          $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $s.SetOutputToWaveFile("$pwd\say.wav")
+          $s.Speak("Please send the report to Sarah before Friday, and copy the whole team.")
+          $s.Dispose()
+      - name: Shortcut, microphone, engine and paste into Notepad
+        run: |
+          dotnet run --project experiment/probe -c Release -- "$pwd\say.wav" "$pwd\sherpa-onnx-v2.0.1-win-x64-shared-MT-Release-no-tts\bin\sherpa-onnx-offline.exe" "$pwd\sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8" "$pwd\probe-out"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-out
+          path: probe-out
+
+  webview:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Make and build a bare Tauri 2 window
+        run: |
+          npx --yes create-tauri-app@latest netprobe -m npm -t vanilla -y
+          cd netprobe
+          npm install
+          npx tauri build --no-bundle
+          Get-ChildItem src-tauri\target\release\*.exe | Select-Object Name, Length
+      - name: Run it for 60 seconds and list every connection its processes open
+        run: |
+          $dnsBefore = Get-DnsClientCache | ForEach-Object Entry | Sort-Object -Unique
+          $exe = Get-ChildItem netprobe\src-tauri\target\release\*.exe | Select-Object -First 1
+          $p = Start-Process $exe.FullName -PassThru
+          $seen = @{}
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          while ($sw.Elapsed.TotalSeconds -lt 60) {
+            $ids = @($p.Id) + @(Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p.Id -or $_.Name -like 'msedgewebview2*' } | ForEach-Object ProcessId)
+            foreach ($c in Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess }) {
+              $k = "$($c.RemoteAddress):$($c.RemotePort) $($c.State) pid $($c.OwningProcess)"
+              if (-not $seen[$k]) { $seen[$k] = 1; "TCP $k" }
+            }
+            foreach ($u in Get-NetUDPEndpoint -ErrorAction SilentlyContinue | Where-Object { $ids -contains $_.OwningProcess }) {
+              $k = "UDP local $($u.LocalAddress):$($u.LocalPort) pid $($u.OwningProcess)"
+              if (-not $seen[$k]) { $seen[$k] = 1; $k }
+            }
+            Start-Sleep -Milliseconds 250
+          }
+          "Processes in the tree: " + (($ids | ForEach-Object { (Get-Process -Id $_ -ErrorAction SilentlyContinue).ProcessName }) -join ', ')
+          "Distinct connections seen: $($seen.Count)"
+          $dnsAfter = Get-DnsClientCache | ForEach-Object Entry | Sort-Object -Unique
+          "New names looked up while it ran (whole machine, includes the runner itself):"
+          Compare-Object $dnsBefore $dnsAfter | Where-Object SideIndicator -eq '=>' | ForEach-Object InputObject
+          Stop-Process -Id $p.Id -ErrorAction SilentlyContinue

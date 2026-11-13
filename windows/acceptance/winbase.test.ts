@@ -30,8 +30,9 @@ function desk(verb: string, args: Record<string, string | number> = {}) {
 }
 
 function installer(): string {
-  const dir = join(windowsDir, "target", "release", "bundle", "nsis");
-  const file = readdirSync(dir).find((name) => name.endsWith("-setup.exe"));
+  // The full installer, the one people download (pnpm build: scripts/release/build.mjs).
+  const dir = join(windowsDir, "target", "installers");
+  const file = readdirSync(dir).find((name) => name.startsWith("loqui-setup-") && name.endsWith(".exe"));
   if (!file) throw new Error(`no installer in ${dir}; run pnpm build first`);
   return join(dir, file);
 }
@@ -54,12 +55,25 @@ async function startsOnThisPc() {
   const started = desk("start", { Exe: installed.exe, Shot: join(shots, `${label}-start.png`) });
   expect(started.ms).toBeLessThanOrEqual(2000);
   running = started.pid;
+  // The first start opens the welcome window (WELC-01). Wait for it, so it
+  // can't arrive while the tray menu is open and close it under the click.
+  expect(desk("window", { ProcessId: running, Title: "Welcome to loqui", Wait: 30000 }).title).toBe("Welcome to loqui");
 
   const menu = desk("open-menu", { ProcessId: running, Shot: join(shots, `${label}-menu.png`) });
+  // The full menu (MENU-01 in plans/windows-version): it replaced groundwork's
+  // "loqui is running" line with how to dictate.
   expect(menu.items).toEqual([
-    { name: "loqui is running", enabled: false },
-    { name: "About loqui", enabled: true },
-    { name: "Quit loqui", enabled: true },
+    { name: "Press Ctrl+Shift+Space to dictate", enabled: false },
+    ...[
+      "Dictation stats\u2026",
+      "Dictation history\u2026",
+      "Recent",
+      "Settings\u2026",
+      "Welcome and setup\u2026",
+      "Check for updates\u2026",
+      "About loqui",
+      "Quit loqui",
+    ].map((name) => ({ name, enabled: true })),
   ]);
 
   desk("choose", { Item: "About loqui" });

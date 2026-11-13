@@ -3,15 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loqui, voice dictation for macOS</title>
-<meta name="description" content="Press a key, speak, and clean text appears wherever your cursor is. On-device voice dictation for macOS. Free, open source, no account, no subscription.">
+<title>Loqui, voice dictation for Mac and Windows</title>
+<meta name="description" content="Press a key, speak, and clean text appears wherever your cursor is. On-device voice dictation for Mac and Windows. Free, open source, no account, no subscription.">
 <link rel="icon" href="assets/loqui-icon-180.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/loqui-icon-180.png">
-<meta property="og:title" content="Loqui, voice dictation for macOS">
+<meta property="og:title" content="Loqui, voice dictation for Mac and Windows">
 <meta property="og:description" content="Press a key, speak, and clean text appears wherever your cursor is. On-device, free and open source.">
 <meta property="og:image" content="https://jameslaws.github.io/loqui/assets/loqui-icon-512.png">
 <meta property="og:url" content="https://jameslaws.github.io/loqui/">
 <meta name="twitter:card" content="summary_large_image">
+<script>
+  // Which download comes first: a Windows PC gets Windows, a Mac gets macOS.
+  // Phones, tablets and anything else get both, as does a visitor with
+  // scripts off, because both buttons are in the page and only hidden here.
+  (function () {
+    var ua = navigator.userAgent, os = "both";
+    if (/iPhone|iPad|iPod|Android|Mobile/.test(ua)) os = "both";
+    else if (/Windows NT/.test(ua)) os = "windows";
+    else if (/Macintosh/.test(ua) && !(navigator.maxTouchPoints > 1)) os = "mac";
+    document.documentElement.setAttribute("data-os", os);
+  })();
+</script>
 <style>
   /* Loqui, per BRAND.md: magenta as accent and icon ground, hierarchy built from
      type rather than colour blocking. SF Pro for text, New York for display.
@@ -40,7 +52,7 @@
   img { max-width: 100%; height: auto; display: block; }
   a { color: var(--magenta-text); }
   a:hover { color: var(--magenta-deep); }
-  a:focus-visible, button:focus-visible {
+  a:focus-visible, button:focus-visible, pre:focus-visible {
     outline: 3px solid var(--magenta-text); outline-offset: 3px; border-radius: 4px;
   }
   .skip {
@@ -48,6 +60,8 @@
     padding: 12px 20px; z-index: 100; font-weight: 600; text-decoration: none;
   }
   .skip:focus { left: 12px; top: 12px; }
+  /* On magenta the focus ring is white, so it shows. */
+  .hero a:focus-visible, .final a:focus-visible { outline-color: #fff; }
 
   /* padding-inline here, padding-block on `section`: sections carry both, and a
      `padding` shorthand on either would win on specificity and zero the other axis. */
@@ -120,6 +134,20 @@
   .btn-ghost:hover { background: rgba(255,255,255,0.14); color: #fff; }
   .hero .meta { margin-top: 20px; font-size: 15px; font-weight: 500; }
   .hero .meta a { color: #fff; }
+  /* Phones get both downloads, one under the other. */
+  @media (max-width: 560px) {
+    .cta-row { flex-direction: column; align-items: center; }
+    .cta-row .btn { width: min(100%, 300px); text-align: center; }
+  }
+
+  /* One computer's words and buttons. Nothing is hidden until the script in
+     <head> has named the computer, so with no script everything shows. */
+  html:not([data-os="windows"]) .only-windows,
+  html:not([data-os="mac"]) .only-mac,
+  [data-os="windows"] .not-windows,
+  [data-os="mac"] .not-mac,
+  [data-os="windows"] .only-both,
+  [data-os="mac"] .only-both { display: none; }
 
   /* --------------------------------------------------------- value strip -- */
   .props { border-bottom: 1px solid var(--rule); }
@@ -263,13 +291,21 @@
       &middot; said <i>lo-kwee</i></p>
     <h1>Talk. It types.</h1>
     <p class="tagline">Press a key, speak, and clean text lands wherever your cursor is.
-      Anywhere on your Mac, in any app.</p>
+      On your Mac or your Windows PC, in any app.</p>
     <div class="cta-row">
-      <a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+      <a class="btn not-windows" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+      <a class="btn not-mac" href="windows/download.html">Download for Windows</a>
       <a class="btn btn-ghost" href="https://github.com/jameslaws/loqui">View the source</a>
     </div>
-    <p class="meta">Available now. Free and open source, no account, no subscription.<br>
-      macOS 15 and later. Apple Silicon and Intel.</p>
+    <p class="meta only-mac">Available now. Free and open source, no account, no subscription.<br>
+      macOS 15 and later. Apple Silicon and Intel. Also for
+      <a href="windows/download.html">Windows 11</a>.</p>
+    <p class="meta only-windows">Free and open source, no account, no subscription.<br>
+      Windows 11 on Intel, AMD and Arm. Also for
+      <a href="https://github.com/jameslaws/loqui/releases/latest">macOS 15 and later</a>.</p>
+    <p class="meta only-both">Free and open source, no account, no subscription.<br>
+      loqui runs on Mac and Windows computers. macOS 15 and later; Windows 11 on Intel, AMD
+      and Arm.</p>
   </div>
 </header>
 
@@ -279,8 +315,8 @@
   <section class="props wrap" style="padding-block: 48px">
     <div class="props-grid">
       <div class="prop">
-        <h3><span class="tick" aria-hidden="true">&#10003;</span>Runs on your Mac</h3>
-        <p>Uses the speech engine built into macOS. Your voice is never uploaded, because
+        <h3><span class="tick" aria-hidden="true">&#10003;</span>Runs on your computer</h3>
+        <p>Speech becomes text on your own Mac or PC. Your voice is never uploaded, because
           there is no server to upload it to.</p>
       </div>
       <div class="prop">
@@ -299,8 +335,9 @@
   <section class="wrap">
     <p class="eyebrow">How it works</p>
     <h2>Three seconds to learn</h2>
-    <p class="section-intro">Loqui lives in the menu bar. There is no window to open, no
-      button to find, and nothing to set up beyond granting two permissions on first run.</p>
+    <p class="section-intro">Loqui lives in the menu bar on a Mac, and by the clock on
+      Windows. There is no window to open, no button to find, and nothing to set up beyond
+      allowing the microphone (and, on a Mac, Accessibility) on first run.</p>
     <div class="steps">
       <div class="step">
         <p class="n" aria-hidden="true">1</p>
@@ -310,7 +347,8 @@
       </div>
       <div class="step">
         <p class="n" aria-hidden="true">2</p>
-        <h3>Press <kbd>&#8984;R</kbd> and talk</h3>
+        <h3 class="not-windows">Press <kbd>&#8984;R</kbd> and talk</h3>
+        <h3 class="only-windows">Press <kbd>Ctrl+Shift+Space</kbd> and talk</h3>
         <p>That is the default and you can change it to anything. Tap once to start, or hold
           the key down for push to talk.</p>
       </div>
@@ -336,7 +374,8 @@
             thoughts, or hold the key like a walkie talkie for quick ones.</span></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span>
             <span><b>Your shortcut, your choice.</b> <span class="d">Any key with
-            &#8984;, &#8963; or &#8997;, or a bare function key from F1 to F15.</span></span></li>
+            &#8984;, &#8963; or &#8997;, or a bare function key from F1 to F15. On Windows,
+            any key with Ctrl or Alt, or F1 to F24.</span></span></li>
           <li><span class="tick" aria-hidden="true">&#10003;</span>
             <span><b>It will not hijack your other shortcuts.</b> <span class="d">Modifiers
             are matched exactly, so setting &#8984;R leaves &#8984;&#8679;R alone.</span></span></li>
@@ -480,7 +519,14 @@
         </ul>
       </div>
       <div>
-        <figure>
+        <figure class="only-windows">
+          <div class="shot">
+            <img src="assets/stats-windows.png" width="680" height="456" loading="lazy"
+                 alt="The loqui statistics window on Windows 11. A heading reads 40,664 words all time, 557 dictations, 73 words each. Three cards show 212 words today, 724 this week and 2,262 this month. Below them a magenta bar chart plots daily word counts across the last 30 days.">
+          </div>
+          <figcaption>The same window on Windows 11, shown here with sample figures.</figcaption>
+        </figure>
+        <figure class="not-windows">
           <div class="shot">
             <img src="assets/stats-dictation.png" width="617" height="397" loading="lazy"
                  alt="The Loqui statistics window. A heading reads 240,885 words all time, 2,560 dictations, 94 words each. Three cards show 7,101 words today, 22,306 this week and 200,038 this month. Below them a magenta bar chart plots daily word counts across the last 30 days, most days falling between 4,000 and 12,000 words.">
@@ -539,13 +585,14 @@
   <!-- ============================================================== privacy -->
   <section class="wrap">
     <p class="eyebrow">Privacy</p>
-    <h2>Your voice never leaves your Mac</h2>
+    <h2>Your voice never leaves your computer</h2>
     <p class="section-intro">Not a policy you have to trust. An architecture you can check,
       because the whole thing is open source.</p>
     <ul class="flist measure">
       <li><span class="tick" aria-hidden="true">&#10003;</span>
-        <span><b>Transcription runs on device.</b> <span class="d">Apple's speech engine,
-        locally. No audio is uploaded, because there is nowhere to upload it to.</span></span></li>
+        <span><b>Transcription runs on device.</b> <span class="d">Apple's speech engine on a
+        Mac, and a speech model that comes with loqui on Windows, both running locally. No
+        audio is uploaded, because there is nowhere to upload it to.</span></span></li>
       <li><span class="tick" aria-hidden="true">&#10003;</span>
         <span><b>Exactly one network request exists.</b> <span class="d">Checking this site
         for a new version. That is the only connection in the codebase.</span></span></li>
@@ -561,6 +608,11 @@
       <li><span class="tick" aria-hidden="true">&#10003;</span>
         <span><b>Signed and notarised by Apple.</b> <span class="d">Updates are signed
         again on top of that, so a tampered build will not install.</span></span></li>
+      <li><span class="tick" aria-hidden="true">&#10003;</span>
+        <span><b>On Windows, every update is signed too.</b> <span class="d">loqui refuses
+        an update without its signature. The Windows app isn't signed by Microsoft yet, so
+        the first time you run its installer Windows shows &ldquo;Windows protected your
+        PC&rdquo;: click More info, then Run anyway.</span></span></li>
     </ul>
   </section>
 
@@ -573,6 +625,7 @@
         <tbody>
           <tr><th scope="row">Requires</th><td>macOS 15 or later. Best accuracy on macOS 26 and up, which uses Apple's newer speech engine; earlier versions fall back to the previous recogniser.</td></tr>
           <tr><th scope="row">Hardware</th><td>Universal binary. Apple Silicon and Intel.</td></tr>
+          <tr><th scope="row">Windows</th><td>Windows 11 on Intel, AMD and Arm PCs. Installs just for you, with no administrator needed. Default shortcut <kbd>Ctrl+Shift+Space</kbd>. Updates itself, signed and checked before anything installs.</td></tr>
           <tr><th scope="row">Permissions</th><td>Accessibility, to notice your shortcut anywhere and paste at the cursor. Microphone, to hear you. Nothing else.</td></tr>
           <tr><th scope="row">Default shortcut</th><td><kbd>&#8984;R</kbd>, changeable to any key with &#8984;, &#8963; or &#8997;, or any function key.</td></tr>
           <tr><th scope="row">Where it lives</th><td>The menu bar. No dock icon, no window unless you open one.</td></tr>
@@ -586,9 +639,12 @@
     <h2 style="margin-top:58px;font-size:24px">Prefer to build it yourself?</h2>
     <p style="color:var(--muted);max-width:60ch;margin-top:0">With Xcode installed, one
       command clones it, builds it and puts it in your Applications folder.</p>
-<pre><code>git clone https://github.com/jameslaws/loqui.git
+<pre tabindex="0" aria-label="Commands to build it yourself"><code>git clone https://github.com/jameslaws/loqui.git
 cd loqui
 ./install.sh</code></pre>
+    <p style="color:var(--muted);max-width:60ch">To build the Windows app yourself, follow
+      <a href="https://github.com/jameslaws/loqui/blob/main/CONTRIBUTING.md#the-windows-app">the
+      Windows steps in the contributing notes</a>.</p>
   </section>
 
   <!-- ============================================================ final cta -->
@@ -597,7 +653,8 @@ cd loqui
       <h2>Stop typing what you could say</h2>
       <p>It takes about a minute to install and roughly three seconds to learn.</p>
       <div class="cta-row">
-        <a class="btn" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+        <a class="btn not-windows" href="https://github.com/jameslaws/loqui/releases/latest">Download for macOS</a>
+        <a class="btn not-mac" href="windows/download.html">Download for Windows</a>
       </div>
       <p class="fineprint">Free and open source under GPL-3.0.
         <a href="https://github.com/jameslaws/loqui">Read the source</a>.</p>

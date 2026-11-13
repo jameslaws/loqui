@@ -1,0 +1,350 @@
+/* ---- Dictation stats ---- */
+
+.stats header {
+  margin-bottom: var(--space-s4);
+}
+
+.stats p {
+  margin: 0;
+}
+
+/* Headings take the size of their class (caption, the chart titles), not the browser's. */
+:where(.stats h2, .stats h3) {
+  margin: 0;
+  font: inherit;
+}
+
+.stats-empty {
+  text-align: center;
+  padding: 120px 0;
+}
+
+.stats-empty h2 {
+  font-weight: var(--type-bodyStrong-weight);
+  margin-bottom: var(--space-s2);
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-s3);
+  margin-bottom: var(--space-s4);
+}
+
+.stat-card {
+  padding: var(--space-s3) var(--space-s4);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--type-title-size);
+  line-height: var(--type-title-line);
+  font-weight: var(--type-title-weight);
+}
+
+.caption.up {
+  color: var(--color-accentText);
+}
+
+/* Charts: plain bars in the brand colour, with a label on hover or focus. */
+
+.chart {
+  padding: var(--space-s3) var(--space-s4) var(--space-s2);
+  margin-bottom: var(--space-s3);
+}
+
+.chart-title {
+  font-weight: var(--type-bodyStrong-weight);
+  margin-bottom: var(--space-s2);
+}
+
+.chart-plot {
+  position: relative;
+  border-bottom: 1px solid var(--color-stroke);
+}
+
+.bars {
+  display: block;
+  overflow: visible;
+}
+
+.bar {
+  fill: var(--color-brand);
+  pointer-events: none;
+}
+
+.bar-hit {
+  fill: transparent;
+}
+
+.bar-hit:hover,
+.bar-hit:focus {
+  fill: var(--color-hover);
+  fill-opacity: 0.5;
+}
+
+.bar-hit:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+
+.chart-tip {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-s1) var(--space-s2);
+  background: var(--color-card);
+  border: 1px solid var(--color-controlStroke);
+  border-radius: var(--radius-control);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.chart-tip-words {
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  font-weight: var(--type-bodyStrong-weight);
+  color: var(--color-accentText);
+}
+
+.chart-axis {
+  position: relative;
+  height: 20px;
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  color: var(--color-muted);
+}
+
+.chart-tick {
+  position: absolute;
+  top: var(--space-s1);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* Patterns: the period, then its charts and tiles. */
+
+.patterns-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-s5) 0 var(--space-s3);
+}
+
+.patterns-title {
+  font-size: var(--type-subtitle-size);
+  line-height: var(--type-subtitle-line);
+  font-family: var(--font-display);
+  font-weight: var(--type-subtitle-weight);
+}
+
+.segmented {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-controlStroke);
+  border-radius: var(--radius-control);
+  background: var(--color-control);
+}
+
+.segmented label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--space-s3);
+  border-radius: var(--radius-control);
+}
+
+.segmented label:hover {
+  background: var(--color-hover);
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+.segmented label:has(input:checked) {
+  background: var(--color-accent);
+  color: var(--color-onAccent);
+  font-weight: var(--type-bodyStrong-weight);
+}
+
+.segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.period {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s2);
+  margin-bottom: var(--space-s3);
+}
+
+.period-step {
+  width: 32px;
+  padding: 0;
+  font-size: var(--type-subtitle-size);
+}
+
+.period-pick {
+  position: relative;
+}
+
+.period-label {
+  min-width: 190px;
+  font-weight: var(--type-bodyStrong-weight);
+}
+
+.period-label .icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.period-empty {
+  padding: var(--space-s5) 0;
+}
+
+.tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-s3);
+}
+
+.tile {
+  padding: var(--space-s3) var(--space-s4);
+}
+
+.tile-value {
+  font-size: var(--type-subtitle-size);
+  line-height: var(--type-subtitle-line);
+  font-weight: var(--type-bodyStrong-weight);
+}
+
+/* The calendar: days and months shaded by words against the busiest ever. */
+
+.cal {
+  position: absolute;
+  top: calc(100% + var(--space-s2));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  padding: var(--space-s3);
+  z-index: 3;
+  border-color: var(--color-controlStroke);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-s2);
+}
+
+.cal-title {
+  font-weight: var(--type-bodyStrong-weight);
+}
+
+.cal-step {
+  width: 32px;
+  padding: 0;
+}
+
+.cal-grid {
+  display: grid;
+  gap: var(--space-s1);
+  text-align: center;
+}
+
+.cal-days {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.cal-months {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.cal-weekday {
+  font-size: var(--type-caption-size);
+  color: var(--color-muted);
+}
+
+/* Shaded from 16% to 72% (ui/src/StatsCalendar.tsx). Light: the deep brand
+   colour over the card, so dark text stays readable on the darkest day. Dark:
+   the brand colour, under light text. */
+.pick {
+  --ink: var(--color-brandDeep);
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--ink) var(--shade, 0%), var(--color-card));
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--type-caption-size);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pick {
+    --ink: var(--color-brand);
+  }
+}
+
+.pick:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1px var(--color-controlStroke);
+}
+
+.pick:disabled {
+  color: var(--color-muted);
+  background: transparent;
+}
+
+.pick.on {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+  font-weight: var(--type-bodyStrong-weight);
+}
+
+.pick:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.cal-note {
+  text-align: center;
+  margin-top: var(--space-s2);
+}
+
+.cal-years {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-s1);
+}
+
+.pick.year {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-s3);
+  font-size: var(--type-body-size);
+  background: var(--color-card2);
+}
+
+.pick.year.on {
+  background: color-mix(in srgb, var(--ink) 18%, var(--color-card));
+}

@@ -1,0 +1,177 @@
+name: Windows promote
+
+# Publishes a test version people tried, unchanged, as a public version: the
+# exact files of windows-v<version>-test (checksums compared, nothing rebuilt)
+# go on a new release windows-v<version>, still never "latest" (that stays the
+# Mac's), and then the public update list, docs/windows/stable.json on GitHub
+# Pages, points at it. Release first, list second.
+#
+# James approves the version in Aiva (Ship); the Lead then starts this from
+# main. Only the repository's owner can start it. Roll back and the drill run
+# the same steps (workflow_call) with their own tags and lists.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The tested version to publish, such as 0.1.0
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      prefix:
+        description: The test version is <prefix><version>-test; the public one <prefix><version>
+        type: string
+        default: windows-v
+      list:
+        description: "pages: docs/windows/stable.json on main; or the fixed pre-release that holds the list"
+        type: string
+        default: pages
+      list-name:
+        type: string
+        default: stable.json
+      environment:
+        type: string
+        default: windows-promote
+      prerelease:
+        description: Mark the published version a pre-release (the drill's are)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  promote:
+    name: Publish ${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}, then the list
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.environment || 'windows-promote' }}
+    concurrency:
+      group: windows-promote-${{ inputs.list || 'pages' }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      PREFIX: ${{ inputs.prefix || 'windows-v' }}
+      LIST: ${{ inputs.list || 'pages' }}
+      LIST_NAME: ${{ inputs.list-name || 'stable.json' }}
+      PRERELEASE: ${{ inputs.prerelease && 'true' || 'false' }}
+    steps:
+      - name: Started by the repository's owner, from main
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "$GITHUB_ACTOR" != "$GITHUB_REPOSITORY_OWNER" ]; then
+            echo "::error::Only $GITHUB_REPOSITORY_OWNER can publish a Windows version; $GITHUB_ACTOR started this."
+            exit 1
+          fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Promote runs from main, not $GITHUB_REF."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          # Pages publishes docs/ from main, so the public list is written there.
+          ref: ${{ (inputs.list || 'pages') == 'pages' && 'main' || github.sha }}
+          fetch-depth: 1
+
+      - name: The tested files
+        id: tested
+        run: |
+          windows/scripts/release/tag-free.sh "$PREFIX$VERSION"
+          gh release download "$PREFIX$VERSION-test" --repo "$GITHUB_REPOSITORY" --dir tested
+          gh release view "$PREFIX$VERSION-test" --repo "$GITHUB_REPOSITORY" --json body,targetCommitish,isPrerelease > tested.json
+          ls -l tested
+          (cd tested && sha256sum -c SHA256SUMS.txt)
+          echo "commit=$(jq -r .targetCommitish tested.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the same files as ${{ inputs.prefix || 'windows-v' }}${{ inputs.version }} (not latest)
+        env:
+          COMMIT: ${{ steps.tested.outputs.commit }}
+        run: |
+          jq -r .body tested.json | sed -n '/^## What.s new/,$p' | tail -n +3 > changes.md
+          # Signed exactly when the test version was: its page has the SmartScreen steps only when it isn't.
+          if jq -r .body tested.json | grep -q "Run anyway"; then signed=unsigned; else signed=signed; fi
+          node windows/scripts/release/notes.mjs page "$VERSION" public "$signed" changes.md > page.md
+          flags=(--latest=false)
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$PREFIX$VERSION" tested/*.exe tested/*.json tested/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$COMMIT" "${flags[@]}" \
+            --title "loqui for Windows $VERSION" --notes-file page.md
+
+      - name: The published files have the tested files' checksums
+        run: |
+          gh release download "$PREFIX$VERSION" --repo "$GITHUB_REPOSITORY" --dir published --pattern '*.exe'
+          (cd tested && sha256sum *.exe) > tested.sums
+          (cd published && sha256sum *.exe) > published.sums
+          diff tested.sums published.sums
+          echo "Same files as the test version:" >> "$GITHUB_STEP_SUMMARY"
+          sed 's/^/    /' published.sums >> "$GITHUB_STEP_SUMMARY"
+
+      - name: The list for ${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}
+        run: |
+          mkdir -p list
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$PREFIX$VERSION/"
+          node windows/scripts/release/feed.mjs "$base" changes.md tested/loqui-*.json > "list/$LIST_NAME"
+          cat "list/$LIST_NAME"
+
+      # The download page's Windows button goes to docs/windows/download.html,
+      # which starts this version's full installer (LAUNCH-08). Written with the
+      # public list, in the same commit; a drill only shows what it would write.
+      - name: The Windows download page for ${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}
+        run: |
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$PREFIX$VERSION/"
+          if jq -r .body tested.json | grep -q "Run anyway"; then signed=unsigned; else signed=signed; fi
+          node windows/scripts/release/download-page.mjs "$base" "$signed" tested/loqui-*.json > list/download.html
+          {
+            echo "The Windows download page starts:"
+            grep -o 'href="https://[^"]*loqui-setup-[^"]*"' list/download.html | sed 's/^href="/    /; s/"$//'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          for f in $(grep -o 'loqui-setup-[^"]*\.exe' list/download.html | sort -u); do
+            [ -f "tested/$f" ] || { echo "::error::the download page names $f, which isn't in this version"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: download-page-${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}
+          path: list/download.html
+
+      - name: Then point the list at it (a pre-release's file)
+        if: env.LIST != 'pages'
+        env:
+          COMMIT: ${{ steps.tested.outputs.commit }}
+        run: node windows/scripts/release/list.mjs replace "$LIST" "list/$LIST_NAME" "$COMMIT"
+
+      # main is protected: a commit reaches it only once the Mac build check
+      # has passed on it. So the list is committed on a branch, the check is
+      # run there, and main is moved forward to that commit.
+      - name: Then point the public list at it (docs/windows/stable.json on main)
+        if: env.LIST == 'pages'
+        run: |
+          mkdir -p docs/windows
+          cp "list/$LIST_NAME" docs/windows/stable.json
+          cp list/download.html docs/windows/download.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/windows/stable.json docs/windows/download.html
+          git commit -m "Windows: the public update list and the download page offer $VERSION"
+          branch="windows-promote-$VERSION"
+          git push origin "HEAD:refs/heads/$branch"
+          sha=$(git rev-parse HEAD)
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
+          run=""
+          for i in $(seq 1 60); do
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build.yml --branch "$branch" --event workflow_dispatch \
+              --json databaseId,headSha --jq ".[] | select(.headSha == \"$sha\") | .databaseId" | head -1)
+            [ -n "$run" ] && break
+            sleep 5
+          done
+          [ -n "$run" ] || { echo "::error::the Mac build check never started on $branch"; exit 1; }
+          gh run watch "$run" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+          git push origin "HEAD:refs/heads/main"
+          git push origin --delete "$branch"
+          echo "https://jameslaws.github.io/loqui/windows/stable.json and the Windows download page offer $VERSION once Pages has published main." | tee -a "$GITHUB_STEP_SUMMARY"

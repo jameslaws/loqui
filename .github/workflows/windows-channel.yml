@@ -1,0 +1,57 @@
+name: Windows test channel check
+
+# Proves the real test channel end to end, as a teammate meets it: one of
+# GitHub's Windows computers opens the teammate link for the test version the
+# test list offers now, installs it, dictates, switches on Get test versions,
+# then waits (up to two hours) for the next merge into staging to become a
+# test version and updates itself to it. Started by pushing a tag
+# windows-channel-check-<n> (GitHub only starts hand-run workflows from main).
+# It reads the public test list and installs on a throwaway computer; it
+# publishes nothing.
+on:
+  push:
+    tags: ["windows-channel-check-*"]
+
+permissions:
+  contents: read
+
+jobs:
+  pc:
+    name: A teammate's PC on the test channel
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: windows/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: windows/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: A microphone (VB-CABLE, pinned by SHA-256)
+        run: ./e2e/setup-runner.ps1
+      - name: The test version teammates install now
+        run: |
+          $list = Invoke-RestMethod "https://github.com/$env:GITHUB_REPOSITORY/releases/download/windows-test-feed/beta.json"
+          "CHANNEL_FROM=$($list.version)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "The teammate link: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/windows-v$($list.version)-test" |
+            Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+      - name: "Install it from the teammate link, then update to the next test version"
+        run: pnpm exec vitest run --project channel
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: channel-pc
+          path: windows/target/shots
+          if-no-files-found: warn

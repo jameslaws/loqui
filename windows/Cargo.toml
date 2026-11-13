@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/loqui-core", "src-tauri"]
+members = ["crates/loqui-core", "crates/loqui-speech", "src-tauri"]
 resolver = "2"
 
 [workspace.package]

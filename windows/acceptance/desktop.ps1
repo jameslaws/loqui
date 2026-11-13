@@ -1,7 +1,9 @@
-# Drives the real Windows desktop for the WINBASE acceptance tests: installs the
-# test build, starts it, clicks the loqui icon by the clock, reads and chooses
-# menu items, reads the About window and takes screenshots. Every action is a
-# real mouse click or a question to Windows; nothing reaches inside loqui.
+# Drives the real Windows desktop for the acceptance and screen checks:
+# installs the test build, starts it, clicks the loqui icon by the clock, reads
+# and chooses menu items (Recent's too), reads and clicks loqui's windows
+# through Windows' accessibility interface, presses keys, switches Windows
+# between light and dark, and takes screenshots. Every action is a real mouse
+# click, key press or a question to Windows; nothing reaches inside loqui.
 #
 # Usage: powershell -File desktop.ps1 <verb> [args]. Each verb prints one JSON
 # line, and exits non-zero with {"error": ...} when it can't do its job.
@@ -12,7 +14,12 @@ param(
   [int]$ProcessId,
   [string]$Item,
   [string]$Shot,
-  [string]$Pids
+  [string]$Pids,
+  [string]$Title,
+  [string]$Name,
+  [string]$Keys,
+  [string]$Mode,
+  [int]$Wait = 10000
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,26 +75,39 @@ public static class Desk {
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetMenuString(IntPtr menu, uint item, StringBuilder text, int max, uint flags);
   [DllImport("user32.dll")] static extern bool GetMenuItemRect(IntPtr hwnd, IntPtr menu, uint item, out RECT rect);
 
-  /// The open pop-up menu's window, if one is showing.
-  public static IntPtr MenuWindow() {
-    IntPtr found = IntPtr.Zero;
+  /// Every open pop-up menu's window, the newest (a submenu) first.
+  public static System.Collections.Generic.List<IntPtr> MenuWindows() {
+    var found = new System.Collections.Generic.List<IntPtr>();
     EnumWindows(delegate (IntPtr h, IntPtr l) {
       var cls = new StringBuilder(64);
       GetClassName(h, cls, 64);
-      if (cls.ToString() == "#32768" && IsWindowVisible(h)) { found = h; return false; }
+      if (cls.ToString() == "#32768" && IsWindowVisible(h)) found.Add(h);
       return true;
     }, IntPtr.Zero);
     return found;
   }
 
-  static IntPtr OpenMenu() {
-    IntPtr w = MenuWindow();
+  public static IntPtr MenuWindow() {
+    var all = MenuWindows();
+    return all.Count == 0 ? IntPtr.Zero : all[all.Count - 1];
+  }
+
+  static IntPtr MenuOf(IntPtr w) {
     return w == IntPtr.Zero ? IntPtr.Zero : SendMessage(w, 0x01E1, IntPtr.Zero, IntPtr.Zero); // MN_GETHMENU
   }
 
+  static IntPtr OpenMenu() { return MenuOf(MenuWindow()); }
+
+  /// The newest open menu: a submenu if one is open.
+  public static string[] SubmenuItems() {
+    var all = MenuWindows();
+    return all.Count < 2 ? new string[0] : ItemsOf(MenuOf(all[0]));
+  }
+
   /// The open menu's items as "name|enabled", separators left out.
-  public static string[] MenuItems() {
-    IntPtr menu = OpenMenu();
+  public static string[] MenuItems() { return ItemsOf(OpenMenu()); }
+
+  static string[] ItemsOf(IntPtr menu) {
     var items = new System.Collections.Generic.List<string>();
     if (menu == IntPtr.Zero) return items.ToArray();
     int count = GetMenuItemCount(menu);
@@ -102,21 +122,54 @@ public static class Desk {
     return items.ToArray();
   }
 
-  /// Clicks the open menu's item with this name. False if there is no such item.
+  /// Clicks the item with this name in any open menu, newest first. False if there is none.
   public static bool ClickMenuItem(string name) {
-    IntPtr menu = OpenMenu();
-    if (menu == IntPtr.Zero) return false;
-    int count = GetMenuItemCount(menu);
-    for (uint i = 0; i < count; i++) {
-      var text = new StringBuilder(256);
-      GetMenuString(menu, i, text, 256, 0x400);
-      RECT r;
-      if (text.ToString() == name && GetMenuItemRect(IntPtr.Zero, menu, i, out r)) {
-        Click((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2);
-        return true;
+    foreach (var w in MenuWindows()) {
+      IntPtr menu = MenuOf(w);
+      if (menu == IntPtr.Zero) continue;
+      int count = GetMenuItemCount(menu);
+      for (uint i = 0; i < count; i++) {
+        var text = new StringBuilder(256);
+        GetMenuString(menu, i, text, 256, 0x400);
+        RECT r;
+        if (text.ToString() == name && GetMenuItemRect(IntPtr.Zero, menu, i, out r)) {
+          Click((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2);
+          return true;
+        }
       }
     }
     return false;
+  }
+
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr w, string l, uint flags, uint timeout, out IntPtr result);
+
+  /// Brings a window to the front: an unassigned key pressed under Alt first
+  /// lets this process hand over the foreground (a bare Alt would open menus).
+  public static void Front(IntPtr h) {
+    if (GetForegroundWindow() == h) return;
+    keybd_event(0x12, 0, 0, UIntPtr.Zero);
+    keybd_event(0xE8, 0, 0, UIntPtr.Zero);
+    keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+    keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    ShowWindow(h, 9);   // SW_RESTORE
+    SetForegroundWindow(h);
+    System.Threading.Thread.Sleep(300);
+  }
+
+  /// Presses keys together and lets them go, like a person: "ctrl+alt+d".
+  public static void Chord(byte[] vks) {
+    foreach (var vk in vks) keybd_event(vk, 0, 0, UIntPtr.Zero);
+    System.Threading.Thread.Sleep(40);
+    for (int i = vks.Length - 1; i >= 0; i--) keybd_event(vks[i], 0, 2, UIntPtr.Zero);
+  }
+
+  /// Tells every program the light or dark setting changed, as Settings does.
+  public static void ThemeChanged() {
+    IntPtr result;
+    SendMessageTimeout((IntPtr)0xFFFF, 0x001A, IntPtr.Zero, "ImmersiveColorSet", 0x0002, 5000, out result);
   }
 
   public static void Click(int x, int y) {
@@ -312,16 +365,58 @@ function Window-Owners {
   (Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "$($_.ProcessName): $($_.MainWindowTitle)" }) -join ' | '
 }
 
+# loqui and everything it started; a child only counts if it started after
+# its parent, because Windows reuses process numbers.
 function Process-Tree([int]$root) {
-  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name
+  $all = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, CreationDate
+  $born = @{}; foreach ($p in $all) { $born[[int]$p.ProcessId] = $p.CreationDate }
   $ids = @($root); $grew = $true
   while ($grew) {
     $grew = $false
     foreach ($p in $all) {
-      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId)) { $ids += $p.ProcessId; $grew = $true }
+      if ($ids -contains $p.ParentProcessId -and -not ($ids -contains $p.ProcessId) -and $p.CreationDate -ge $born[[int]$p.ParentProcessId]) {
+        $ids += $p.ProcessId; $grew = $true
+      }
     }
   }
   return ,@($all | Where-Object { $ids -contains $_.ProcessId } | ForEach-Object { @{ pid = $_.ProcessId; name = $_.Name } })
+}
+
+# One of loqui's windows, by its title.
+function Find-Window([string]$title) {
+  $cond = New-Object System.Windows.Automation.AndCondition(
+    (New-Object System.Windows.Automation.PropertyCondition($Prop::ProcessIdProperty, $ProcessId)),
+    (New-Object System.Windows.Automation.PropertyCondition($Prop::NameProperty, $title)))
+  return $UIA::RootElement.FindFirst($Tree::Children, $cond)
+}
+
+# The element with this name to click: a button if there is one (a switch's
+# visible label and the switch itself share a name).
+function Clickable($root, [string]$name) {
+  $cond = New-Object System.Windows.Automation.PropertyCondition($Prop::NameProperty, $name,
+    [System.Windows.Automation.PropertyConditionFlags]::IgnoreCase)
+  $all = @($root.FindAll($Tree::Descendants, $cond))
+  $button = $all | Where-Object { $_.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button } | Select-Object -First 1
+  if ($button) { return $button }
+  return $all | Select-Object -First 1
+}
+
+# What a window shows: every named element, and its buttons with whether they can be used.
+function Window-Contents($win) {
+  $all = @($win.FindAll($Tree::Descendants, [System.Windows.Automation.Condition]::TrueCondition))
+  $texts = @($all | ForEach-Object { $_.Current.Name } | Where-Object { $_ })
+  $buttons = @($all | Where-Object { $_.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button -and $_.Current.Name } |
+    ForEach-Object { @{ name = $_.Current.Name; enabled = $_.Current.IsEnabled } })
+  return @{ title = $win.Current.Name; texts = $texts; buttons = $buttons }
+}
+
+$vk = @{ ctrl = 0x11; shift = 0x10; alt = 0x12; space = 0x20; escape = 0x1B; enter = 0x0D; tab = 0x09; win = 0x5B }
+function Key-Codes([string]$spec) {
+  [byte[]]@(foreach ($part in $spec.ToLower() -split '\+') {
+    if ($vk.ContainsKey($part)) { $vk[$part] }
+    elseif ($part -match '^f(\d+)$') { 0x6F + [int]$Matches[1] }
+    else { [byte][char]$part.ToUpper() }
+  })
 }
 
 switch ($Verb) {
@@ -397,6 +492,83 @@ switch ($Verb) {
     $trayWindow = ([Desk]::TrayWindow($ProcessId) -ne [IntPtr]::Zero)
     if ($Shot) { [Desk]::Screenshot($Shot) }
     Out-Json @{ alive = $alive; iconOnTaskbar = $iconOnTaskbar; trayWindow = $trayWindow }
+  }
+  'submenu' {
+    # Opens a submenu of the open menu ("Recent") and reads it.
+    if (-not (Find-Menu)) { Fail 'no menu is open' }
+    if (-not [Desk]::ClickMenuItem($Item)) { Fail "the menu has no '$Item'" }
+    if (-not (Wait-Until 3000 { [Desk]::MenuWindows().Count -ge 2 })) { Fail "'$Item' opened no submenu" }
+    Start-Sleep -Milliseconds 300
+    if ($Shot) { [Desk]::Screenshot($Shot) }
+    $items = @()
+    foreach ($entry in [Desk]::SubmenuItems()) {
+      $n, $enabled = $entry -split '\|'
+      $items += @{ name = $n; enabled = ($enabled -eq '1') }
+    }
+    Out-Json @{ items = $items }
+  }
+  'window' {
+    # Waits for one of loqui's windows and reads it; with -Name, until that text shows.
+    $win = Wait-Until $Wait { Find-Window $Title }
+    if (-not $win) { Fail "no '$Title' window appeared. Windows: $(Window-Owners)" }
+    $contents = Wait-Until $Wait {
+      $c = Window-Contents $win
+      if ($c.texts.Count -gt 1 -and (-not $Name -or $c.texts -contains $Name)) { $c }
+    }
+    if (-not $contents) {
+      $seen = Window-Contents $win
+      if ($Name) { Fail "'$Title' never showed '$Name'. It shows: $($seen.texts -join ' | ')" }
+      $contents = $seen
+    }
+    if ($Shot) { [Desk]::Front([IntPtr]$win.Current.NativeWindowHandle); Start-Sleep -Milliseconds 400; [Desk]::Screenshot($Shot) }
+    Out-Json $contents
+  }
+  'no-window' {
+    # True if the window doesn't show within -Wait ms.
+    $win = Wait-Until $Wait { Find-Window $Title }
+    Out-Json @{ appeared = [bool]$win }
+  }
+  'click' {
+    # Clicks the element with this name in one of loqui's windows, as a person would.
+    $win = Wait-Until $Wait { Find-Window $Title }
+    if (-not $win) { Fail "no '$Title' window" }
+    [Desk]::Front([IntPtr]$win.Current.NativeWindowHandle)
+    $el = Wait-Until $Wait { Clickable $win $Name }
+    if (-not $el) { Fail "'$Title' has no '$Name'. It shows: $((Window-Contents $win).texts -join ' | ')" }
+    # Scrolled into view first, as a person would scroll to it.
+    try {
+      $el.GetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern).ScrollIntoView()
+      Start-Sleep -Milliseconds 300
+    } catch {}
+    Click-Element $el
+    Start-Sleep -Milliseconds 400
+    Out-Json @{ clicked = $Name }
+  }
+  'press' {
+    # Keys pressed together, into whatever has the keyboard.
+    [Desk]::Chord((Key-Codes $Keys))
+    Start-Sleep -Milliseconds 400
+    Out-Json @{ pressed = $Keys }
+  }
+  'close-window' {
+    $win = Find-Window $Title
+    if ($win) {
+      $pattern = $win.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+      $pattern.Close()
+      [void](Wait-Until 5000 { -not (Find-Window $Title) })
+    }
+    Out-Json @{ closed = $true }
+  }
+  'theme' {
+    # Windows' light or dark setting for apps and the taskbar, as Settings changes it.
+    $light = [int]($Mode -eq 'light')
+    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+    if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+    Set-ItemProperty $key -Name AppsUseLightTheme -Value $light -Type DWord
+    Set-ItemProperty $key -Name SystemUsesLightTheme -Value $light -Type DWord
+    [Desk]::ThemeChanged()
+    Start-Sleep -Milliseconds 1500
+    Out-Json @{ mode = $Mode }
   }
   default { Fail "unknown verb $Verb" }
 }

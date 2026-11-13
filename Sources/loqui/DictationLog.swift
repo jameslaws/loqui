@@ -56,6 +56,11 @@ final class DictationLog {
 
     func load() -> [DictationEntry] {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return Self.entries(from: content)
+    }
+
+    /// The record's lines as entries; lines that don't decode are skipped.
+    static func entries(from content: String) -> [DictationEntry] {
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
         return content
