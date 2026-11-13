@@ -145,7 +145,7 @@ Checks: SIGN-01, INST-01
 
 ## What to do
 Look at the pictures of loqui updating itself on GitHub's Windows computer.
-Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
+Where: https://github.com/jameslaws/loqui/actions/runs/43342648640 (all green on Intel/AMD and Arm)
 See: the update window naming both versions, the size and what's new; then the new version running, with settings, dictionary, history and the model as they were. A file signed with the wrong key is refused with "This update couldn't be verified, so it wasn't installed."; with no network, Check for updates says "Couldn't reach the update server. Try again later."
 Shots: built/upd-01-prompt.png, built/upd-02-refused.png, built/upd-03-offline.png
 Checks: UPD-01, UPD-02, UPD-03, UPD-04
@@ -166,6 +166,6 @@ Checks: INST-02, INST-03
 
 ## What to do
 Look at the release drill: test versions A and B published, A then B promoted to the drill's own public list, and a roll back to A's code under a higher number, with a PC on GitHub's computers updating A, B, then the roll back, every connection it made listed.
-Where: https://github.com/jameslaws/loqui/actions/workflows/windows-drill.yml
+Where: https://github.com/jameslaws/loqui/actions/runs/43342641690 (the drill, all green), and https://github.com/jameslaws/loqui/actions/runs/43324285409 for signing (it stops, as it should, naming the unsigned file)
 See: every job green except the separate signing proof, which stops before publishing because no signing account is connected (as it should); the PC's connections all went to GitHub, plus Windows confirming GitHub's certificate, and only while checking or downloading; GitHub's "latest release" is still the Mac's.
 Checks: SIGN-02, CHAN-03, CHAN-04, CHAN-05, PRIV-03
