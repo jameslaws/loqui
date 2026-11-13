@@ -36,6 +36,7 @@ import {
 } from "./helpers";
 
 const onWindows = process.platform === "win32";
+const SENTENCE = "Please send the report to Sarah before Friday, and copy the whole team.";
 const lists = join(windowsDir, "target", "update-lists");
 const LIST = "http://127.0.0.1:8719/";
 
@@ -172,7 +173,7 @@ async function offline() {
   closeUpdateWindow();
   // Dictation still works (on Arm there is no microphone; DICT-07 dictates there).
   if (arch === "x64") {
-    dk("make-wav", { Text: "Offline is fine.", Wav: join(windowsDir, "target", "e2e", "offline.wav") });
+    dk("make-wav", { Text: SENTENCE, Wav: join(windowsDir, "target", "e2e", "offline.wav") });
     const notepad = dk("notepad").hwnd;
     dk("clear", { Hwnd: notepad });
     const r = dk(
@@ -185,7 +186,8 @@ async function offline() {
       },
       180_000,
     );
-    expect(r.text).toBe("Offline is fine.");
+    // It dictated: the sentence's words arrived (the exact wording is DICT-01's to check).
+    for (const word of ["send", "report", "Sarah", "Friday", "copy", "team"]) expect(r.text).toContain(word);
     ps("Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0");
   }
   expect(facts().processes.map((p) => p.pid)).toContain(pid);

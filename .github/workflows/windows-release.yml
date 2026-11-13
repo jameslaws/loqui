@@ -119,9 +119,10 @@ jobs:
             echo "Signing is off: this version isn't signed by Microsoft, and its release notes say how to get past SmartScreen."
           fi | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Named by tag: a drill or a roll back runs several releases in one run.
       - uses: actions/upload-artifact@v4
         with:
-          name: changes
+          name: changes-${{ steps.version.outputs.tag }}
           path: changes.md
 
   build:
@@ -278,7 +279,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: installers-${{ matrix.arch }}
+          name: installers-${{ needs.prepare.outputs.tag }}-${{ matrix.arch }}
           path: |
             windows/target/installers/*.exe
             windows/target/installers/*.json
@@ -310,6 +311,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: installers-${{ needs.prepare.outputs.tag }}-*
           merge-multiple: true
 
       - name: The files are the ones the builds described
@@ -333,7 +335,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: changes
+          name: changes-${{ needs.prepare.outputs.tag }}
 
       - name: Publish the test version (not latest)
         run: |
