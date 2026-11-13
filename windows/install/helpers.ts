@@ -95,8 +95,23 @@ export const closeUpdateWindow = (pid: number) => desk("close-window", { Process
 /** Install and restart loqui from the update window; returns the new loqui's facts once it runs `version`. */
 export async function installFromPrompt(pid: number, version: string) {
   desk("click", { ProcessId: pid, Title: "loqui update", Name: "Install and restart loqui" });
-  return waitFor(`loqui to restart as ${version}`, 300_000, () => {
+  try {
+    return await waitFor(`loqui to restart as ${version}`, 300_000, () => {
+      const f = facts();
+      return f.installed?.version === version && f.processes.some((p) => p.pid !== pid) && f;
+    });
+  } catch (error) {
+    // What Windows and loqui said when it didn't come back, for the run's log.
+    try {
+      desk("screenshot", { Shot: shot("update-stuck") });
+    } catch {}
     const f = facts();
-    return f.installed?.version === version && f.processes.some((p) => p.pid !== pid) && f;
-  });
+    const log = join(localAppData, "Loqui", "logs", "voice-key.log");
+    let tail = "";
+    try {
+      tail = readFileSync(log, "utf8").split("\n").slice(-30).join("\n");
+    } catch {}
+    console.error(`Update to ${version} didn't finish. Facts: ${JSON.stringify(f)}\nloqui's log:\n${tail}`);
+    throw error;
+  }
 }
