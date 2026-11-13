@@ -25,13 +25,20 @@ export interface FakeState {
   hookPaused: boolean;
   closed: boolean;
   problem: string | null;
+  /** The history file is there but can't be read (loqui-core says so). */
+  historyUnreadable: boolean;
   /** Dictations counted for stats since the page opened, on top of the shared sample. */
   statsAdded: { words: number; seconds: number }[];
 }
 
 declare global {
   interface Window {
-    loquiFake?: { state: FakeState; allowMicrophone(): void; dictate(text: string): void };
+    loquiFake?: {
+      state: FakeState;
+      allowMicrophone(): void;
+      dictate(text: string): void;
+      historyReadable(readable: boolean): void;
+    };
   }
 }
 
@@ -57,6 +64,7 @@ export function fakeBackend(): Backend {
     closed: false,
     problem: ask.get("problem") ? "Your settings file couldn't be read, so defaults are in use." : null,
     statsAdded: [],
+    historyUnreadable: false,
   };
   const listeners = { history: new Set<() => void>(), settings: new Set<() => void>(), stats: new Set<() => void>() };
   const emit = (which: keyof typeof listeners) => {
@@ -80,6 +88,10 @@ export function fakeBackend(): Backend {
       emit("stats");
       if (state.retention < 0) return;
       state.history.unshift({ at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), text });
+      emit("history");
+    },
+    historyReadable: (readable) => {
+      state.historyUnreadable = !readable;
       emit("history");
     },
   };
@@ -127,7 +139,10 @@ export function fakeBackend(): Backend {
         .map((t) => ({ heard: t.heard.trim().toLowerCase(), replacement: t.replacement.trim() }))
         .filter((t) => t.heard && t.replacement);
     },
-    history: async () => [...state.history],
+    history: async () => {
+      if (state.historyUnreadable) throw "loqui couldn't read your dictation history (Access is denied.)";
+      return [...state.history];
+    },
     deleteHistory: async (item) => {
       state.history = state.history.filter((h) => h.at !== item.at || h.text !== item.text);
       emit("history");

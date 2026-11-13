@@ -67,7 +67,7 @@ export function History() {
   if (items.length === 0) {
     return (
       <main className="page history">
-        <Problem text={problem} />
+        <Problem text={problem} onRetry={load} />
         <div className="empty history-empty">
           <h1 className="subtitle">No dictations yet</h1>
           <p className="muted">{`Press ${shortcut?.text ?? "your shortcut"} anywhere and start talking.`}</p>
@@ -92,7 +92,7 @@ export function History() {
           Clear all…
         </button>
       </div>
-      <Problem text={problem} />
+      <Problem text={problem} onRetry={load} />
       {shown.length === 0 ? (
         <div className="card empty">
           <p className="strong">No matches</p>

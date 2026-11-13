@@ -40,3 +40,20 @@ test("HIST-03: History updates while it's open", async ({ page }) => {
   await expect(entries.first()).toContainText("A brand new sentence.", { timeout: 1000 });
   await expect(entries).toHaveCount(7);
 });
+
+test("HIST-03: A history file that can't be read on a refresh says so, with Try again", async ({ page }) => {
+  await page.goto("/history.html");
+  const entries = page.getByRole("list", { name: "Dictations, newest first" }).getByRole("listitem");
+  await expect(entries).toHaveCount(6);
+  // The file can't be read when the window refreshes: an error with Try again, never "No dictations yet".
+  await page.evaluate(() => window.loquiFake?.historyReadable(false));
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("loqui couldn't read your dictation history");
+  await expect(page.getByRole("heading", { name: "No dictations yet" })).toHaveCount(0);
+  await page.evaluate(() => {
+    if (window.loquiFake) window.loquiFake.state.historyUnreadable = false;
+  });
+  await alert.getByRole("button", { name: "Try again" }).click();
+  await expect(alert).toHaveCount(0);
+  await expect(entries).toHaveCount(6);
+});
