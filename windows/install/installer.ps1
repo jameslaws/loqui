@@ -121,8 +121,24 @@ function Named($root, [string]$name) {
   $cond = New-Object System.Windows.Automation.PropertyCondition($UIA::NameProperty, $name)
   return $root.FindFirst($Tree::Descendants, $cond)
 }
-# A click in the middle of the element, as a person would.
+# GitHub's Arm computers sometimes start a Windows Subsystem for Linux
+# installer prompt that takes the front of the screen at any moment; a click
+# meant for loqui's window would land on it. Close it before each click.
+function Clear-Front {
+  $wsl = Get-Process wsl, wslinstaller, wslhost -ErrorAction SilentlyContinue
+  if ($wsl) { $wsl | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 500 }
+}
+# A click in the middle of the element, as a person would, with its window in front.
 function Press($el) {
+  Clear-Front
+  $top = $el
+  $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+  while ($top) {
+    $parent = $walker.GetParent($top)
+    if (-not $parent -or [System.Windows.Automation.Automation]::Compare($parent, $UIA::RootElement)) { break }
+    $top = $parent
+  }
+  if ($top) { [void][Win]::SetForegroundWindow([IntPtr]$top.Current.NativeWindowHandle); Start-Sleep -Milliseconds 200 }
   $r = $el.Current.BoundingRectangle
   [Win]::Click([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
 }
@@ -152,6 +168,7 @@ switch ($Verb) {
     $key = Get-ItemProperty $UninstallKey -ErrorAction SilentlyContinue
     if (-not $key) { Fail 'loqui is not in Installed apps' }
     $exe = $key.UninstallString.Trim('"')
+    Clear-Front
     Start-Process -FilePath $exe | Out-Null
     $win = Wait-Until 20000 { Find-Uninstaller }
     if (-not $win) { Fail "no loqui Uninstall window appeared. Windows: $(Top-Windows)" }
@@ -170,7 +187,11 @@ switch ($Verb) {
       $c = Named $w 'Close'
       if ($c -and $c.Current.IsEnabled) { $c }
     }
-    if (-not $close) { Fail 'the uninstaller never finished' }
+    if (-not $close) {
+      $w = Find-Uninstaller
+      if ($w) { [void][Win]::SetForegroundWindow([IntPtr]$w.Current.NativeWindowHandle); Start-Sleep -Milliseconds 300 }
+      Fail 'the uninstaller never finished'
+    }
     if ($close -ne 'gone') { Press $close }
     [void](Wait-Until 10000 { -not (Find-Uninstaller) })
     Start-Sleep -Milliseconds 500
