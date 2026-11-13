@@ -57,6 +57,17 @@ export default defineConfig({
           sequence: { concurrent: false },
         },
       },
+      // Windows only, in windows-channel.yml: a teammate's PC on the real test
+      // channel, installed from the teammate link and updated by it.
+      {
+        test: {
+          name: "channel",
+          include: ["install/channel.test.ts"],
+          testTimeout: 600_000,
+          hookTimeout: 600_000,
+          fileParallelism: false,
+        },
+      },
       // Windows only, in the release drill (windows-drill.yml): a PC on the
       // drill's lists, installed from GitHub and updated twice.
       {

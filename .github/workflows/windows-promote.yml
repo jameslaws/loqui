@@ -119,6 +119,27 @@ jobs:
           node windows/scripts/release/feed.mjs "$base" changes.md tested/loqui-*.json > "list/$LIST_NAME"
           cat "list/$LIST_NAME"
 
+      # The download page's Windows button goes to docs/windows/download.html,
+      # which starts this version's full installer (LAUNCH-08). Written with the
+      # public list, in the same commit; a drill only shows what it would write.
+      - name: The Windows download page for ${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}
+        run: |
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$PREFIX$VERSION/"
+          if jq -r .body tested.json | grep -q "Run anyway"; then signed=unsigned; else signed=signed; fi
+          node windows/scripts/release/download-page.mjs "$base" "$signed" tested/loqui-*.json > list/download.html
+          {
+            echo "The Windows download page starts:"
+            grep -o 'href="https://[^"]*loqui-setup-[^"]*"' list/download.html | sed 's/^href="/    /; s/"$//'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          for f in $(grep -o 'loqui-setup-[^"]*\.exe' list/download.html | sort -u); do
+            [ -f "tested/$f" ] || { echo "::error::the download page names $f, which isn't in this version"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: download-page-${{ inputs.prefix || 'windows-v' }}${{ inputs.version }}
+          path: list/download.html
+
       - name: Then point the list at it (a pre-release's file)
         if: env.LIST != 'pages'
         env:
@@ -133,11 +154,11 @@ jobs:
         run: |
           mkdir -p docs/windows
           cp "list/$LIST_NAME" docs/windows/stable.json
-          # (Part E's download page step goes here, in the same commit.)
+          cp list/download.html docs/windows/download.html
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/windows/stable.json
-          git commit -m "Windows: the public update list offers $VERSION"
+          git add docs/windows/stable.json docs/windows/download.html
+          git commit -m "Windows: the public update list and the download page offer $VERSION"
           branch="windows-promote-$VERSION"
           git push origin "HEAD:refs/heads/$branch"
           sha=$(git rev-parse HEAD)
@@ -153,4 +174,4 @@ jobs:
           gh run watch "$run" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
           git push origin "HEAD:refs/heads/main"
           git push origin --delete "$branch"
-          echo "https://jameslaws.github.io/loqui/windows/stable.json offers $VERSION once Pages has published main." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "https://jameslaws.github.io/loqui/windows/stable.json and the Windows download page offer $VERSION once Pages has published main." | tee -a "$GITHUB_STEP_SUMMARY"

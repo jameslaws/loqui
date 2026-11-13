@@ -24,7 +24,9 @@
     "install",
     "scripts",
     "screens",
+    "page",
     "vitest.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.page.config.ts"
   ]
 }

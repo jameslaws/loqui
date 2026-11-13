@@ -11,6 +11,10 @@
 - Transcription history with configurable retention, plus a Recent menu
 - Dictation stats — words, pace, time saved
 - Auto-update via Sparkle, signed and notarized
+- **Loqui for Windows.** Windows 11 on Intel, AMD and Arm PCs, with the same
+  gesture, cleanup, dictionary, history, Recent menu and stats as the Mac, speech
+  turned into text on the PC, an installer that needs no administrator, and signed
+  automatic updates
 
 ## Being looked at
 
@@ -26,6 +30,9 @@
   arrows is fine, but reaching a specific *day* that way is tedious. The idea: click
   the period label to open a calendar shaded by word volume, so you can spot a heavy
   day and jump straight to it rather than needing to know the date first.
+- **Signing the Windows app with Microsoft.** It's built in and switched off for
+  now, so Windows shows "Windows protected your PC" the first time; signing would
+  put a publisher's name on it and quiet that notice.
 
 ## Not planned
 

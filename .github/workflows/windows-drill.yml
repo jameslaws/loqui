@@ -239,7 +239,8 @@ jobs:
           echo "The Mac's appcast is as on main."
       - name: CHAN-03, nothing public yet
         run: |
-          public=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep -E '^windows-v' | sed -E 's/^windows-v//; s/-test$//' || true)
+          # Public versions only: the 0.1.0 test version exists before the ship, by design.
+          public=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName --jq '.[].tagName' | grep -E '^windows-v[0-9.]+$' | sed -E 's/^windows-v//' || true)
           for v in $public; do
             if [ "$(printf '%s\n0.1.0\n' "$v" | sort -V | tail -1)" = "$v" ]; then
               echo "::error::windows-v$v exists before the ship"; exit 1

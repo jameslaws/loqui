@@ -15,6 +15,7 @@
     "check:changed": "node scripts/check-changed.mjs",
     "test:contracts": "cargo test -p loqui-core && vitest run --project contracts",
     "test:screens": "playwright test",
+    "test:page": "playwright test -c playwright.page.config.ts",
     "test:acceptance": "vitest run --project acceptance",
     "test:e2e": "vitest run --project e2e",
     "test:windows-screens": "vitest run --project windows-screens",

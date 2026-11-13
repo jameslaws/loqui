@@ -1,0 +1,75 @@
+name: Download page
+
+# The download page (docs/index.html) and the Windows download page as
+# Windows, Mac and phone visitors see them, with scripts off, and their
+# accessibility; and what the README, security policy, roadmap and
+# contributing notes say about Windows. In a browser on GitHub's Linux
+# computers; nothing is built. It runs again on main after each Promote,
+# which rewrites the Windows download page.
+on:
+  push:
+    branches: [main, staging, windows-version]
+    paths:
+      - "docs/index.html"
+      - "docs/assets/**"
+      - "docs/windows/**"
+      - "README.md"
+      - "SECURITY.md"
+      - "ROADMAP.md"
+      - "CONTRIBUTING.md"
+      - "windows/page/**"
+      - "windows/tests/launch.test.ts"
+      - "windows/scripts/release/download-page.mjs"
+      - "windows/playwright.page.config.ts"
+      - ".github/workflows/download-page.yml"
+  pull_request:
+    paths:
+      - "docs/index.html"
+      - "docs/assets/**"
+      - "docs/windows/**"
+      - "README.md"
+      - "SECURITY.md"
+      - "ROADMAP.md"
+      - "CONTRIBUTING.md"
+      - "windows/page/**"
+      - "windows/tests/launch.test.ts"
+      - "windows/scripts/release/download-page.mjs"
+      - "windows/playwright.page.config.ts"
+      - ".github/workflows/download-page.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: download-page-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  page:
+    name: Download page and words
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: windows/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: windows/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: The browser the checks use
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: "LAUNCH-01 to LAUNCH-04, LAUNCH-08, SIGN-01 and A11Y-03: the pages, light and dark"
+        run: pnpm test:page
+      - name: "LAUNCH-05, LAUNCH-06 and LAUNCH-08: the words, and the Windows download page Promote writes"
+        run: pnpm exec vitest run --project contracts tests/launch.test.ts

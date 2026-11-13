@@ -16,6 +16,58 @@ Format:
 
 ---
 
+Found while building Part E (2026-11-12).
+
+### The Windows download page shows the choice and the SmartScreen steps
+
+- **Kind:** Visible (waiting for James)
+- **Before:** `docs/windows/download.html` is "a tiny page that forwards to the current public installer".
+- **After:** on a Windows PC it still starts the download by itself, picking the Arm installer on an Arm PC; the page underneath lists both installers with their sizes and says how to get past "Windows protected your PC" (More info, Run anyway) and that Smart App Control blocks it. Anywhere else it shows the choice without downloading.
+- **Why:** a plain forward always gives the Intel/AMD file and leaves the visitor on a blank page at the moment Windows warns them.
+- **Checks affected:** LAUNCH-08 (proved on the page Promote writes), SIGN-01.
+
+### The rest of the page speaks to Windows visitors too
+
+- **Kind:** Visible (waiting for James)
+- **Before:** the plan's page changes were the button, the line under it, the tagline and the first card.
+- **After:** also, for Windows visitors only, step 2 says "Press Ctrl+Shift+Space and talk" and the stats section shows the Windows stats window; for everyone, the closing download button follows the visitor's computer, the privacy heading says "your computer", the specifications and privacy list gain a Windows line, and the build-it-yourself note links to the Windows steps. A Mac visitor's page reads as today's apart from those mentions.
+- **Why:** without them a Windows visitor would read "Press ⌘R", Apple's speech engine and a Mac-only closing button.
+- **Checks affected:** LAUNCH-01, LAUNCH-02 (both check these).
+
+### No private preview of the page before merge
+
+- **Kind:** Behind it (the Lead decided, 2026-11-12: "Skip the ws preview; use the page pictures in try.md")
+- **Before:** the changed page is served as a private workspace preview on the Mini before merge.
+- **After:** the try list shows pictures of the page as a Windows, Mac and phone visitor and with scripts off, taken by the page checks; the real page goes live on GitHub Pages at the ship.
+- **Why:** a workspace preview would change the platform's workspace list, which isn't this feature's to change, and a teammate's PC couldn't reach a private preview anyway.
+- **Checks affected:** none (LAUNCH-01 to LAUNCH-04 and A11Y-03 are proved by the page checks).
+
+### The page's checks run in their own small workflow
+
+- **Kind:** Behind it
+- **Before:** the plan didn't say where the page checks run.
+- **After:** `download-page.yml` runs them in a browser on GitHub's Linux computers whenever the page, the README, SECURITY, ROADMAP or CONTRIBUTING change, and again on main after each Promote. Changing only the words doesn't start the hour-long Windows runs.
+- **Why:** the page and the words are checked without building the app.
+- **Checks affected:** LAUNCH-01 to LAUNCH-06, LAUNCH-08, A11Y-03.
+
+### The test channel is proved end to end on a fresh GitHub Windows computer
+
+- **Kind:** Behind it
+- **Before:** the drill proved Promote and Roll back on drill lists; the real test channel was left to the teammates.
+- **After:** `windows-channel.yml` (started by a tag) installs the test version from the teammate link on a fresh Windows computer, switches on Get test versions and updates to the next test version (0.1.0), all on the real test list. It publishes nothing.
+- **Why:** the brief's finish line is the teammate link installing and updating itself, proved before teammates rely on it.
+- **Checks affected:** INST-01, UPD-01, CHAN-01, CHAN-02.
+
+### The drill's "nothing public yet" check ignores test versions
+
+- **Kind:** Behind it
+- **Before:** the drill failed if any `windows-v` tag numbered 0.1.0 or above existed, test versions included.
+- **After:** it looks at public versions only, since the 0.1.0 test version exists before the ship by design.
+- **Why:** a drill run after the 0.1.0 test version would have failed for no fault.
+- **Checks affected:** CHAN-03.
+
+---
+
 Found while building Part C (2026-11-12).
 
 ### By month shows the last 12 months
