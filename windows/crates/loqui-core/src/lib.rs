@@ -9,6 +9,7 @@ pub mod cleanup;
 pub mod commands;
 pub mod config;
 pub mod dictation;
+mod files;
 pub mod records;
 pub mod settings;
 pub mod shortcut;

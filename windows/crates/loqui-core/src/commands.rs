@@ -13,6 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use ts_rs::TS;
 
+/// A history file that's there but can't be read: said, never shown as empty.
+pub const HISTORY_UNREADABLE: &str = "loqui couldn't read your dictation history";
+/// The same for the stats record.
+pub const STATS_UNREADABLE: &str = "loqui couldn't read your dictation stats";
+
 /// The dictation shortcut as text ("Ctrl+Shift+Space") and as key caps.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 pub struct ShortcutView {
@@ -214,15 +219,17 @@ impl Store {
         CleanupConfig::update(&self.cleanup_path(), |c| c.dictionary = dictionary).map(drop)
     }
 
-    pub fn history(&self) -> Vec<HistoryItem> {
-        self.records
+    pub fn history(&self) -> Result<Vec<HistoryItem>, String> {
+        Ok(self
+            .records
             .history()
+            .map_err(|e| format!("{HISTORY_UNREADABLE} ({e})"))?
             .into_iter()
             .map(|e| HistoryItem {
                 at: e.at,
                 text: e.text,
             })
-            .collect()
+            .collect())
     }
 
     pub fn delete_history(&self, item: &HistoryItem) -> Result<(), String> {
@@ -248,20 +255,30 @@ impl Store {
         request: &crate::stats::StatsRequest,
         now: &chrono::DateTime<Tz>,
         first_weekday: chrono::Weekday,
-    ) -> crate::stats::Stats {
-        let log = std::fs::read_to_string(self.records.stats_path()).unwrap_or_default();
+    ) -> Result<crate::stats::Stats, String> {
+        let log = records::read_if_there(&self.records.stats_path())
+            .map_err(|e| format!("{STATS_UNREADABLE} ({e})"))?
+            .unwrap_or_default();
         let shortcut = self.settings().settings.shortcut.to_string();
-        crate::stats::stats(&log, now, first_weekday, request, &shortcut)
+        Ok(crate::stats::stats(
+            &log,
+            now,
+            first_weekday,
+            request,
+            &shortcut,
+        ))
     }
 
     /// The tray menu's Recent list: the last `n` dictations as (one line, full text).
-    pub fn recent(&self, n: usize) -> Vec<(String, String)> {
-        self.records
+    pub fn recent(&self, n: usize) -> Result<Vec<(String, String)>, String> {
+        Ok(self
+            .records
             .history()
+            .map_err(|e| format!("{HISTORY_UNREADABLE} ({e})"))?
             .into_iter()
             .take(n)
             .map(|e| (records::one_line(&e.text), e.text))
-            .collect()
+            .collect())
     }
 }
 
@@ -361,6 +378,29 @@ mod tests {
     }
 
     #[test]
+    fn records_that_cant_be_read_are_said_never_shown_empty() {
+        let s = store("unreadable-records");
+        let request = crate::stats::StatsRequest {
+            grain: crate::stats::Grain::AllTime,
+            offset: 0,
+            jump_to: None,
+        };
+        let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T14:00:00-05:00").unwrap();
+        // Nothing yet: empty, as a first start is.
+        assert!(s.history().unwrap().is_empty());
+        assert!(s.stats(&request, &now, chrono::Weekday::Mon).unwrap().empty);
+        // There, but not readable: an error the window shows with Retry.
+        std::fs::create_dir_all(s.records().dir()).unwrap();
+        std::fs::write(s.records().history_path(), b"\xff\n").unwrap();
+        std::fs::write(s.records().stats_path(), b"\xff\n").unwrap();
+        assert!(s.history().unwrap_err().starts_with(HISTORY_UNREADABLE));
+        assert!(s.recent(5).unwrap_err().starts_with(HISTORY_UNREADABLE));
+        let stats = s.stats(&request, &now, chrono::Weekday::Mon);
+        assert!(stats.unwrap_err().starts_with(STATS_UNREADABLE));
+        std::fs::remove_dir_all(s.records().dir()).unwrap();
+    }
+
+    #[test]
     fn set_03_retention_drops_old_entries_at_once() {
         let s = store("retention");
         let now = 1_800_000_000;
@@ -370,7 +410,13 @@ mod tests {
                 .record_history(&format!("{age} days old"), now - age * day, 0)
                 .unwrap();
         }
-        let texts = |s: &Store| s.history().into_iter().map(|h| h.text).collect::<Vec<_>>();
+        let texts = |s: &Store| {
+            s.history()
+                .unwrap()
+                .into_iter()
+                .map(|h| h.text)
+                .collect::<Vec<_>>()
+        };
         s.set_retention(30, now).unwrap();
         assert_eq!(texts(&s), ["1 days old", "10 days old"]);
         s.set_retention(7, now).unwrap();

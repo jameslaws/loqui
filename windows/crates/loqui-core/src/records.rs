@@ -8,6 +8,7 @@
 //! - `logs\voice-key.log`: what happened, never what was said.
 //! - `logs\cleanup.log`: what cleanup changed (CleanupAudit.swift), capped at 2 MB.
 
+use crate::files;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -80,6 +81,7 @@ impl Records {
             at: iso8601(now),
             text: text.to_string(),
         };
+        let _lock = files::lock();
         append_line(&self.history_path(), &json_line(&entry))
     }
 
@@ -110,7 +112,8 @@ impl Records {
             return Ok(());
         }
         let path = self.history_path();
-        let Ok(content) = fs::read_to_string(&path) else {
+        let _lock = files::lock();
+        let Some(content) = read_if_there(&path)? else {
             return Ok(());
         };
         let cutoff = now - retention_days * DAY;
@@ -127,12 +130,13 @@ impl Records {
             return Ok(());
         }
         let body: String = kept.iter().map(|l| format!("{l}\n")).collect();
-        fs::write(path, body)
+        files::replace(&path, &body)
     }
 
-    /// Every saved dictation, newest first. Lines that don't parse are skipped.
-    pub fn history(&self) -> Vec<HistoryEntry> {
-        let content = fs::read_to_string(self.history_path()).unwrap_or_default();
+    /// Every saved dictation, newest first. Lines that don't parse are
+    /// skipped; a file that's there but can't be read is an error, never "none".
+    pub fn history(&self) -> std::io::Result<Vec<HistoryEntry>> {
+        let content = read_if_there(&self.history_path())?.unwrap_or_default();
         let mut entries: Vec<(i64, HistoryEntry)> = content
             .lines()
             .filter_map(|line| serde_json::from_str::<HistoryEntry>(line).ok())
@@ -141,13 +145,14 @@ impl Records {
         // Newest first; the same moment keeps the file's later line first.
         entries.reverse();
         entries.sort_by_key(|(at, _)| std::cmp::Reverse(*at));
-        entries.into_iter().map(|(_, e)| e).collect()
+        Ok(entries.into_iter().map(|(_, e)| e).collect())
     }
 
     /// Delete every saved copy of this dictation (the Mac deletes by equality too).
     pub fn delete_history(&self, entry: &HistoryEntry) -> std::io::Result<()> {
         let path = self.history_path();
-        let Ok(content) = fs::read_to_string(&path) else {
+        let _lock = files::lock();
+        let Some(content) = read_if_there(&path)? else {
             return Ok(());
         };
         let body: String = content
@@ -155,11 +160,12 @@ impl Records {
             .filter(|line| serde_json::from_str::<HistoryEntry>(line).ok().as_ref() != Some(entry))
             .map(|l| format!("{l}\n"))
             .collect();
-        fs::write(path, body)
+        files::replace(&path, &body)
     }
 
     /// Delete the history file. Stats are kept: they're a separate file.
     pub fn clear_history(&self) -> std::io::Result<()> {
+        let _lock = files::lock();
         match fs::remove_file(self.history_path()) {
             Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
             _ => Ok(()),
@@ -201,6 +207,16 @@ pub fn one_line(text: &str) -> String {
     match line.char_indices().nth(48) {
         Some((cut, _)) => format!("{}\u{2026}", &line[..cut]),
         None => line,
+    }
+}
+
+/// A file's text, or None when it isn't there yet. Any other failure,
+/// including text that isn't UTF-8, is an error.
+pub fn read_if_there(path: &Path) -> std::io::Result<Option<String>> {
+    match fs::read_to_string(path) {
+        Ok(text) => Ok(Some(text)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
     }
 }
 
@@ -332,17 +348,74 @@ mod tests {
         r.record_history("third", 3_000, 0).unwrap();
         append_line(&r.history_path(), "not json\n").unwrap();
         r.record_stats(4, Some(2.0), 3_000).unwrap();
-        let texts = |r: &Records| r.history().into_iter().map(|e| e.text).collect::<Vec<_>>();
+        let texts = |r: &Records| {
+            r.history()
+                .unwrap()
+                .into_iter()
+                .map(|e| e.text)
+                .collect::<Vec<_>>()
+        };
         assert_eq!(texts(&r), ["third", "second", "first"]);
 
-        let second = r.history()[1].clone();
+        let second = r.history().unwrap()[1].clone();
         r.delete_history(&second).unwrap();
         assert_eq!(texts(&r), ["third", "first"]);
 
         r.clear_history().unwrap();
-        assert!(r.history().is_empty() && !r.history_path().exists());
+        assert!(r.history().unwrap().is_empty() && !r.history_path().exists());
         assert!(r.stats_path().exists());
         r.clear_history().unwrap();
+        fs::remove_dir_all(r.dir()).unwrap();
+    }
+
+    #[test]
+    fn deleting_while_a_dictation_is_saved_keeps_the_new_dictation() {
+        // A dictation finishing while history deletes or prunes another entry
+        // (the dictation thread and the history window are separate threads).
+        let r = scratch("race");
+        r.record_history("delete me", 1_000, 0).unwrap();
+        let old = r.history().unwrap()[0].clone();
+        const SAVED: usize = 300;
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                for n in 0..SAVED {
+                    r.record_history(&format!("dictation {n}"), 2_000, 0)
+                        .unwrap();
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..SAVED {
+                    r.delete_history(&old).unwrap();
+                    r.prune_history(1_000 + DAY + 1, 1).unwrap();
+                }
+            });
+        });
+        let texts: Vec<String> = r.history().unwrap().into_iter().map(|e| e.text).collect();
+        assert_eq!(texts.len(), SAVED, "every saved dictation is still there");
+        assert!(!texts.contains(&"delete me".to_string()));
+        fs::remove_dir_all(r.dir()).unwrap();
+    }
+
+    #[test]
+    fn a_history_file_that_cant_be_read_is_an_error_not_empty() {
+        let r = scratch("unreadable");
+        // Not there yet: no dictations.
+        assert!(r.history().unwrap().is_empty());
+        // There, but not readable as text: an error, and nothing is rewritten.
+        fs::create_dir_all(r.dir()).unwrap();
+        fs::write(
+            r.history_path(),
+            b"{\"at\":\"2026-11-12T14:03:22Z\",\"text\":\"\xff\"}\n",
+        )
+        .unwrap();
+        assert!(r.history().is_err());
+        let entry = HistoryEntry {
+            at: "2026-11-12T14:03:22Z".into(),
+            text: "x".into(),
+        };
+        assert!(r.delete_history(&entry).is_err());
+        assert!(r.prune_history(i64::MAX / 2, 1).is_err());
+        assert_eq!(fs::read(r.history_path()).unwrap().len(), 41);
         fs::remove_dir_all(r.dir()).unwrap();
     }
 

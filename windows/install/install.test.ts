@@ -219,6 +219,51 @@ test.runIf(onWindows)("CHAN-02: Only PCs with test versions on get them", async 
   expect(listed("beta.json")).toBe(1);
 });
 
+/** "Get test versions" in Settings, clicked as a teammate would; returns the channel saved. */
+function toggleTestVersions(name: string) {
+  desk("open-menu", { ProcessId: pid });
+  desk("choose", { Item: "Settings…" });
+  desk("click", { ProcessId: pid, Title: "loqui settings", Name: "Get test versions" });
+  desk("window", { ProcessId: pid, Title: "loqui settings", Name: "Get test versions", Shot: shot(name) });
+  desk("close-window", { ProcessId: pid, Title: "loqui settings" });
+  return JSON.parse(readFileSync(join(data, "settings.json"), "utf8")).channel as string;
+}
+
+test.runIf(onWindows)(
+  "CHAN-02: Only PCs with test versions on get them (switched off while a check waits)",
+  async () => {
+    // The test list offers the next version, but slowly; the public list has nothing newer.
+    publish("stable.json", current);
+    publish("beta.json", next);
+    const slow = join(lists, "beta.json.delay");
+    writeFileSync(slow, "10000");
+    try {
+      desk("open-menu", { ProcessId: pid });
+      desk("choose", { Item: "Check for updates\u2026" });
+      desk("window", { ProcessId: pid, Title: "loqui update", Name: "Checking for updates…", Wait: 5_000 });
+      // While the test list hasn't answered, switch test versions off.
+      expect(toggleTestVersions("chan-02-switched-off-mid-check")).toBe("stable");
+      // The test list's answer is dropped and the public list is asked: nothing is offered.
+      desk("window", {
+        ProcessId: pid,
+        Title: "loqui update",
+        Name: "loqui is up to date",
+        Wait: 60_000,
+        Shot: shot("chan-02-off-mid-check-result"),
+      });
+      await sleep(12_000);
+      const r = desk("window", { ProcessId: pid, Title: "loqui update", Name: "loqui is up to date" });
+      expect(r.texts.join(" ")).not.toContain(next.version);
+      closeUpdateWindow();
+    } finally {
+      rmSync(slow, { force: true });
+    }
+    // Back on, for the checks that follow.
+    expect(toggleTestVersions("chan-02-back-on")).toBe("test");
+  },
+  180_000,
+);
+
 test.runIf(onWindows)("UPD-02: An update with a bad signature is refused", async () => {
   // The next version's file, with this version's signature: a file loqui's key didn't sign.
   publish("beta.json", next, current.update.signature);

@@ -47,6 +47,9 @@ struct Inner {
     checked_at: Option<String>,
     status: Option<UpdateStatus>,
     offer: Option<Update>,
+    /// Goes up each time "Get test versions" changes. A check that began
+    /// before a change asked the other list, so its answer is dropped.
+    channel_changes: u64,
 }
 
 fn unix_now() -> i64 {
@@ -146,56 +149,89 @@ pub fn check(app: &AppHandle) {
 
 /// Ask this PC's update list whether there's a newer version. A check by
 /// hand has already begun (`begin_by_hand`); an automatic one waits its turn.
+/// If "Get test versions" changes while a list is being asked, that answer
+/// is for the other list: it's dropped, and a check by hand asks again.
 async fn check_now(app: &AppHandle, by_hand: bool) {
-    if !by_hand {
-        let checker = app.state::<Checker>();
-        let inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
-        if busy(inner.status.as_ref()) {
+    loop {
+        let asked = {
+            let checker = app.state::<Checker>();
+            let inner = checker.inner.lock().unwrap_or_else(|e| e.into_inner());
+            if !by_hand && busy(inner.status.as_ref()) {
+                return;
+            }
+            inner.channel_changes
+        };
+        // Read after `asked`: a switch from here on makes this answer stale.
+        let channel = app.state::<Store>().settings().settings.channel;
+        let list = FEEDS.for_channel(channel);
+        let found = ask(app, list).await;
+        let now = iso8601(unix_now());
+        let stored = match found {
+            Ok(Some(update)) => {
+                log(
+                    app,
+                    &format!("update check ({list}): {} is available", update.version),
+                );
+                let size_mb = listed_size(&update.raw_json, &platforms()).map(megabytes);
+                let offered = settle(app, asked, |i| {
+                    i.checked_at = Some(now);
+                    i.status = Some(UpdateStatus::Available {
+                        version: update.version.clone(),
+                        notes: update.body.clone().unwrap_or_default(),
+                        size_mb,
+                    });
+                    i.offer = Some(update);
+                });
+                if offered {
+                    open_window(app);
+                }
+                offered
+            }
+            Ok(None) => {
+                log(app, &format!("update check ({list}): up to date"));
+                settle(app, asked, |i| {
+                    i.checked_at = Some(now);
+                    i.status = Some(UpdateStatus::UpToDate);
+                    i.offer = None;
+                })
+            }
+            Err(e) => {
+                log(app, &format!("update check ({list}) failed: {e}"));
+                // The daily check fails quietly: what the card said stays.
+                !by_hand
+                    || settle(app, asked, |i| {
+                        i.status = Some(UpdateStatus::CheckFailed {
+                            message: say::UNREACHABLE.into(),
+                        })
+                    })
+            }
+        };
+        if stored || !by_hand {
+            if !stored {
+                log(app, &format!("update check ({list}): get test versions changed meanwhile; answer dropped"));
+            }
             return;
         }
+        log(
+            app,
+            &format!("update check ({list}): get test versions changed meanwhile; asking again"),
+        );
     }
-    let channel = app.state::<Store>().settings().settings.channel;
-    let list = FEEDS.for_channel(channel);
-    let found = ask(app, list).await;
-    let now = iso8601(unix_now());
-    match found {
-        Ok(Some(update)) => {
-            log(
-                app,
-                &format!("update check ({list}): {} is available", update.version),
-            );
-            let size_mb = listed_size(&update.raw_json, &platforms()).map(megabytes);
-            set(app, |i| {
-                i.checked_at = Some(now);
-                i.status = Some(UpdateStatus::Available {
-                    version: update.version.clone(),
-                    notes: update.body.clone().unwrap_or_default(),
-                    size_mb,
-                });
-                i.offer = Some(update);
-            });
-            open_window(app);
+}
+
+/// Store a check's answer, unless "Get test versions" changed while it was
+/// asked: then nothing from it is offered. True if stored.
+fn settle(app: &AppHandle, asked: u64, answer: impl FnOnce(&mut Inner)) -> bool {
+    let mut stored = false;
+    set(app, |i| {
+        if i.channel_changes == asked {
+            answer(i);
+            stored = true;
+        } else {
+            i.offer = None;
         }
-        Ok(None) => {
-            log(app, &format!("update check ({list}): up to date"));
-            set(app, |i| {
-                i.checked_at = Some(now);
-                i.status = Some(UpdateStatus::UpToDate);
-                i.offer = None;
-            });
-        }
-        Err(e) => {
-            log(app, &format!("update check ({list}) failed: {e}"));
-            // The daily check fails quietly: what the card said stays.
-            if by_hand {
-                set(app, |i| {
-                    i.status = Some(UpdateStatus::CheckFailed {
-                        message: say::UNREACHABLE.into(),
-                    })
-                });
-            }
-        }
-    }
+    });
+    stored
 }
 
 /// Newer version, none, or couldn't tell.
@@ -356,6 +392,8 @@ pub fn set_test_versions(
         &format!("get test versions: {}", if on { "on" } else { "off" }),
     );
     set(&app, |i| {
+        // A check under way now asked the other list: its answer is dropped.
+        i.channel_changes += 1;
         if !busy(i.status.as_ref()) {
             i.status = None;
             i.offer = None;

@@ -115,7 +115,7 @@ pub fn set_dictionary(store: State<Store>, terms: Vec<Term>) -> Answer {
 }
 
 #[tauri::command]
-pub fn history(store: State<Store>) -> Vec<HistoryItem> {
+pub fn history(store: State<Store>) -> Result<Vec<HistoryItem>, String> {
     store.history()
 }
 

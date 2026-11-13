@@ -154,6 +154,7 @@ impl Settings {
     /// loqui doesn't own. An unreadable file is left alone and the change is
     /// refused with [`UNREADABLE`].
     pub fn update(path: &Path, change: impl FnOnce(&mut Settings)) -> Result<Settings, String> {
+        let _lock = crate::files::lock();
         let mut kept = match std::fs::read_to_string(path) {
             Ok(text) => match serde_json::from_str::<Value>(&text) {
                 Ok(Value::Object(map)) if Self::from_json(&text).is_ok() => map,
@@ -177,11 +178,10 @@ fn pretty(map: &Map<String, Value>) -> String {
     serde_json::to_string_pretty(map).expect("settings always serialize")
 }
 
+/// The whole file at once: a dictation reading it mid-save sees the old
+/// settings or the new, never defaults (history Off must stay Off).
 fn write(path: &Path, text: &str) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    std::fs::write(path, text)
+    crate::files::replace(path, text)
 }
 
 #[cfg(test)]
@@ -250,6 +250,32 @@ mod tests {
             Err(UNREADABLE.to_string())
         );
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ not json");
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn history_off_stays_off_while_another_setting_is_saved() {
+        // REC-01: a dictation finishing reads the settings while a window saves
+        // Start at sign-in; it must never read the defaults (history kept forever).
+        let path = scratch("saving");
+        Settings::update(&path, |s| s.history_retention_days = -1).unwrap();
+        let wrong = std::sync::atomic::AtomicUsize::new(0);
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                for n in 0..300 {
+                    Settings::update(&path, |s| s.start_at_sign_in = n % 2 == 0).unwrap();
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..3000 {
+                    let loaded = Settings::load(&path);
+                    if loaded.unreadable || loaded.settings.history_retention_days != -1 {
+                        wrong.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            });
+        });
+        assert_eq!(wrong.into_inner(), 0, "reads that lost history Off");
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 

@@ -3,7 +3,7 @@
 //! and Quit.
 
 use crate::{about, screens, stats, updates};
-use loqui_core::commands::Store;
+use loqui_core::commands::{Store, HISTORY_UNREADABLE};
 use std::sync::Mutex;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -114,13 +114,17 @@ pub fn refresh_recent(app: &AppHandle) {
     let (Some(live), Some(store)) = (live(app), app.try_state::<Store>()) else {
         return;
     };
-    let items = store.recent(RECENT);
+    let recent = store.recent(RECENT);
     for old in live.recent.items().unwrap_or_default() {
         let _ = live.recent.remove(&old);
     }
+    // A history file that can't be read says so; it never reads as "no dictations".
+    let (items, empty) = match recent {
+        Ok(items) => (items, NO_DICTATIONS),
+        Err(_) => (Vec::new(), HISTORY_UNREADABLE),
+    };
     if items.is_empty() {
-        if let Ok(none) = MenuItem::with_id(app, "recent-none", NO_DICTATIONS, false, None::<&str>)
-        {
+        if let Ok(none) = MenuItem::with_id(app, "recent-none", empty, false, None::<&str>) {
             let _ = live.recent.append(&none);
         }
     }

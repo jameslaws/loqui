@@ -13,7 +13,7 @@ pub fn open(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub fn stats(store: State<Store>, request: StatsRequest) -> Stats {
+pub fn stats(store: State<Store>, request: StatsRequest) -> Result<Stats, String> {
     store.stats(&request, &chrono::Local::now(), first_weekday())
 }
 
