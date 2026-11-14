@@ -105,6 +105,8 @@ struct Session {
     id: u64,
     cfg: CleanupConfig,
     transcript: Transcript,
+    /// Where the last words heard ended, in seconds into the recording.
+    last_words: f64,
     phase: Phase,
 }
 
@@ -114,6 +116,8 @@ enum Phase {
     Finishing {
         reason: &'static str,
         spoken: f64,
+        /// Seconds of sound the microphone passed on, up to the stop.
+        heard: f64,
     },
 }
 
@@ -175,6 +179,7 @@ impl Center {
                 let Some(session) = self.session.as_mut().filter(|s| s.id == id) else {
                     return;
                 };
+                session.last_words = session.last_words.max(segment.end);
                 let boundary =
                     session
                         .transcript
@@ -255,6 +260,7 @@ impl Center {
                     id,
                     cfg,
                     transcript: Transcript::default(),
+                    last_words: 0.0,
                     phase: Phase::Recording(Recording {
                         capture,
                         started: now,
@@ -288,13 +294,21 @@ impl Center {
             return;
         };
         let spoken = r.started.elapsed().as_secs_f64();
-        let Phase::Recording(r) =
-            std::mem::replace(&mut session.phase, Phase::Finishing { reason, spoken })
-        else {
+        let Phase::Recording(r) = std::mem::replace(
+            &mut session.phase,
+            Phase::Finishing {
+                reason,
+                spoken,
+                heard: 0.0,
+            },
+        ) else {
             return;
         };
         // Waits until every sample heard is with the speech thread.
-        r.capture.stop();
+        let passed = r.capture.stop();
+        if let Phase::Finishing { heard, .. } = &mut session.phase {
+            *heard = passed;
+        }
         let _ = self.speech.send(ToSpeech::Finish(session.id));
         tray::show_recording(&self.app, None);
         self.bubble.finishing();
@@ -305,7 +319,12 @@ impl Center {
         let Some(session) = self.session.take() else {
             return;
         };
-        let Phase::Finishing { reason, spoken } = session.phase else {
+        let Phase::Finishing {
+            reason,
+            spoken,
+            heard,
+        } = session.phase
+        else {
             return;
         };
         let secs = spoken as u64;
@@ -332,6 +351,11 @@ impl Center {
         let words = word_count(&text);
         self.log(&format!(
             "dictation ended ({reason}) — {words} words in {secs}s"
+        ));
+        // How the end went, in time only: a stop that cut speech shows as 0.00s.
+        self.log(&format!(
+            "audio: {heard:.2}s heard up to the stop; the last words ended {:.2}s before it",
+            (heard - session.last_words).max(0.0)
         ));
         match self.records.record_stats(words, Some(spoken), now) {
             Ok(()) => crate::commands::stats_changed(&self.app),

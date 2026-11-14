@@ -16,7 +16,7 @@ Checks: DICT-01, DICT-02, DICT-03, HUD-01, PASTE-01
 ## What to do
 Look at the picture after a one-minute dictation.
 Where: https://github.com/jameslaws/loqui/actions/workflows/windows.yml?query=branch%3Awindows-version
-See: the whole paragraph in Notepad, down to its last words "Talk soon.", and the check's line saying loqui opened no connections outside the PC.
+See: the whole paragraph in Notepad, down to its last words "Have a good weekend.", and the check's line saying loqui opened no connections outside the PC.
 Shots: built/dict-04-pasted.png
 Checks: DICT-04, DICT-05, DICT-06, PRIV-01, PRIV-02, REC-01
 

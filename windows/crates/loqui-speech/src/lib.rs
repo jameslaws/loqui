@@ -2,7 +2,8 @@
 //! NVIDIA's Parakeet TDT 0.6B v3 model, with the Silero voice activity model
 //! cutting the recording into segments at pauses. Each segment is turned into
 //! text as soon as it ends, so when a dictation stops only the last one is
-//! left to do. Nothing here touches the network.
+//! left to do, along with any word the detector was still deciding about.
+//! Nothing here touches the network.
 //!
 //! The engine's library is loaded when loqui starts. The structs below copy
 //! the start of the v2.0.1 header (`sherpa-onnx/c-api/c-api.h`) exactly; every
@@ -11,6 +12,7 @@
 //! new header.
 
 use libloading::Library;
+use std::collections::VecDeque;
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::{Path, PathBuf};
 
@@ -50,6 +52,16 @@ const MIN_SPEECH: f32 = 0.25;
 const MAX_SPEECH: f32 = 8.0;
 const VAD_WINDOW: i32 = 512;
 const VAD_BUFFER_SECONDS: f32 = 120.0;
+
+/// When a dictation stops, the detector may still be deciding about the last
+/// word: it starts a segment only after a quarter second of speech, and hears
+/// speech a beat late. A short last word ("Yes.") or one cut off by the stop
+/// would be lost. So the last second not yet in any segment goes to a second
+/// detector that accepts a tenth of a second of speech, given a moment of
+/// silence to hear the word end, and is turned into text if it holds speech.
+const TAIL_SECONDS: f32 = 1.0;
+const TAIL_MIN_SPEECH: f32 = 0.1;
+const TAIL_HOLD_SECONDS: f32 = 0.3;
 
 /// A stretch of speech and its text. Times are seconds since the recording began.
 #[derive(Debug, Clone, PartialEq)]
@@ -231,6 +243,13 @@ pub struct Engine {
     api: Api,
     recognizer: Ptr,
     vad: Ptr,
+    /// The second detector, for the end of a dictation only.
+    tail_vad: Ptr,
+    /// Samples fed since `reset`, and where the last segment ended.
+    fed: usize,
+    covered: usize,
+    /// The last `TAIL_SECONDS` of audio fed.
+    recent: VecDeque<f32>,
 }
 
 // SAFETY: the engine's handles are used from one thread at a time (the
@@ -293,36 +312,51 @@ impl Engine {
             return Err("the speech model didn't load".into());
         }
 
-        let silero = SileroConfig {
-            model: vad_model.as_ptr(),
-            threshold: 0.5,
-            min_silence_duration: MIN_SILENCE,
-            min_speech_duration: MIN_SPEECH,
-            window_size: VAD_WINDOW,
-            max_speech_duration: MAX_SPEECH,
+        let make_vad = |min_speech: f32| {
+            let silero = SileroConfig {
+                model: vad_model.as_ptr(),
+                threshold: 0.5,
+                min_silence_duration: MIN_SILENCE,
+                min_speech_duration: min_speech,
+                window_size: VAD_WINDOW,
+                max_speech_duration: MAX_SPEECH,
+            };
+            let vad_config = VadConfig {
+                silero,
+                sample_rate: SAMPLE_RATE,
+                num_threads: 1,
+                provider: provider.as_ptr(),
+                debug: 0,
+                ten_vad: SileroConfig {
+                    model: null,
+                    ..silero
+                },
+            };
+            // SAFETY: as above.
+            unsafe { (api.create_vad)(&vad_config, VAD_BUFFER_SECONDS) }
         };
-        let vad_config = VadConfig {
-            silero,
-            sample_rate: SAMPLE_RATE,
-            num_threads: 1,
-            provider: provider.as_ptr(),
-            debug: 0,
-            ten_vad: SileroConfig {
-                model: null,
-                ..silero
-            },
-        };
-        // SAFETY: as above.
-        let vad = unsafe { (api.create_vad)(&vad_config, VAD_BUFFER_SECONDS) };
-        if vad.is_null() {
+        let vad = make_vad(MIN_SPEECH);
+        let tail_vad = make_vad(TAIL_MIN_SPEECH);
+        if vad.is_null() || tail_vad.is_null() {
             // SAFETY: made just above, used nowhere else.
-            unsafe { (api.destroy_recognizer)(recognizer) };
+            unsafe {
+                for made in [vad, tail_vad] {
+                    if !made.is_null() {
+                        (api.destroy_vad)(made);
+                    }
+                }
+                (api.destroy_recognizer)(recognizer);
+            }
             return Err("the voice activity model didn't load".into());
         }
         Ok(Self {
             api,
             recognizer,
             vad,
+            tail_vad,
+            fed: 0,
+            covered: 0,
+            recent: VecDeque::new(),
         })
     }
 
@@ -330,6 +364,9 @@ impl Engine {
     pub fn reset(&mut self) {
         // SAFETY: `vad` is live for as long as `self`.
         unsafe { (self.api.vad_reset)(self.vad) };
+        self.fed = 0;
+        self.covered = 0;
+        self.recent.clear();
     }
 
     /// Feed 16 kHz mono audio. Returns the text of any segments that ended.
@@ -338,14 +375,60 @@ impl Engine {
             // SAFETY: the pointer and length describe `samples`.
             unsafe { (self.api.vad_accept)(self.vad, samples.as_ptr(), samples.len() as i32) };
         }
+        self.fed += samples.len();
+        let keep = (TAIL_SECONDS * SAMPLE_RATE as f32) as usize;
+        let from = samples.len().saturating_sub(keep);
+        self.recent.extend(&samples[from..]);
+        let extra = self.recent.len().saturating_sub(keep);
+        self.recent.drain(..extra);
         self.drain()
     }
 
     /// The recording stopped: turn whatever speech is left into text.
     pub fn finish(&mut self) -> Vec<Segment> {
-        // SAFETY: `vad` is live.
-        unsafe { (self.api.vad_flush)(self.vad) };
-        self.drain()
+        // The detector hears whole windows. Silence completes the last one,
+        // so its final few milliseconds reach the segment too.
+        let window = VAD_WINDOW as usize;
+        let short = (window - self.fed % window) % window;
+        let silence = vec![0.0; short];
+        // SAFETY: `vad` is live; the pointer and length describe `silence`.
+        unsafe {
+            (self.api.vad_accept)(self.vad, silence.as_ptr(), short as i32);
+            (self.api.vad_flush)(self.vad);
+        }
+        let mut out = self.drain();
+        // Anything after the last segment that the detector hadn't decided on yet.
+        let start = self.covered.max(self.fed.saturating_sub(self.recent.len()));
+        if start < self.fed {
+            let skip = self.recent.len() - (self.fed - start);
+            let tail: Vec<f32> = self.recent.iter().skip(skip).copied().collect();
+            if self.holds_speech(&tail) {
+                let text = self.decode(&tail);
+                if !text.is_empty() {
+                    out.push(Segment {
+                        text,
+                        start: start as f64 / f64::from(SAMPLE_RATE),
+                        end: self.fed as f64 / f64::from(SAMPLE_RATE),
+                    });
+                }
+            }
+        }
+        out
+    }
+
+    /// Whether the second detector hears speech in `samples`.
+    fn holds_speech(&self, samples: &[f32]) -> bool {
+        let hold = vec![0.0; (TAIL_HOLD_SECONDS * SAMPLE_RATE as f32) as usize];
+        // SAFETY: `tail_vad` is live; each pointer and length describe its slice.
+        unsafe {
+            (self.api.vad_reset)(self.tail_vad);
+            (self.api.vad_accept)(self.tail_vad, samples.as_ptr(), samples.len() as i32);
+            (self.api.vad_accept)(self.tail_vad, hold.as_ptr(), hold.len() as i32);
+            (self.api.vad_flush)(self.tail_vad);
+            let found = (self.api.vad_empty)(self.tail_vad) == 0;
+            (self.api.vad_reset)(self.tail_vad);
+            found
+        }
     }
 
     fn drain(&mut self) -> Vec<Segment> {
@@ -360,6 +443,7 @@ impl Engine {
                     let samples = std::slice::from_raw_parts(s.samples, s.n.max(0) as usize);
                     let start = s.start as f64 / f64::from(SAMPLE_RATE);
                     let end = start + samples.len() as f64 / f64::from(SAMPLE_RATE);
+                    self.covered = self.covered.max(s.start.max(0) as usize + samples.len());
                     let text = self.decode(samples);
                     (self.api.destroy_segment)(seg);
                     if !text.is_empty() {
@@ -408,9 +492,33 @@ impl Drop for Engine {
         // SAFETY: both handles are live and used nowhere else.
         unsafe {
             (self.api.destroy_vad)(self.vad);
+            (self.api.destroy_vad)(self.tail_vad);
             (self.api.destroy_recognizer)(self.recognizer);
         }
     }
+}
+
+/// The samples of a 16 kHz mono 16-bit WAV, for the checks that play a file
+/// instead of the microphone. None if it has no sound data.
+pub fn read_wav(bytes: &[u8]) -> Option<Vec<f32>> {
+    let mut i = 12;
+    while i + 8 <= bytes.len() {
+        let len =
+            u32::from_le_bytes([bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]]) as usize;
+        if &bytes[i..i + 4] == b"data" {
+            let end = (i + 8 + len).min(bytes.len());
+            return Some(
+                bytes[i + 8..end]
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|b| f32::from(i16::from_le_bytes(*b)) / 32_768.0)
+                    .collect(),
+            );
+        }
+        i += 8 + len + (len & 1);
+    }
+    None
 }
 
 /// Threads for the model: the experiment's four, or fewer on a smaller PC.

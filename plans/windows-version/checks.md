@@ -38,9 +38,9 @@ Every check from the old step plans 2 to 6, with the same IDs, grouped by the pa
 
 - Start: as DICT-01.
 - Action: tap, play a 60-second paragraph, tap.
-- Result: Notepad holds the whole paragraph, including its final sentence, within 1.5 s of the second tap. The paragraph's text is compared word for word (punctuation aside).
+- Result: Notepad holds the whole paragraph, including its final sentence, within 1.5 s of the second tap. The paragraph's text is compared word for word (punctuation aside). loqui's log shows it kept the sound right up to the second tap, and that the last words had ended at least half a second before it, so nothing was cut at the stop.
 - Checkpoint: 1
-- Test: `DICT-04: A 60-second dictation keeps its last words`
+- Test: `DICT-04: A 60-second dictation keeps its last words`; and from the speech engine itself, `a_short_last_word_said_just_before_the_stop_is_kept` and `every_sample_before_the_stop_reaches_the_last_segment` (`windows/crates/loqui-speech/tests/tail.rs`)
 
 ### DICT-05: Cleanup and the dictionary apply
 

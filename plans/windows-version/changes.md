@@ -16,6 +16,18 @@ Format:
 
 ---
 
+Found while fixing DICT-04 (2026-11-14). The Lead settled it the same day.
+
+### DICT-04's paragraph ends "Have a good weekend." and the check proves nothing was cut
+
+- **Kind:** Behind it (Lead-settled)
+- **Before:** the paragraph ended "Talk soon." and DICT-04 judged only the words that landed.
+- **After:** it ends "Have a good weekend.", and DICT-04 also reads loqui's log: the sound was kept right up to the second tap, and the last words had ended at least half a second before it. The words are still compared one for one.
+- **Why:** staging's check failed once on "tal soon". Ten repeat runs showed all the sound arrived and the last segment had closed 1.3 s before the stop; the same recordings, read from the file, came out "Tal soon." 3 times in 10. The speech model mishears "talk" now and then, so the old ending tested the model, not the stop. "Have a good weekend." read right 10 of 10 on both Intel/AMD and Arm.
+- **Checks affected:** DICT-04 (its Result adds the log check).
+
+---
+
 Found while building Part E (2026-11-12).
 
 ### The Windows download page shows the choice and the SmartScreen steps

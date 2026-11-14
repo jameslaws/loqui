@@ -79,15 +79,16 @@ impl From<windows::core::Error> for MicError {
 /// passed on, so the speech thread has the whole recording.
 pub struct Capture {
     stop: Arc<AtomicBool>,
-    thread: Option<JoinHandle<()>>,
+    /// Ends with how many samples it passed on.
+    thread: Option<JoinHandle<usize>>,
 }
 
 impl Capture {
-    pub fn stop(mut self) {
+    /// Stop, and say how many seconds of sound were passed on.
+    pub fn stop(mut self) -> f64 {
         self.stop.store(true, Ordering::SeqCst);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
+        let heard = self.thread.take().map_or(0, |t| t.join().unwrap_or(0));
+        heard as f64 / 16_000.0
     }
 }
 
@@ -145,7 +146,7 @@ pub fn start(out: Outlets) -> Result<Capture, MicError> {
             // SAFETY: COM is set up for this thread and torn down when it ends.
             if let Err(e) = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.ok() {
                 let _ = opened.send(Err(MicError::from(e)));
-                return;
+                return 0;
             }
             // Windows' audio priority for this thread, so a busy PC doesn't
             // leave the microphone unread long enough to drop sound.
@@ -153,21 +154,23 @@ pub fn start(out: Outlets) -> Result<Capture, MicError> {
             let mut index = 0u32;
             // SAFETY: the name is null-terminated; the handle is reverted below.
             let priority = unsafe { AvSetMmThreadCharacteristicsW(task.as_ptr(), &mut index) };
-            match Stream::open() {
+            let heard = match Stream::open() {
                 Ok(stream) => {
                     let _ = opened.send(Ok(()));
-                    stream.run(&out, &flag);
+                    stream.run(&out, &flag)
                 }
                 Err(e) => {
                     let _ = opened.send(Err(e));
+                    0
                 }
-            }
+            };
             if !priority.is_null() {
                 // SAFETY: the handle came from AvSetMmThreadCharacteristicsW on this thread.
                 unsafe { AvRevertMmThreadCharacteristics(priority) };
             }
             // SAFETY: matches the CoInitializeEx above; every COM object is gone.
             unsafe { CoUninitialize() };
+            heard
         })
         .map_err(|e| MicError::Other(e.to_string()))?;
     match result.recv() {
@@ -277,7 +280,8 @@ impl Stream {
         Ok(gaps)
     }
 
-    fn run(mut self, out: &Outlets, stop: &AtomicBool) {
+    /// Pass the sound on until stopped; returns how many samples it passed.
+    fn run(mut self, out: &Outlets, stop: &AtomicBool) -> usize {
         let mut pending = Vec::with_capacity(BLOCK * 4);
         let mut checked = Instant::now();
         let mut broken = false;
@@ -339,6 +343,7 @@ impl Stream {
         }
         // SAFETY: the stream is live until dropped just after.
         let _ = unsafe { self.client.Stop() };
+        heard
     }
 }
 
@@ -351,28 +356,15 @@ mod test_audio {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{Duration, Instant};
 
-    /// The samples of a 16 kHz mono 16-bit WAV.
+    /// The samples of a 16 kHz mono 16-bit WAV, or none if it can't be read.
     fn read(path: &Path) -> Vec<f32> {
-        let bytes = std::fs::read(path).unwrap_or_default();
-        let mut i = 12;
-        while i + 8 <= bytes.len() {
-            let len = u32::from_le_bytes([bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]])
-                as usize;
-            if &bytes[i..i + 4] == b"data" {
-                let end = (i + 8 + len).min(bytes.len());
-                return bytes[i + 8..end]
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|b| f32::from(i16::from_le_bytes(*b)) / 32_768.0)
-                    .collect();
-            }
-            i += 8 + len + (len & 1);
-        }
-        Vec::new()
+        std::fs::read(path)
+            .ok()
+            .and_then(|bytes| loqui_speech::read_wav(&bytes))
+            .unwrap_or_default()
     }
 
-    pub fn play(path: &Path, out: &Outlets, stop: &AtomicBool) {
+    pub fn play(path: &Path, out: &Outlets, stop: &AtomicBool) -> usize {
         let samples = read(path);
         out.log(&format!(
             "test audio: {} samples from a file",
@@ -391,5 +383,6 @@ mod test_audio {
             }
             std::thread::sleep(Duration::from_millis(10));
         }
+        sent
     }
 }
