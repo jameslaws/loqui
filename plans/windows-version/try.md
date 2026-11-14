@@ -4,7 +4,7 @@ One list for the one try, part by part. The pictures come from GitHub's Windows 
 
 The teammate link: https://github.com/jameslaws/loqui/releases/tag/windows-v0.0.2-test
 
-## Part A: dictation
+### Part A: dictation
 
 ## What to do
 Open the latest Windows check and look at the pictures taken while dictating into Notepad and just after.
@@ -59,7 +59,7 @@ Where: the Windows PC with loqui installed from the teammate link
 See: nothing is typed, the bubble says "This window won't accept typing from loqui. Your text is on the clipboard: press Ctrl+V.", and Ctrl+V pastes it.
 Checks: PASTE-02
 
-## Part B: settings, history and welcome
+### Part B: settings, history and welcome
 
 ## What to do
 Look at the welcome window from loqui's first start, with Windows' microphone switch off, and again a moment after it was switched on.
@@ -101,7 +101,7 @@ Where: the Windows PC with loqui installed from the teammate link
 See: the new shortcut works at once and the old one types normally; "Loqui" spelled right; the history does what it says; Recent's item pastes in full; nothing new in history while it's Off; and loqui by the clock after signing in.
 Checks: SET-01, SET-02, SET-03, SET-04, SET-05, DICTN-01, HIST-01, HIST-02, HIST-03, RECENT-01
 
-## Part C: stats
+### Part C: stats
 
 ## What to do
 Look at Dictation stats on GitHub's Windows computers, light and dark, opened from the tray menu with the shared sample record moved to today.
@@ -129,7 +129,7 @@ Where: the Windows PC with loqui installed from the teammate link
 See: Today matches your words; the calendar's darker days are the busy ones and a click shows that day; the right arrow stops at today; Today goes up by your words without reopening the window. A month with nothing in it says "No dictations in" that month.
 Checks: STAT-01, STAT-02, STAT-03, STAT-04, STAT-05, STAT-06, STAT-08
 
-## Part D: installer, updates and test channel
+### Part D: installer, updates and test channel
 
 ## What to do
 Open the newest test version on GitHub's releases page and read the top of its notes.
@@ -170,7 +170,7 @@ Where: https://github.com/jameslaws/loqui/actions/runs/43342641690 (the drill, a
 See: every job green except the separate signing proof, which stops before publishing because no signing account is connected (as it should); the PC's connections all went to GitHub, plus Windows confirming GitHub's certificate, and only while checking or downloading; GitHub's "latest release" is still the Mac's.
 Checks: SIGN-02, CHAN-03, CHAN-04, CHAN-05, PRIV-03
 
-## Part E: launch
+### Part E: launch
 
 ## What to do
 Look at the download page as a Windows visitor sees it (Edge on Windows 11).
@@ -211,7 +211,7 @@ Where: https://jameslaws.github.io/loqui/ on a teammate's Windows PC and on your
 See: within about 10 minutes, the Windows button starts loqui 0.1.0's installer, which installs and dictates; on your MacBook, Download for macOS still gets the Mac app, and GitHub's latest release is still the Mac's.
 Checks: LAUNCH-07, LAUNCH-08, LAUNCH-09, CHAN-05
 
-## For a teammate: install loqui for Windows
+### For a teammate: install loqui for Windows
 
 ## What to do
 A teammate, on their own Windows 11 PC: open the teammate link. Under "Assets", click `loqui-setup-0.0.2-x64.exe` (most PCs) or `loqui-setup-0.0.2-arm64.exe` (Arm laptops, such as a Surface Pro 11 or another Snapdragon PC) and run it. When Windows shows "Windows protected your PC", click "More info", then "Run anyway". Keep the installer's defaults. When loqui's welcome window opens, follow it; then click the loqui icon by the clock, open Settings and turn on "Get test versions".
