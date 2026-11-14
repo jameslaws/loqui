@@ -351,25 +351,12 @@ mod test_audio {
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{Duration, Instant};
 
-    /// The samples of a 16 kHz mono 16-bit WAV.
+    /// The samples of a 16 kHz mono 16-bit WAV, or none if it can't be read.
     fn read(path: &Path) -> Vec<f32> {
-        let bytes = std::fs::read(path).unwrap_or_default();
-        let mut i = 12;
-        while i + 8 <= bytes.len() {
-            let len = u32::from_le_bytes([bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]])
-                as usize;
-            if &bytes[i..i + 4] == b"data" {
-                let end = (i + 8 + len).min(bytes.len());
-                return bytes[i + 8..end]
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|b| f32::from(i16::from_le_bytes(*b)) / 32_768.0)
-                    .collect();
-            }
-            i += 8 + len + (len & 1);
-        }
-        Vec::new()
+        std::fs::read(path)
+            .ok()
+            .and_then(|bytes| loqui_speech::read_wav(&bytes))
+            .unwrap_or_default()
     }
 
     pub fn play(path: &Path, out: &Outlets, stop: &AtomicBool) {

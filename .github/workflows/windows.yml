@@ -175,6 +175,11 @@ jobs:
       - name: "CLEAN-01, LOOK-01 and PLACE-01: the examples file, the look and the project record"
         run: pnpm exec vitest run --project contracts
 
+      # The real engine and model on a recording: a short last word said just
+      # before the stop, and the last few milliseconds, still become text.
+      - name: "DICT-04: the last words before the stop become text, from the speech engine itself"
+        run: cargo test -p loqui-speech
+
       # Check builds: their update lists are on this computer (install/feed-server.mjs)
       # and their updates are signed with a key made for this run, so the update
       # checks need neither GitHub's lists nor loqui's real key. Real releases are
