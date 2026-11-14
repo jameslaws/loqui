@@ -34,7 +34,7 @@ const SENTENCE = "Please send the report to Sarah before Friday, and copy the wh
 // saying "Thanks for sending" as "Thanksing" even straight from the file, with
 // no microphone in between, so that phrase tested the voice, not loqui.
 const PARAGRAPH =
-  "Thank you for sending the draft over this morning. I read it on the train, and I think the second section works well, but the opening is too long. Could we cut the first two paragraphs and start with the story about the customer who called on a Sunday? That is the moment readers will remember. I would also move the pricing table to the end, because nobody wants numbers before they care about the problem. I also spoke with the design team yesterday, and they would like to see the new layout before we send anything to the printer. They think the cover photo is too dark, so they will try a brighter one this week. Let me know if Thursday still works for a call. If not, Friday afternoon is fine, and I can send notes before then so we do not waste the time. One more thing: the headline should say what changes for the reader, not what we built. Talk soon.";
+  "Thank you for sending the draft over this morning. I read it on the train, and I think the second section works well, but the opening is too long. Could we cut the first two paragraphs and start with the story about the customer who called on a Sunday? That is the moment readers will remember. I would also move the pricing table to the end, because nobody wants numbers before they care about the problem. I also spoke with the design team yesterday, and they would like to see the new layout before we send anything to the printer. They think the cover photo is too dark, so they will try a brighter one this week. Let me know if Thursday still works for a call. If not, Friday afternoon is fine, and I can send notes before then so we do not waste the time. One more thing: the headline should say what changes for the reader, not what we built. Have a good weekend.";
 const LOKI = "I use loki every day.";
 const MIC_BLOCKED =
   "loqui notice: Windows is blocking the microphone. Turn on \u201cLet desktop apps access your microphone\u201d in Settings, then try again.";
@@ -165,10 +165,22 @@ test.runIf(x64)(
     paragraph = r.text;
     expect(words(r.text)).toEqual(words(PARAGRAPH));
     // Its final sentence, explicitly: the words most at risk when it stops.
-    const last = words("The headline should say what changes for the reader, not what we built. Talk soon.");
+    const last = words("The headline should say what changes for the reader, not what we built. Have a good weekend.");
     expect(words(r.text).slice(-last.length)).toEqual(last);
     expect(r.ms).toBeGreaterThanOrEqual(0);
     expect(r.ms).toBeLessThanOrEqual(1500);
+    // No sound lost at the stop: loqui kept the microphone's sound right up to
+    // the second tap, and the last words had ended (their segment closed, half
+    // a second of quiet) before it, so nothing of the paragraph was still on
+    // its way when it stopped.
+    const audio =
+      lines(voiceLog)
+        .filter((l) => l.includes("audio: "))
+        .at(-1)
+        ?.match(/audio: ([\d.]+)s heard up to the stop; the last words ended ([\d.]+)s before it/) ?? [];
+    const [heard, quiet] = [Number(audio[1]), Number(audio[2])];
+    expect(heard).toBeGreaterThanOrEqual(r.stoppedAt / 1000 - 0.5);
+    expect(quiet).toBeGreaterThanOrEqual(0.5);
   },
   240_000,
 );
