@@ -2,7 +2,7 @@
 //! segment and its times. For checking the engine on any computer:
 //! `cargo run --release -p loqui-speech --example transcribe -- <folder with engine/ and models/> <file.wav>`
 
-use loqui_speech::{threads, Engine, Files};
+use loqui_speech::{read_wav, threads, Engine, Files};
 use std::path::Path;
 use std::time::Instant;
 
@@ -19,7 +19,10 @@ fn main() {
     });
     println!("loaded in {:.2}s", started.elapsed().as_secs_f64());
 
-    let samples = read_wav(Path::new(wav));
+    let samples = std::fs::read(wav)
+        .ok()
+        .and_then(|bytes| read_wav(&bytes))
+        .unwrap_or_else(|| panic!("no sound in {wav}"));
     let seconds = samples.len() as f64 / 16_000.0;
     let started = Instant::now();
     engine.reset();
@@ -37,24 +40,4 @@ fn main() {
         "{seconds:.1}s of audio: {before_finish:.2}s while feeding, {:.2}s to finish",
         total - before_finish
     );
-}
-
-fn read_wav(path: &Path) -> Vec<f32> {
-    let bytes = std::fs::read(path).expect("readable WAV");
-    let mut i = 12;
-    while i + 8 <= bytes.len() {
-        let id = &bytes[i..i + 4];
-        let len = u32::from_le_bytes(bytes[i + 4..i + 8].try_into().unwrap()) as usize;
-        if id == b"data" {
-            let end = (i + 8 + len).min(bytes.len());
-            return bytes[i + 8..end]
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|b| f32::from(i16::from_le_bytes(*b)) / 32_768.0)
-                .collect();
-        }
-        i += 8 + len + (len & 1);
-    }
-    panic!("no data in {}", path.display());
 }
