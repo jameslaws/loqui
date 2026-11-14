@@ -30,16 +30,21 @@ pub fn start(files: Files, events: Sender<Event>) -> std::io::Result<Sender<ToSp
                     .map_err(Clone::clone),
             ));
             let mut current = 0;
+            let mut fed = 0usize;
             for message in rx {
                 match (message, engine.as_mut()) {
                     (ToSpeech::Begin(id), engine) => {
                         current = id;
+                        fed = 0;
+                        diag(&format!("begin {id}"));
                         if let Ok(engine) = engine {
                             engine.reset();
                         }
                     }
                     (ToSpeech::Audio(id, samples), Ok(engine)) if id == current => {
+                        fed += samples.len();
                         for segment in engine.accept(&samples) {
+                            diag(&format!("segment {:.3}-{:.3} (fed {:.3}s): {}", segment.start, segment.end, fed as f64 / 16000.0, segment.text));
                             let _ = events.send(Event::Segment(id, segment));
                         }
                     }
@@ -48,7 +53,9 @@ pub fn start(files: Files, events: Sender<Event>) -> std::io::Result<Sender<ToSp
                         let ok = match engine {
                             Ok(engine) => {
                                 if id == current {
+                                    diag(&format!("finish: fed {fed} samples ({:.3}s), speech in progress: {}", fed as f64 / 16000.0, engine.detected()));
                                     for segment in engine.finish() {
+                                        diag(&format!("flushed segment {:.3}-{:.3}: {}", segment.start, segment.end, segment.text));
                                         let _ = events.send(Event::Segment(id, segment));
                                     }
                                 }
@@ -62,4 +69,20 @@ pub fn start(files: Files, events: Sender<Event>) -> std::io::Result<Sender<ToSp
             }
         })?;
     Ok(tx)
+}
+
+/// DIAG ONLY (branch diag-dict04, never merged).
+fn diag(message: &str) {
+    use std::io::Write;
+    let Some(dir) = loqui_core::records::data_dir() else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(dir.join("logs"));
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(dir.join("logs").join("diag-speech.log"))
+    {
+        let _ = writeln!(f, "{message}");
+    }
 }

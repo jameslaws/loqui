@@ -164,6 +164,7 @@ struct Api {
     vad_pop: unsafe extern "C" fn(Ptr),
     vad_flush: unsafe extern "C" fn(Ptr),
     vad_reset: unsafe extern "C" fn(Ptr),
+    vad_detected: unsafe extern "C" fn(Ptr) -> i32,
     destroy_segment: unsafe extern "C" fn(*const SpeechSegment),
     // Last, so the library is unloaded after everything above is gone.
     _library: Library,
@@ -196,6 +197,7 @@ impl Api {
             vad_pop: sym!("SherpaOnnxVoiceActivityDetectorPop"),
             vad_flush: sym!("SherpaOnnxVoiceActivityDetectorFlush"),
             vad_reset: sym!("SherpaOnnxVoiceActivityDetectorReset"),
+            vad_detected: sym!("SherpaOnnxVoiceActivityDetectorDetected"),
             destroy_segment: sym!("SherpaOnnxDestroySpeechSegment"),
             _library: library,
         })
@@ -339,6 +341,12 @@ impl Engine {
             unsafe { (self.api.vad_accept)(self.vad, samples.as_ptr(), samples.len() as i32) };
         }
         self.drain()
+    }
+
+    /// DIAG: whether the voice activity model is inside speech right now.
+    pub fn detected(&self) -> bool {
+        // SAFETY: `vad` is live.
+        unsafe { (self.api.vad_detected)(self.vad) != 0 }
     }
 
     /// The recording stopped: turn whatever speech is left into text.

@@ -161,16 +161,20 @@ let paragraph = "";
 test.runIf(x64)(
   "DICT-04: A 60-second dictation keeps its last words",
   () => {
-    const r = dictate("dict-04", wav("paragraph"));
-    paragraph = r.text;
-    expect(words(r.text)).toEqual(words(PARAGRAPH));
-    // Its final sentence, explicitly: the words most at risk when it stops.
-    const last = words("The headline should say what changes for the reader, not what we built. Talk soon.");
-    expect(words(r.text).slice(-last.length)).toEqual(last);
-    expect(r.ms).toBeGreaterThanOrEqual(0);
-    expect(r.ms).toBeLessThanOrEqual(1500);
+    // DIAG ONLY (branch diag-dict04): ten runs, every result printed, then judged.
+    const results: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const r = dictate(`dict-04-${i}`, wav("paragraph"));
+      const got = words(r.text);
+      const ok = JSON.stringify(got) === JSON.stringify(words(PARAGRAPH));
+      results.push(`${i}: ${ok ? "OK" : "MISS"} ms=${r.ms} stoppedAt=${r.stoppedAt} tail="${got.slice(-6).join(" ")}"`);
+      console.log(results.at(-1));
+      paragraph = r.text;
+    }
+    writeFileSync(shot("diag-dict04.txt"), results.join("\n"));
+    expect(results.filter((r) => r.includes("MISS"))).toEqual([]);
   },
-  240_000,
+  1_200_000,
 );
 
 test.runIf(x64)("REC-01: History and stats records match the Mac's format", () => {

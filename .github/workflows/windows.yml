@@ -6,7 +6,7 @@ name: Windows
 on:
   push:
     # windows-version: the one branch the whole Windows version is built on.
-    branches: [main, staging, windows-version]
+    branches: [main, staging, windows-version, diag-dict04]
     paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
   pull_request:
     paths: ["windows/**", "shared/**", "PROJECT.md", ".github/workflows/windows.yml"]
@@ -48,6 +48,7 @@ jobs:
   # accessibility scan, and every screen check.
   screens:
     name: Windows screens (in a browser)
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -87,9 +88,6 @@ jobs:
           - name: Windows (Intel/AMD)
             runner: windows-latest
             arch: x64
-          - name: Windows (Arm)
-            runner: windows-11-arm
-            arch: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     defaults:
@@ -152,15 +150,19 @@ jobs:
         run: pnpm fetch:speech
 
       - name: Format and lint (TypeScript)
+        if: false
         run: pnpm exec biome ci .
 
       - name: Types
+        if: false
         run: pnpm exec tsc -p .
 
       - name: Format (Rust)
+        if: false
         run: cargo fmt --all --check
 
       - name: Lint (Rust)
+        if: false
         run: |
           cargo clippy --workspace --all-targets -- -D warnings
           cargo clippy -p loqui --all-targets --features test-audio -- -D warnings
@@ -170,9 +172,11 @@ jobs:
       # STAT-07 lists every shared stats figure by id, as the Mac's tests do;
       # the screens' types in ui/src/bindings.ts must match the Rust.
       - name: "CLEAN-03, CLEAN-05, REC-01 and STAT-07: the Windows core passes every shared example and keeps the Mac's formats"
+        if: false
         run: cargo test -p loqui-core
 
       - name: "CLEAN-01, LOOK-01 and PLACE-01: the examples file, the look and the project record"
+        if: false
         run: pnpm exec vitest run --project contracts
 
       # Check builds: their update lists are on this computer (install/feed-server.mjs)
@@ -227,13 +231,20 @@ jobs:
       - name: "DICT, MIC, PASTE, HUD, PRIV, REC and PERF: real dictations into Notepad"
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
-        run: pnpm test:e2e
+        run: pnpm exec vitest run --project e2e e2e/dictation.test.ts -t "DICT-04"
 
       # For reading when DICT-04 misses words: the same engine on the checks'
       # own recordings, straight from the files with no microphone in between.
       - name: "Diagnostics: the speech engine on the checks' recordings, from the files"
         if: (success() || failure()) && matrix.arch == 'x64'
         run: |
+          Get-Content "$env:LOCALAPPDATA\Loqui\logs\voice-key.log" | Select-String DIAG
+          Get-Content "$env:LOCALAPPDATA\Loqui\logs\diag-speech.log"
+          Copy-Item "$env:LOCALAPPDATA\Loqui\logs\*" target\shots\ -ErrorAction SilentlyContinue
+          foreach ($f in Get-ChildItem "$env:LOCALAPPDATA\Loqui\logs\diag-*-kept.wav") {
+            "== $($f.Name), what loqui kept, decoded from the file"
+            cargo run --release -q -p loqui-speech --example transcribe -- src-tauri $f.FullName
+          }
           foreach ($w in 'sentence', 'paragraph') {
             if (-not (Test-Path "target\e2e\$w.wav")) { "no $w recording: the dictation checks didn't get that far"; continue }
             cargo run --release -q -p loqui-speech --example transcribe -- src-tauri "target\e2e\$w.wav"
@@ -241,14 +252,14 @@ jobs:
 
       # Runs even when a dictation check failed, so one run reports on both parts.
       - name: "WELC, SET, HIST, RECENT and MENU on Windows: the real windows, light and dark"
-        if: (success() || failure()) && matrix.arch == 'x64'
+        if: false
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:windows-screens
 
       # Both computers: the real stats window from the tray, light and dark.
       - name: "STAT and A11Y-02 on Windows: the real stats window, light and dark"
-        if: success() || failure()
+        if: false
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:windows-stats
@@ -257,7 +268,7 @@ jobs:
       # checks need. Its full installer is left uncompressed (only the checks use
       # it); its update installer is made exactly as a release's.
       - name: The next version, for the update and install checks
-        if: (success() || failure()) && steps.build.outcome == 'success'
+        if: false
         run: |
           # The Arm dictation check leaves its test build running from target\release.
           Get-Process loqui -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -270,7 +281,7 @@ jobs:
           node scripts/release/build.mjs --out target\next-installers --config target\check\tauri.check.json --config target\check\next.json --full-config target\check\uncompressed.json
 
       - name: "INST, UPD and CHAN-02: install, update itself, and uninstall"
-        if: (success() || failure()) && steps.build.outcome == 'success'
+        if: false
         env:
           LOQUI_SHOTS: ${{ github.workspace }}\windows\target\shots
         run: pnpm test:install

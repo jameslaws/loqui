@@ -278,6 +278,8 @@ impl Stream {
     }
 
     fn run(mut self, out: &Outlets, stop: &AtomicBool) {
+        diag::begin();
+        let stop_at = std::cell::Cell::new(None::<Instant>);
         let mut pending = Vec::with_capacity(BLOCK * 4);
         let mut checked = Instant::now();
         let mut broken = false;
@@ -287,6 +289,9 @@ impl Stream {
         let mut heard = 0usize;
         loop {
             let stopping = stop.load(Ordering::SeqCst);
+            if stopping && stop_at.get().is_none() {
+                stop_at.set(Some(Instant::now()));
+            }
             let before = pending.len();
             let read = self.read(&mut pending);
             let failed = read.is_err();
@@ -294,14 +299,25 @@ impl Stream {
                 gaps.push(heard as f64 / 16_000.0);
             }
             heard += pending.len() - before;
+            diag::keep(&pending[before..]);
             while pending.len() >= BLOCK {
                 let mut block: Vec<f32> = pending.drain(..BLOCK).collect();
                 out.pass(&mut block);
             }
             if stopping {
+                let final_read = pending.len();
                 if !pending.is_empty() {
                     out.pass(&mut pending);
                 }
+                // DIAG: keep reading 800 ms after the stop, without passing it
+                // on, to see what the release left behind.
+                let after_started = Instant::now();
+                let mut after: Vec<f32> = Vec::new();
+                while after_started.elapsed() < Duration::from_millis(800) {
+                    let _ = self.read(&mut after);
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                diag::stop(out, &stop_at, heard, final_read, &after);
                 if !gaps.is_empty() {
                     let at: Vec<String> = gaps.iter().map(|g| format!("{g:.2}s")).collect();
                     out.log(&format!(
@@ -391,5 +407,102 @@ mod test_audio {
             }
             std::thread::sleep(Duration::from_millis(10));
         }
+    }
+}
+
+/// DIAG ONLY (branch diag-dict04, never merged): what the microphone heard
+/// before and after the stop, logged and saved as a WAV.
+mod diag {
+    use super::Outlets;
+    use std::cell::RefCell;
+    use std::time::Instant;
+
+    thread_local! {
+        static HEARD: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub fn begin() {
+        HEARD.with(|h| h.borrow_mut().clear());
+    }
+
+    pub fn keep(samples: &[f32]) {
+        HEARD.with(|h| h.borrow_mut().extend_from_slice(samples));
+    }
+
+    fn rms(s: &[f32]) -> f32 {
+        if s.is_empty() {
+            return 0.0;
+        }
+        (s.iter().map(|x| x * x).sum::<f32>() / s.len() as f32).sqrt()
+    }
+
+    pub fn stop(
+        out: &Outlets,
+        stop_at: &std::cell::Cell<Option<Instant>>,
+        heard: usize,
+        final_read: usize,
+        after: &[f32],
+    ) {
+        let lag = stop_at
+            .get()
+            .map_or(0.0, |t| t.elapsed().as_secs_f64() - 0.8);
+        let loud: Vec<String> = after
+            .chunks(320)
+            .enumerate()
+            .filter(|(_, b)| rms(b) > 0.005)
+            .map(|(i, b)| format!("{}ms:{:.3}", i * 20, rms(b)))
+            .collect();
+        // The last 1 s of what was kept, in 100 ms levels.
+        let tail: Vec<String> = HEARD.with(|h| {
+            let h = h.borrow();
+            let from = h.len().saturating_sub(16_000);
+            h[from..]
+                .chunks(1600)
+                .map(|b| format!("{:.3}", rms(b)))
+                .collect()
+        });
+        out.log(&format!(
+            "DIAG stop: id {} kept {heard} samples ({:.3}s), last read at stop {final_read}; after stop {} samples in 800ms (lag {lag:.3}s), loud 20ms blocks after stop [{}]; levels of last 1s kept [{}]",
+            out.id,
+            heard as f64 / 16_000.0,
+            after.len(),
+            loud.join(" "),
+            tail.join(" ")
+        ));
+        let Some(dir) = loqui_core::records::data_dir() else {
+            return;
+        };
+        let path = dir.join("logs").join(format!("diag-{}.wav", out.id));
+        HEARD.with(|h| {
+            let mut all = h.borrow().clone();
+            all.extend_from_slice(after);
+            let _ = write_wav(&path, &all);
+            let _ = write_wav(
+                &dir.join("logs").join(format!("diag-{}-kept.wav", out.id)),
+                &h.borrow(),
+            );
+        });
+    }
+
+    fn write_wav(path: &std::path::Path, samples: &[f32]) -> std::io::Result<()> {
+        let data = (samples.len() * 2) as u32;
+        let mut b = Vec::with_capacity(44 + data as usize);
+        b.extend_from_slice(b"RIFF");
+        b.extend_from_slice(&(36 + data).to_le_bytes());
+        b.extend_from_slice(b"WAVEfmt ");
+        b.extend_from_slice(&16u32.to_le_bytes());
+        b.extend_from_slice(&1u16.to_le_bytes());
+        b.extend_from_slice(&1u16.to_le_bytes());
+        b.extend_from_slice(&16_000u32.to_le_bytes());
+        b.extend_from_slice(&32_000u32.to_le_bytes());
+        b.extend_from_slice(&2u16.to_le_bytes());
+        b.extend_from_slice(&16u16.to_le_bytes());
+        b.extend_from_slice(b"data");
+        b.extend_from_slice(&data.to_le_bytes());
+        for s in samples {
+            let v = (s.clamp(-1.0, 1.0) * 32_767.0) as i16;
+            b.extend_from_slice(&v.to_le_bytes());
+        }
+        std::fs::write(path, b)
     }
 }
