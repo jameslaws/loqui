@@ -1,0 +1,57 @@
+name: Diag DICT-04 ending
+# DIAG ONLY (branch diag-dict04-ending, never merged).
+on:
+  push:
+    branches: [diag-dict04-ending]
+    paths: [".github/workflows/diag-ending.yml"]
+permissions:
+  contents: read
+jobs:
+  ending:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Rust
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            $target = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+            Invoke-WebRequest "https://static.rust-lang.org/rustup/dist/$target/rustup-init.exe" -OutFile "$env:RUNNER_TEMP\rustup-init.exe"
+            & "$env:RUNNER_TEMP\rustup-init.exe" -y --default-toolchain none --profile minimal --no-modify-path
+            "$env:USERPROFILE\.cargo\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+            $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+          }
+          rustup toolchain install
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Speech engine and model
+        run: node scripts/fetch-speech.mjs
+      - name: Tail regression on this computer
+        run: cargo test -p loqui-speech
+      - name: Candidate endings, ten nudged decodes each
+        run: |
+          $base = "Thank you for sending the draft over this morning. I read it on the train, and I think the second section works well, but the opening is too long. Could we cut the first two paragraphs and start with the story about the customer who called on a Sunday? That is the moment readers will remember. I would also move the pricing table to the end, because nobody wants numbers before they care about the problem. I also spoke with the design team yesterday, and they would like to see the new layout before we send anything to the printer. They think the cover photo is too dark, so they will try a brighter one this week. Let me know if Thursday still works for a call. If not, Friday afternoon is fine, and I can send notes before then so we do not waste the time. One more thing: the headline should say what changes for the reader, not what we built."
+          $endings = [ordered]@{
+            a = 'Talk soon.'; b = 'Thanks again, and see you on Monday.'; c = 'See you on Monday.'; d = 'Speak to you next week.'
+            e = 'Thanks for your help with all of this.'; f = 'Have a good weekend.'; g = 'Best wishes to the whole team.'; h = 'Thanks, and have a good weekend.'
+          }
+          New-Item -ItemType Directory -Force target\ending | Out-Null
+          $files = @()
+          foreach ($k in $endings.Keys) {
+            $w = "$PWD\target\ending\$k.wav"
+            powershell -NoProfile -ExecutionPolicy Bypass -File e2e\dictate.ps1 make-wav -Text "$base $($endings[$k])" -Wav $w | Out-Null
+            "$k = $($endings[$k])"
+            $files += $w
+          }
+          cargo run --release -q -p loqui-speech --example zz_ending -- src-tauri @files
